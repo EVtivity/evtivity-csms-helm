@@ -4,7 +4,7 @@ nameOverride: ""
 fullnameOverride: ""
 
 image:
-  registry: ghcr.io/evtivity
+  registry: ghcr.io/evtivity/evtivity-csms
   # Accepts semver eg: "1.2.3", defaults to Chart.appVersion when empty
   tag: ""
   pullPolicy: IfNotPresent
