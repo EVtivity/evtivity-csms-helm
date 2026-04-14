@@ -1,0 +1,101 @@
+{{- if .Values.ocpp.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "evtivity-csms.fullname" . }}-ocpp
+  labels:
+    {{- include "evtivity-csms.componentLabels" (dict "context" . "component" "ocpp") | nindent 4 }}
+spec:
+  {{- if not .Values.ocpp.autoscaling.enabled }}
+  replicas: {{ .Values.ocpp.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "evtivity-csms.componentSelectorLabels" (dict "context" . "component" "ocpp") | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- if and $.Values.istio.enabled $.Values.ocpp.tls.enabled }}
+        traffic.istio.io/excludeInboundPorts: "{{ $.Values.ocpp.tls.port }}"
+        {{- end }}
+        {{- with .Values.ocpp.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "evtivity-csms.componentSelectorLabels" (dict "context" . "component" "ocpp") | nindent 8 }}
+    spec:
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      initContainers:
+        {{- include "evtivity-csms.waitForDeps" . | nindent 8 }}
+      containers:
+        - name: ocpp
+          image: {{ include "evtivity-csms.image" (dict "context" . "component" "ocpp" "values" .Values.ocpp) }}
+          imagePullPolicy: {{ include "evtivity-csms.imagePullPolicy" . }}
+          ports:
+            - name: ws
+              containerPort: {{ .Values.ocpp.port }}
+              protocol: TCP
+            - name: health
+              containerPort: {{ .Values.ocpp.healthPort }}
+              protocol: TCP
+            {{- if .Values.ocpp.tls.enabled }}
+            - name: wss
+              containerPort: {{ .Values.ocpp.tls.port }}
+              protocol: TCP
+            {{- end }}
+          env:
+            - name: OCPP_INSTANCE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          envFrom:
+            - configMapRef:
+                name: {{ include "evtivity-csms.configMapName" . }}
+            - secretRef:
+                name: {{ include "evtivity-csms.secretName" . }}
+          {{- if .Values.ocpp.tls.enabled }}
+          volumeMounts:
+            - name: tls-certs
+              mountPath: /etc/ocpp/tls
+              readOnly: true
+          {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: health
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: health
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          {{- with .Values.ocpp.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- if .Values.ocpp.tls.enabled }}
+      volumes:
+        - name: tls-certs
+          secret:
+            secretName: {{ .Values.ocpp.tls.certSecret }}
+      {{- end }}
+      {{- with .Values.ocpp.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.ocpp.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.ocpp.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

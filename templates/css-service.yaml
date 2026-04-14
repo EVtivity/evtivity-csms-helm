@@ -1,0 +1,17 @@
+{{- if .Values.css.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "evtivity-csms.fullname" . }}-css
+  labels:
+    {{- include "evtivity-csms.componentLabels" (dict "context" . "component" "css") | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.css.healthPort }}
+      targetPort: health
+      protocol: TCP
+      name: health
+  selector:
+    {{- include "evtivity-csms.componentSelectorLabels" (dict "context" . "component" "css") | nindent 4 }}
+{{- end }}

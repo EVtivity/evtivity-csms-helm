@@ -1,0 +1,39 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "evtivity-csms.fullname" . }}-migrate
+  labels:
+    {{- include "evtivity-csms.componentLabels" (dict "context" . "component" "migrate") | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        {{- include "evtivity-csms.componentSelectorLabels" (dict "context" . "component" "migrate") | nindent 8 }}
+    spec:
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      restartPolicy: Never
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.37
+          command: ['sh', '-c', 'until nc -z {{ .Values.dependencies.postgresHost }} {{ .Values.dependencies.postgresPort }}; do echo "waiting for postgres..."; sleep 2; done']
+      containers:
+        - name: migrate
+          image: {{ include "evtivity-csms.image" (dict "context" . "component" "migrate" "values" .Values.migrate) }}
+          imagePullPolicy: {{ include "evtivity-csms.imagePullPolicy" . }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "evtivity-csms.configMapName" . }}
+            - secretRef:
+                name: {{ include "evtivity-csms.secretName" . }}
+          {{- with .Values.migrate.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}

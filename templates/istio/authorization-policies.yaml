@@ -1,0 +1,45 @@
+{{- if .Values.istio.enabled }}
+{{- $fullname := include "evtivity-csms.fullname" . }}
+{{- $namespace := .Release.Namespace }}
+{{- $gatewayPrincipal := printf "cluster.local/ns/%s/sa/%s-istio" $namespace $fullname }}
+
+{{- $services := list }}
+{{- if .Values.api.enabled }}{{ $services = append $services "api" }}{{ end }}
+{{- if .Values.ocpp.enabled }}{{ $services = append $services "ocpp" }}{{ end }}
+{{- if .Values.ocpi.enabled }}{{ $services = append $services "ocpi" }}{{ end }}
+{{- if .Values.csms.enabled }}{{ $services = append $services "csms" }}{{ end }}
+{{- if .Values.portal.enabled }}{{ $services = append $services "portal" }}{{ end }}
+{{- if .Values.css.enabled }}{{ $services = append $services "css" }}{{ end }}
+{{- if .Values.ocpiSim.enabled }}{{ $services = append $services "ocpi-sim" }}{{ end }}
+{{- if .Values.ocpiCpoSim.enabled }}{{ $services = append $services "ocpi-cpo-sim" }}{{ end }}
+
+{{- range $services }}
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: {{ $fullname }}-{{ . }}
+  labels:
+    {{- include "evtivity-csms.componentLabels" (dict "context" $ "component" .) | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "evtivity-csms.componentSelectorLabels" (dict "context" $ "component" .) | nindent 6 }}
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - {{ $gatewayPrincipal | quote }}
+{{- if and (eq . "ocpp") $.Values.css.enabled }}
+        - source:
+            principals:
+              - {{ printf "cluster.local/ns/%s/sa/default" $namespace | quote }}
+{{- end }}
+{{- if and (eq . "ocpi") (or $.Values.ocpiSim.enabled $.Values.ocpiCpoSim.enabled) }}
+        - source:
+            principals:
+              - {{ printf "cluster.local/ns/%s/sa/default" $namespace | quote }}
+{{- end }}
+{{- end }}
+{{- end }}

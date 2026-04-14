@@ -1,0 +1,17 @@
+{{- if .Values.ocpiCpoSim.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "evtivity-csms.fullname" . }}-ocpi-cpo-sim
+  labels:
+    {{- include "evtivity-csms.componentLabels" (dict "context" . "component" "ocpi-cpo-sim") | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.ocpiCpoSim.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "evtivity-csms.componentSelectorLabels" (dict "context" . "component" "ocpi-cpo-sim") | nindent 4 }}
+{{- end }}

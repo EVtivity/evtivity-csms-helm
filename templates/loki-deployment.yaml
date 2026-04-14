@@ -1,0 +1,58 @@
+{{- if and .Values.monitoring.enabled .Values.monitoring.loki.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "evtivity-csms.fullname" . }}-loki
+  labels:
+    {{- include "evtivity-csms.componentLabels" (dict "context" . "component" "loki") | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "evtivity-csms.componentSelectorLabels" (dict "context" . "component" "loki") | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/loki-configmap.yaml") . | sha256sum }}
+      labels:
+        {{- include "evtivity-csms.componentSelectorLabels" (dict "context" . "component" "loki") | nindent 8 }}
+    spec:
+      containers:
+        - name: loki
+          image: "{{ .Values.monitoring.loki.image.repository }}:{{ .Values.monitoring.loki.image.tag }}"
+          imagePullPolicy: IfNotPresent
+          args:
+            - "-config.file=/etc/loki/loki-config.yaml"
+          ports:
+            - name: http
+              containerPort: 3100
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          volumeMounts:
+            - name: config
+              mountPath: /etc/loki/
+            - name: data
+              mountPath: /loki
+          {{- with .Values.monitoring.loki.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "evtivity-csms.fullname" . }}-loki-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "evtivity-csms.fullname" . }}-loki-data
+{{- end }}

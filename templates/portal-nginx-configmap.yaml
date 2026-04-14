@@ -1,0 +1,42 @@
+{{- if .Values.portal.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "evtivity-csms.fullname" . }}-portal-nginx
+  labels:
+    {{- include "evtivity-csms.componentLabels" (dict "context" . "component" "portal") | nindent 4 }}
+data:
+  default.conf: |
+    server {
+        listen {{ .Values.portal.port }};
+        server_name _;
+
+        root /usr/share/nginx/html;
+        index index.html;
+
+        location /health {
+            access_log off;
+            return 200 'ok';
+            add_header Content-Type text/plain;
+        }
+
+        {{- $apiHost := "" }}
+        {{- range $route := .Values.gatewayAPI.routes }}
+          {{- range $route.rules }}
+            {{- if eq .service "api" }}{{ $apiHost = $route.host }}{{ end }}
+          {{- end }}
+        {{- end }}
+        {{- $proto := "http" }}
+        {{- range .Values.gatewayAPI.gateway.listeners }}
+          {{- if or (eq .protocol "HTTPS") (eq .protocol "TLS") }}{{ $proto = "https" }}{{ end }}
+        {{- end }}
+        location = /runtime-config.js {
+            default_type application/javascript;
+            return 200 'window.__RUNTIME_CONFIG__={"apiUrl":"{{ $proto }}://{{ $apiHost }}"};';
+        }
+
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+    }
+{{- end }}

@@ -1,0 +1,43 @@
+{{- if .Values.ocpp.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "evtivity-csms.fullname" . }}-ocpp
+  labels:
+    {{- include "evtivity-csms.componentLabels" (dict "context" . "component" "ocpp") | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.ocpp.port }}
+      targetPort: ws
+      protocol: TCP
+      name: ws
+    - port: {{ .Values.ocpp.healthPort }}
+      targetPort: health
+      protocol: TCP
+      name: health
+  selector:
+    {{- include "evtivity-csms.componentSelectorLabels" (dict "context" . "component" "ocpp") | nindent 4 }}
+{{- if .Values.ocpp.tls.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "evtivity-csms.fullname" . }}-ocpp-tls
+  labels:
+    {{- include "evtivity-csms.componentLabels" (dict "context" . "component" "ocpp") | nindent 4 }}
+  {{- with .Values.ocpp.tls.serviceAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: LoadBalancer
+  ports:
+    - port: {{ .Values.ocpp.tls.port }}
+      targetPort: wss
+      protocol: TCP
+      name: wss
+  selector:
+    {{- include "evtivity-csms.componentSelectorLabels" (dict "context" . "component" "ocpp") | nindent 4 }}
+{{- end }}
+{{- end }}

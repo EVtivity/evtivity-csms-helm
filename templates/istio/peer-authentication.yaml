@@ -1,0 +1,11 @@
+{{- if .Values.istio.enabled }}
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata:
+  name: {{ include "evtivity-csms.fullname" . }}
+  labels:
+    {{- include "evtivity-csms.labels" . | nindent 4 }}
+spec:
+  mtls:
+    mode: {{ .Values.istio.peerAuthentication.mode }}
+{{- end }}

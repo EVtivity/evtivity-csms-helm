@@ -1,0 +1,21 @@
+{{- if .Values.monitoring.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "evtivity-csms.fullname" . }}-prometheus-config
+  labels:
+    {{- include "evtivity-csms.componentLabels" (dict "context" . "component" "prometheus") | nindent 4 }}
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: {{ .Values.monitoring.prometheus.scrapeInterval }}
+      evaluation_interval: {{ .Values.monitoring.prometheus.scrapeInterval }}
+
+    scrape_configs:
+      - job_name: "evtivity-api"
+        static_configs:
+          - targets:
+              - "{{ include "evtivity-csms.fullname" . }}-api:9091"
+        metrics_path: /metrics
+        scrape_interval: {{ .Values.monitoring.prometheus.scrapeInterval }}
+{{- end }}

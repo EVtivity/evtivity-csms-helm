@@ -1,0 +1,17 @@
+{{- if .Values.csms.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "evtivity-csms.fullname" . }}-csms
+  labels:
+    {{- include "evtivity-csms.componentLabels" (dict "context" . "component" "csms") | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.csms.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "evtivity-csms.componentSelectorLabels" (dict "context" . "component" "csms") | nindent 4 }}
+{{- end }}

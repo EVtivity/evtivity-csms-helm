@@ -1,0 +1,43 @@
+{{- if and .Values.monitoring.enabled .Values.monitoring.alloy.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "evtivity-csms.fullname" . }}-alloy
+  labels:
+    {{- include "evtivity-csms.componentLabels" (dict "context" . "component" "alloy") | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "evtivity-csms.componentSelectorLabels" (dict "context" . "component" "alloy") | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/alloy-configmap.yaml") . | sha256sum }}
+      labels:
+        {{- include "evtivity-csms.componentSelectorLabels" (dict "context" . "component" "alloy") | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "evtivity-csms.fullname" . }}-alloy
+      containers:
+        - name: alloy
+          image: "{{ .Values.monitoring.alloy.image.repository }}:{{ .Values.monitoring.alloy.image.tag }}"
+          imagePullPolicy: IfNotPresent
+          args:
+            - "run"
+            - "/etc/alloy/config.alloy"
+          ports:
+            - name: http
+              containerPort: 12345
+              protocol: TCP
+          volumeMounts:
+            - name: config
+              mountPath: /etc/alloy/
+          {{- with .Values.monitoring.alloy.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "evtivity-csms.fullname" . }}-alloy-config
+{{- end }}

@@ -1,0 +1,14 @@
+{{- if .Values.monitoring.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "evtivity-csms.fullname" . }}-prometheus-data
+  labels:
+    {{- include "evtivity-csms.componentLabels" (dict "context" . "component" "prometheus") | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.monitoring.prometheus.storage.size }}
+{{- end }}

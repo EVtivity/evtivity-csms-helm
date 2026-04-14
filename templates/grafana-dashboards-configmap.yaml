@@ -1,0 +1,17 @@
+{{- if .Values.monitoring.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "evtivity-csms.fullname" . }}-grafana-dashboards
+  labels:
+    {{- include "evtivity-csms.componentLabels" (dict "context" . "component" "grafana") | nindent 4 }}
+data:
+  system-metrics.json: |
+    {{- .Files.Get "dashboards/system-metrics.json" | nindent 4 }}
+  business-metrics.json: |
+    {{- .Files.Get "dashboards/business-metrics.json" | nindent 4 }}
+{{- if .Values.monitoring.loki.enabled }}
+  logs.json: |
+    {{- .Files.Get "dashboards/logs.json" | nindent 4 }}
+{{- end }}
+{{- end }}

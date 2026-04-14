@@ -1,0 +1,83 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "evtivity-csms.configMapName" . }}
+  labels:
+    {{- include "evtivity-csms.labels" . | nindent 4 }}
+data:
+  NODE_ENV: {{ .Values.api.env.nodeEnv | quote }}
+  LOG_LEVEL: {{ .Values.api.env.logLevel | quote }}
+  SEED_DEMO: {{ .Values.migrate.seedDemo | quote }}
+  {{- $proto := "http" }}
+  {{- range .Values.gatewayAPI.gateway.listeners }}
+    {{- if or (eq .protocol "HTTPS") (eq .protocol "TLS") }}{{ $proto = "https" }}{{ end }}
+  {{- end }}
+  {{- $corsOrigins := list }}
+  {{- $portalHost := "" }}
+  {{- $csmsHost := "" }}
+  {{- range $route := .Values.gatewayAPI.routes }}
+    {{- range $route.rules }}
+      {{- if has .service (list "csms" "portal") }}
+        {{- $corsOrigins = append $corsOrigins (printf "%s://%s" $proto $route.host) }}
+      {{- end }}
+      {{- if eq .service "portal" }}{{ $portalHost = $route.host }}{{ end }}
+      {{- if eq .service "csms" }}{{ $csmsHost = $route.host }}{{ end }}
+    {{- end }}
+  {{- end }}
+  {{- if $corsOrigins }}
+  CORS_ORIGIN: {{ join "," $corsOrigins | quote }}
+  {{- else if and .Values.api.env.corsOrigin (ne .Values.api.env.corsOrigin "*") }}
+  CORS_ORIGIN: {{ .Values.api.env.corsOrigin | quote }}
+  {{- else }}
+  {{- fail "CORS_ORIGIN is required. Configure gateway routes (preferred) or set api.env.corsOrigin to explicit origins." }}
+  {{- end }}
+  {{- if $portalHost }}
+  PORTAL_URL: {{ printf "%s://%s" $proto $portalHost | quote }}
+  {{- end }}
+  {{- if $csmsHost }}
+  CSMS_URL: {{ printf "%s://%s" $proto $csmsHost | quote }}
+  {{- end }}
+  {{- if .Values.api.env.cookieDomain }}
+  COOKIE_DOMAIN: {{ .Values.api.env.cookieDomain | quote }}
+  {{- end }}
+  API_PORT: {{ .Values.api.port | quote }}
+  METRICS_PORT: {{ .Values.api.env.metricsPort | quote }}
+  RATE_LIMIT_MAX: {{ .Values.api.env.rateLimitMax | quote }}
+  RATE_LIMIT_WINDOW: {{ .Values.api.env.rateLimitWindow | quote }}
+  AUTH_RATE_LIMIT_MAX: {{ .Values.api.env.authRateLimitMax | quote }}
+  AUTH_RATE_LIMIT_WINDOW: {{ .Values.api.env.authRateLimitWindow | quote }}
+  OCPP_PORT: {{ .Values.ocpp.port | quote }}
+  OCPP_HEALTH_PORT: {{ .Values.ocpp.healthPort | quote }}
+  OCPP_MAX_CONNECTIONS_PER_IP: {{ .Values.ocpp.env.maxConnectionsPerIp | quote }}
+  OCPP_MAX_MESSAGES_PER_IP_PER_SECOND: {{ .Values.ocpp.env.maxMessagesPerIpPerSecond | quote }}
+  {{- if .Values.ocpp.tls.enabled }}
+  OCPP_TLS_PORT: {{ .Values.ocpp.tls.port | quote }}
+  OCPP_TLS_CERT: /etc/ocpp/tls/tls.crt
+  OCPP_TLS_KEY: /etc/ocpp/tls/tls.key
+  OCPP_TLS_CA: /etc/ocpp/tls/ca.crt
+  {{- end }}
+  OCPI_PORT: {{ .Values.ocpi.port | quote }}
+  OCPI_LOG_LEVEL: {{ .Values.ocpi.env.logLevel | quote }}
+  {{- if .Values.ocpi.env.baseUrl }}
+  OCPI_BASE_URL: {{ .Values.ocpi.env.baseUrl | quote }}
+  {{- end }}
+  OCPI_COUNTRY_CODE: {{ .Values.ocpi.env.countryCode | quote }}
+  OCPI_PARTY_ID: {{ .Values.ocpi.env.partyId | quote }}
+  OCPI_BUSINESS_NAME: {{ .Values.ocpi.env.businessName | quote }}
+  {{- if .Values.ocpi.env.website }}
+  OCPI_WEBSITE: {{ .Values.ocpi.env.website | quote }}
+  {{- end }}
+  {{- if .Values.css.enabled }}
+  CSS_HEALTH_PORT: {{ .Values.css.healthPort | quote }}
+  CSS_MODE: {{ .Values.css.env.mode | quote }}
+  CSS_ACTION_INTERVAL_MS: {{ .Values.css.env.actionIntervalMs | quote }}
+  CSS_STATION_PASSWORD: {{ .Values.css.env.stationPassword | quote }}
+  CSS_STATION_LIMIT: {{ .Values.css.env.stationLimit | quote }}
+  CSS_CONNECT_CONCURRENCY: {{ .Values.css.env.connectConcurrency | quote }}
+  CSS_API_TOKEN: {{ .Values.css.env.apiToken | quote }}
+  CSS_API_URL: "http://{{ include "evtivity-csms.fullname" . }}-api:{{ .Values.api.port }}"
+  OCPP_SERVER_URL: "ws://{{ include "evtivity-csms.fullname" . }}-ocpp:{{ .Values.ocpp.port }}"
+  {{- if .Values.ocpp.tls.enabled }}
+  OCPP_TLS_SERVER_URL: "wss://{{ include "evtivity-csms.fullname" . }}-ocpp:{{ .Values.ocpp.tls.port }}"
+  {{- end }}
+  {{- end }}

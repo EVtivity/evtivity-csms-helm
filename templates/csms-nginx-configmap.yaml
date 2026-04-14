@@ -1,0 +1,50 @@
+{{- if .Values.csms.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "evtivity-csms.fullname" . }}-csms-nginx
+  labels:
+    {{- include "evtivity-csms.componentLabels" (dict "context" . "component" "csms") | nindent 4 }}
+data:
+  default.conf: |
+    server {
+        listen {{ .Values.csms.port }};
+        server_name _;
+
+        root /usr/share/nginx/html;
+        index index.html;
+
+        location /health {
+            access_log off;
+            return 200 'ok';
+            add_header Content-Type text/plain;
+        }
+
+        {{- $apiHost := "" }}
+        {{- $portalHost := "" }}
+        {{- $csmsHost := "" }}
+        {{- $ocppHost := "" }}
+        {{- range $route := .Values.gatewayAPI.routes }}
+          {{- range $route.rules }}
+            {{- if eq .service "api" }}{{ $apiHost = $route.host }}{{ end }}
+            {{- if eq .service "portal" }}{{ $portalHost = $route.host }}{{ end }}
+            {{- if eq .service "csms" }}{{ $csmsHost = $route.host }}{{ end }}
+            {{- if eq .service "ocpp" }}{{ $ocppHost = $route.host }}{{ end }}
+          {{- end }}
+        {{- end }}
+        {{- $proto := "http" }}
+        {{- range .Values.gatewayAPI.gateway.listeners }}
+          {{- if or (eq .protocol "HTTPS") (eq .protocol "TLS") }}{{ $proto = "https" }}{{ end }}
+        {{- end }}
+        {{- $wsProto := "ws" }}
+        {{- if eq $proto "https" }}{{ $wsProto = "wss" }}{{ end }}
+        location = /runtime-config.js {
+            default_type application/javascript;
+            return 200 'window.__RUNTIME_CONFIG__={"apiUrl":"{{ $proto }}://{{ $apiHost }}","portalUrl":"{{ $proto }}://{{ $portalHost }}","csmsUrl":"{{ $proto }}://{{ $csmsHost }}","ocppUrl":"{{ $wsProto }}://{{ $ocppHost }}"};';
+        }
+
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+    }
+{{- end }}

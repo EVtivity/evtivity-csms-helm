@@ -1,0 +1,64 @@
+{{- if .Values.gatewayAPI.enabled }}
+{{- $fullname := include "evtivity-csms.fullname" . -}}
+{{- $labels := include "evtivity-csms.labels" . -}}
+{{- range .Values.gatewayAPI.routes }}
+{{- /* Skip routes for disabled services */ -}}
+{{- $skip := false -}}
+{{- range .rules -}}
+  {{- if and (eq .service "api") (not $.Values.api.enabled) }}{{ $skip = true }}{{ end -}}
+  {{- if and (eq .service "ocpp") (not $.Values.ocpp.enabled) }}{{ $skip = true }}{{ end -}}
+  {{- if and (eq .service "ocpi") (not $.Values.ocpi.enabled) }}{{ $skip = true }}{{ end -}}
+  {{- if and (eq .service "csms") (not $.Values.csms.enabled) }}{{ $skip = true }}{{ end -}}
+  {{- if and (eq .service "portal") (not $.Values.portal.enabled) }}{{ $skip = true }}{{ end -}}
+{{- end -}}
+{{- if not $skip }}
+{{- $routeName := printf "%s-%s" $fullname (replace "." "-" .host) | trunc 63 | trimSuffix "-" }}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $routeName }}
+  labels:
+    {{- $labels | nindent 4 }}
+  {{- with $.Values.gatewayAPI.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  parentRefs:
+    {{- if .parentRefs }}
+    {{- toYaml .parentRefs | nindent 4 }}
+    {{- else if $.Values.gatewayAPI.gateway.create }}
+    - name: {{ $fullname }}
+    {{- else }}
+    {{- toYaml $.Values.gatewayAPI.parentRefs | nindent 4 }}
+    {{- end }}
+  hostnames:
+    - {{ .host | quote }}
+  rules:
+    {{- range .rules }}
+    - matches:
+        - path:
+            type: PathPrefix
+            value: {{ .path }}
+      backendRefs:
+        {{- if eq .service "api" }}
+        - name: {{ $fullname }}-api
+          port: {{ $.Values.api.port }}
+        {{- else if eq .service "ocpp" }}
+        - name: {{ $fullname }}-ocpp
+          port: {{ $.Values.ocpp.port }}
+        {{- else if eq .service "ocpi" }}
+        - name: {{ $fullname }}-ocpi
+          port: {{ $.Values.ocpi.port }}
+        {{- else if eq .service "csms" }}
+        - name: {{ $fullname }}-csms
+          port: {{ $.Values.csms.port }}
+        {{- else if eq .service "portal" }}
+        - name: {{ $fullname }}-portal
+          port: {{ $.Values.portal.port }}
+        {{- end }}
+    {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

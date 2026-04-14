@@ -1,0 +1,23 @@
+{{- if .Values.api.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "evtivity-csms.fullname" . }}-api
+  labels:
+    {{- include "evtivity-csms.componentLabels" (dict "context" . "component" "api") | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.api.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+    {{- if .Values.monitoring.enabled }}
+    - port: 9091
+      targetPort: metrics
+      protocol: TCP
+      name: metrics
+    {{- end }}
+  selector:
+    {{- include "evtivity-csms.componentSelectorLabels" (dict "context" . "component" "api") | nindent 4 }}
+{{- end }}

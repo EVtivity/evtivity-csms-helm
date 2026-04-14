@@ -1,0 +1,14 @@
+{{- if and .Values.monitoring.enabled .Values.monitoring.loki.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "evtivity-csms.fullname" . }}-loki-data
+  labels:
+    {{- include "evtivity-csms.componentLabels" (dict "context" . "component" "loki") | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.monitoring.loki.storage.size }}
+{{- end }}

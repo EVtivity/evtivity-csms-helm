@@ -1,0 +1,118 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "evtivity-csms.fullname" . }}-seed-settings
+  labels:
+    {{- include "evtivity-csms.componentLabels" (dict "context" . "component" "seed-settings") | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "1"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        {{- include "evtivity-csms.componentSelectorLabels" (dict "context" . "component" "seed-settings") | nindent 8 }}
+    spec:
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      restartPolicy: Never
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.37
+          command: ['sh', '-c', 'until nc -z {{ .Values.dependencies.postgresHost }} {{ .Values.dependencies.postgresPort }}; do echo "waiting for postgres..."; sleep 2; done']
+      containers:
+        - name: seed-settings
+          image: {{ include "evtivity-csms.image" (dict "context" . "component" "migrate" "values" .Values.migrate) }}
+          imagePullPolicy: {{ include "evtivity-csms.imagePullPolicy" . }}
+          command:
+            - node
+            - --input-type=module
+            - -e
+            - |
+              import { readFileSync } from 'node:fs';
+              import { randomBytes, scryptSync, createCipheriv } from 'node:crypto';
+              import postgres from 'postgres';
+
+              function encryptString(plaintext, passphrase) {
+                const salt = randomBytes(32);
+                const iv = randomBytes(12);
+                const key = scryptSync(passphrase, salt, 32);
+                const cipher = createCipheriv('aes-256-gcm', key, iv);
+                const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+                const authTag = cipher.getAuthTag();
+                return Buffer.concat([salt, iv, authTag, encrypted]).toString('base64');
+              }
+
+              const sql = postgres(process.env.DATABASE_URL);
+              const encKey = process.env.SETTINGS_ENCRYPTION_KEY;
+
+              let settings = {};
+              try {
+                const raw = readFileSync('/etc/app-settings/settings.json', 'utf8');
+                settings = JSON.parse(raw);
+              } catch (e) {
+                console.error('Failed to read non-sensitive settings:', e.message);
+              }
+
+              try {
+                const raw = readFileSync('/etc/sensitive-settings/sensitive-settings.json', 'utf8');
+                const sensitive = JSON.parse(raw);
+                Object.assign(settings, sensitive);
+              } catch (e) {
+                console.error('Failed to read sensitive settings:', e.message);
+              }
+
+              let count = 0;
+              for (const [key, value] of Object.entries(settings)) {
+                if (value === '' || value === null || value === undefined) continue;
+
+                let dbValue = value;
+                if (key.endsWith('Enc') && typeof value === 'string' && value !== '' && encKey) {
+                  dbValue = encryptString(value, encKey);
+                }
+
+                await sql`
+                  INSERT INTO settings (key, value)
+                  VALUES (${key}, ${JSON.stringify(dbValue)}::jsonb)
+                  ON CONFLICT (key) DO UPDATE SET
+                    value = ${JSON.stringify(dbValue)}::jsonb,
+                    updated_at = now()
+                `;
+                count++;
+              }
+
+              console.log('Upserted ' + count + ' settings from Helm values.');
+              await sql.end();
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "evtivity-csms.secretName" . }}
+                  key: DATABASE_URL
+            - name: SETTINGS_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "evtivity-csms.secretName" . }}
+                  key: SETTINGS_ENCRYPTION_KEY
+          volumeMounts:
+            - name: app-settings
+              mountPath: /etc/app-settings
+              readOnly: true
+            - name: sensitive-settings
+              mountPath: /etc/sensitive-settings
+              readOnly: true
+          {{- with .Values.migrate.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      volumes:
+        - name: app-settings
+          configMap:
+            name: {{ include "evtivity-csms.fullname" . }}-app-settings
+        - name: sensitive-settings
+          secret:
+            secretName: {{ include "evtivity-csms.appSettingsSensitiveSecretName" . }}

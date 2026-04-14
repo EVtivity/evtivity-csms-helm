@@ -1,0 +1,17 @@
+apiVersion: v2
+name: evtivity-csms
+description: EVtivity CSMS - EV Charging Station Management System
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+home: https://github.com/evtivity/evtivity-csms
+maintainers:
+  - name: EVtivity
+sources:
+  - https://github.com/EVtivity/evtivity-csms-helm
+keywords:
+  - ev
+  - charging
+  - csms
+  - ocpp
+  - ocpi

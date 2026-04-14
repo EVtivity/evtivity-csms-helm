@@ -1,0 +1,90 @@
+{{- if .Values.css.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "evtivity-csms.fullname" . }}-css
+  labels:
+    {{- include "evtivity-csms.componentLabels" (dict "context" . "component" "css") | nindent 4 }}
+spec:
+  replicas: {{ .Values.css.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "evtivity-csms.componentSelectorLabels" (dict "context" . "component" "css") | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- with .Values.css.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "evtivity-csms.componentSelectorLabels" (dict "context" . "component" "css") | nindent 8 }}
+    spec:
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      initContainers:
+        {{- include "evtivity-csms.waitForDeps" . | nindent 8 }}
+      containers:
+        - name: css
+          image: {{ include "evtivity-csms.image" (dict "context" . "component" "css" "values" .Values.css) }}
+          imagePullPolicy: {{ include "evtivity-csms.imagePullPolicy" . }}
+          ports:
+            - name: health
+              containerPort: {{ .Values.css.healthPort }}
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "evtivity-csms.configMapName" . }}
+            - secretRef:
+                name: {{ include "evtivity-csms.secretName" . }}
+          {{- if .Values.css.tls.enabled }}
+          env:
+            - name: CSS_CLIENT_CERT
+              value: /etc/css/tls/client.pem
+            - name: CSS_CLIENT_KEY
+              value: /etc/css/tls/client-key.pem
+            - name: CSS_CA_CERT
+              value: /etc/css/tls/ca.pem
+          volumeMounts:
+            - name: tls-certs
+              mountPath: /etc/css/tls
+              readOnly: true
+          {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: health
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: health
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          {{- with .Values.css.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- if .Values.css.tls.enabled }}
+      volumes:
+        - name: tls-certs
+          secret:
+            secretName: {{ .Values.css.tls.certSecret }}
+      {{- end }}
+      {{- with .Values.css.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.css.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.css.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

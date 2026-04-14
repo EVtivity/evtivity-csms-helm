@@ -1,0 +1,574 @@
+# EVtivity CSMS Helm Chart Values
+
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  registry: ghcr.io/evtivity
+  # Accepts semver eg: "1.2.3", defaults to Chart.appVersion when empty
+  tag: ""
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+
+# --- API Service ---
+api:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: ""
+    tag: ""
+  port: 7102
+  env:
+    logLevel: info
+    nodeEnv: production
+    corsOrigin: ""
+    rateLimitMax: 3000
+    rateLimitWindow: "1 minute"
+    authRateLimitMax: 30
+    authRateLimitWindow: "1 minute"
+    metricsPort: "9091"
+    cookieDomain: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilization: 70
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  podAnnotations: {}
+
+# --- Background Worker ---
+worker:
+  enabled: true
+  # Single replica by default. Safe to scale up - BullMQ handles exactly-once delivery.
+  replicaCount: 1
+  image:
+    repository: ""
+    tag: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  podAnnotations: {}
+
+# --- OCPP WebSocket Service ---
+ocpp:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: ""
+    tag: ""
+  port: 7103
+  healthPort: 8081
+  # TLS for station connections. Enables SP3 mTLS (client cert validation).
+  # SP0-SP2 stations can also connect on this port (no client cert required).
+  # Creates a LoadBalancer Service on port 8443 for direct station access.
+  # Requires a TLS Secret with tls.crt, tls.key, and ca.crt.
+  tls:
+    enabled: true
+    port: 8443
+    certSecret: ""
+    # Annotations for the TLS LoadBalancer Service (e.g. AWS NLB config).
+    serviceAnnotations: {}
+  env:
+    logLevel: info
+    maxConnectionsPerIp: 2500
+    maxMessagesPerIpPerSecond: 5000
+  resources:
+    requests:
+      cpu: 200m
+      memory: 1Gi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilization: 70
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  podAnnotations: {}
+
+# --- OCPI Service ---
+ocpi:
+  enabled: false
+  replicaCount: 1
+  image:
+    repository: ""
+    tag: ""
+  port: 7104
+  env:
+    logLevel: info
+    baseUrl: ""
+    countryCode: US
+    partyId: EVT
+    businessName: EVtivity
+    website: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  podAnnotations: {}
+
+# --- CSMS Frontend ---
+csms:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: ""
+    tag: ""
+  port: 7100
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  podAnnotations: {}
+
+# --- Portal Frontend ---
+portal:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: ""
+    tag: ""
+  port: 7101
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  podAnnotations: {}
+
+# --- Charging Station Simulator ---
+css:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: ""
+    tag: ""
+  healthPort: 8082
+  env:
+    mode: standby
+    actionIntervalMs: "1000"
+    stationPassword: "password"
+    stationLimit: "0"
+    connectConcurrency: "50"
+    apiToken: ""
+  # Mount SP3 test certificates from a Kubernetes secret.
+  # Secret must contain: client.pem, client-key.pem, ca.pem
+  tls:
+    enabled: false
+    certSecret: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  podAnnotations: {}
+
+# --- OCPI eMSP Simulator ---
+ocpiSim:
+  enabled: false
+  replicaCount: 1
+  image:
+    repository: ""
+    tag: ""
+  port: 7105
+  env:
+    role: emsp
+    baseUrl: ""
+    countryCode: NL
+    partyId: SIM
+    name: OCPI Simulator
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  podAnnotations: {}
+
+# --- OCPI CPO Simulator ---
+ocpiCpoSim:
+  enabled: false
+  replicaCount: 1
+  image:
+    repository: ""
+    tag: ""
+  port: 7106
+  env:
+    role: cpo
+    baseUrl: ""
+    countryCode: DE
+    partyId: CPO
+    name: OCPI CPO Simulator
+    autoSession: "true"
+    sessionInterval: "60"
+    sessionDuration: "30"
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  podAnnotations: {}
+
+# --- Initial Admin User ---
+# Creates an admin user on first install with mustResetPassword=true.
+# The user must change their password on first login.
+initialAdmin:
+  enabled: true
+  email: "admin@evtivity.local"
+  password: ""  # Required. Set via --set or install script generates one.
+
+# --- Database Migration Job ---
+migrate:
+  seedDemo: "false"  # Set to "true" to populate demo stations, sessions, drivers
+  image:
+    repository: ""
+    tag: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# --- Gateway API ---
+# Requires a Gateway API implementation (Envoy Gateway, Istio, etc).
+gatewayAPI:
+  enabled: true
+  # Create a Gateway resource. Set to false to reference an existing Gateway.
+  gateway:
+    create: true
+    gatewayClassName: istio
+    annotations: {}
+    listeners:
+      - name: http
+        hostname: "*.evtivity.local"
+        port: 80
+        protocol: HTTP
+  # Reference to the parent Gateway. Required when gateway.create is false.
+  # When gateway.create is true and this is empty, auto-references the created Gateway.
+  parentRefs: []
+  # HTTPRoute definitions. One HTTPRoute per entry.
+  annotations: {}
+  routes:
+    - host: csms.evtivity.local
+      rules:
+        - path: /
+          service: csms
+    - host: ocpp.evtivity.local
+      rules:
+        - path: /
+          service: ocpp
+    - host: portal.evtivity.local
+      rules:
+        - path: /
+          service: portal
+    - host: api.evtivity.local
+      rules:
+        - path: /
+          service: api
+    - host: ocpi.evtivity.local
+      rules:
+        - path: /
+          service: ocpi
+
+# --- Istio Service Mesh ---
+# Creates PeerAuthentication and AuthorizationPolicy resources.
+# Only used when Istio is the gateway implementation.
+istio:
+  enabled: false
+  peerAuthentication:
+    mode: STRICT    # STRICT, PERMISSIVE, or DISABLE
+
+# --- Secrets ---
+# By default the chart creates a Secret from the values below.
+# To use an existing Secret (Vault, Sealed Secrets, ExternalSecrets), set:
+#   create: false
+#   existingSecret: "my-evtivity-secrets"
+# Your Secret must contain: DATABASE_URL, REDIS_URL, JWT_SECRET, SETTINGS_ENCRYPTION_KEY
+secrets:
+  create: true
+  existingSecret: ""
+  databaseUrl: ""
+  redisUrl: ""
+  jwtSecret: ""
+  settingsEncryptionKey: ""
+
+# --- External Dependencies ---
+# PostgreSQL and Redis must be installed separately.
+# Set the service hostnames so init containers can wait for them.
+dependencies:
+  postgresHost: ""
+  postgresPort: 5432
+  redisHost: ""
+  redisPort: 6379
+
+# --- Application Settings ---
+# Settings seeded into the database on every install and upgrade.
+# All settings remain editable via the admin UI.
+# Helm values are the source of truth: they overwrite DB values on every deploy.
+# Empty string values are skipped (not inserted), preserving any existing DB value.
+# Large content (logos, HTML templates, legal docs) is UI-only.
+appSettings:
+  system:
+    name: "EVtivity CSMS"
+    timezone: "America/New_York"
+  ocpp:
+    heartbeatInterval: 300
+    meterValueInterval: 60
+    clockAlignedInterval: 60
+    sampledMeasurands: "Energy.Active.Import.Register,Power.Active.Import,Voltage,SoC,Current.Import"
+    alignedMeasurands: "Energy.Active.Import.Register,Power.Active.Import,Voltage,SoC,Current.Import"
+    txEndedMeasurands: "Energy.Active.Import.Register"
+    connectionTimeout: 120
+    resetRetries: 3
+    offlineCommandTtlHours: 24
+    registrationPolicy: "approval-required"
+    commandRetryMaxAttempts: 3
+    commandRetryBaseDelayMs: 1000
+    commandRetryMaxDelayMs: 30000
+  company:
+    name: "EVtivity"
+    currency: "USD"
+    contactEmail: "contact@evtivity.local"
+    supportEmail: "support@evtivity.local"
+    supportPhone: "+1 (555) 123-4567"
+    street: "100 Market Street"
+    city: "San Francisco"
+    state: "CA"
+    zip: "94105"
+    country: "US"
+    metaDescription: "EV charging station management"
+    metaKeywords: "EV, charging, OCPP"
+    ogImage: ""
+    portalUrl: ""
+    themeColor: "#2563eb"
+  pricing:
+    currency: "USD"
+    splitBillingEnabled: true
+    displayFormat: "standard"
+    pushDisplayEnabled: true
+  idling:
+    gracePeriodMinutes: 30
+  session:
+    staleTimeoutHours: 24
+  notifications:
+    emailEnabled: true
+  sustainability:
+    gridEmissionFactor: "0.386"
+    evEfficiency: "3.3"
+    gasolineEmissionFactor: "8.887"
+    avgMpg: "25.4"
+  googleMaps:
+    defaultLat: "39.8283"
+    defaultLng: "-98.5795"
+    defaultZoom: "4"
+  smartCharging:
+    iso15118Enabled: true
+    defaultMaxPowerW: 22000
+  sentry:
+    enabled: false
+    environment: "production"
+  chatbotAi:
+    enabled: false
+    provider: "anthropic"
+    model: ""
+    temperature: ""
+    topP: ""
+    topK: ""
+    systemPrompt: ""
+  features:
+    roamingEnabled: false
+    pncEnabled: false
+    reservationEnabled: true
+    reservationBufferMinutes: 0
+    reservationCancellationWindowMinutes: 0
+    reservationCancellationFeeCents: 0
+    fleetEnabled: true
+    supportEnabled: true
+    guestEnabled: true
+  security:
+    autoDisableOnCritical: true
+    recaptchaEnabled: false
+    recaptchaThreshold: 0.5
+    mfaEmailEnabled: true
+    mfaTotpEnabled: true
+    mfaSmsEnabled: false
+  supportAi:
+    enabled: false
+    provider: ""
+    model: ""
+    temperature: ""
+    topP: ""
+    topK: ""
+    systemPrompt: ""
+    tone: "professional"
+  sso:
+    enabled: false
+    provider: ""
+    entryPoint: ""
+    issuer: "evtivity-csms"
+    autoProvision: false
+    defaultRoleId: ""
+    attributeMapping: '{"email":"email","firstName":"firstName","lastName":"lastName"}'
+  pnc:
+    provider: "manual"
+    expirationWarningDays: 30
+    expirationCriticalDays: 7
+  smtp:
+    host: ""
+    port: ""
+    username: ""
+    from: ""
+  ftp:
+    host: ""
+    port: ""
+    username: ""
+    path: ""
+  s3:
+    bucket: ""
+    region: ""
+  stripe:
+    currency: "USD"
+    preAuthAmountCents: 5000
+    platformFeePercent: 0
+
+  # Sensitive settings. Pass via --set flags. Never commit values here.
+  # To use an external Secret (Vault, Sealed Secrets, ExternalSecrets), set:
+  #   sensitive.existingSecret: "my-secret-name"
+  # The Secret must have key: sensitive-settings.json containing a JSON object
+  # mapping DB keys to plaintext values (e.g., {"smtp.password": "secret"}).
+  sensitive:
+    existingSecret: ""
+    smtpPassword: ""
+    ftpPassword: ""
+    twilioAccountSid: ""
+    twilioAuthToken: ""
+    twilioFromNumber: ""
+    s3AccessKeyId: ""
+    s3SecretAccessKey: ""
+    stripeSecretKey: ""
+    stripePublishableKey: ""
+    recaptchaSiteKey: ""
+    recaptchaSecretKey: ""
+    googleMapsApiKey: ""
+    pncHubjectBaseUrl: ""
+    pncHubjectTokenUrl: ""
+    pncHubjectClientId: ""
+    pncHubjectClientSecret: ""
+    marketingGtagPortal: ""
+    marketingGtagCsms: ""
+    ssoCert: ""
+    supportAiApiKey: ""
+    chatbotAiApiKey: ""
+    sentryDsn: ""
+
+# --- Monitoring (Prometheus + Grafana) ---
+monitoring:
+  enabled: false
+  prometheus:
+    image:
+      repository: prom/prometheus
+      tag: v3.2.1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    retention: 15d
+    scrapeInterval: 60s
+    storage:
+      size: 10Gi
+  grafana:
+    image:
+      repository: grafana/grafana
+      tag: "11.5.2"
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+    storage:
+      size: 5Gi
+    adminPassword: admin
+  loki:
+    enabled: false
+    image:
+      repository: grafana/loki
+      tag: "3.4.2"
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    retention: 168h
+    storage:
+      size: 10Gi
+  alloy:
+    enabled: false
+    image:
+      repository: grafana/alloy
+      tag: "v1.8.1"
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 250m
+        memory: 256Mi

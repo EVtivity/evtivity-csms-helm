@@ -1,0 +1,39 @@
+{{- if .Values.monitoring.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "evtivity-csms.fullname" . }}-grafana-config
+  labels:
+    {{- include "evtivity-csms.componentLabels" (dict "context" . "component" "grafana") | nindent 4 }}
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        uid: prometheus
+        access: proxy
+        url: http://{{ include "evtivity-csms.fullname" . }}-prometheus:9090
+        isDefault: true
+        editable: false
+    {{- if .Values.monitoring.loki.enabled }}
+      - name: Loki
+        type: loki
+        uid: loki
+        access: proxy
+        url: http://{{ include "evtivity-csms.fullname" . }}-loki:3100
+        isDefault: false
+        editable: false
+    {{- end }}
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+      - name: EVtivity
+        orgId: 1
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards
+          foldersFromFilesStructure: true
+{{- end }}

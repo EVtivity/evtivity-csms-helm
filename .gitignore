@@ -1,0 +1,4 @@
+charts/*.tgz
+node_modules/
+ghrc-secret.sh
+*.secret.sh
