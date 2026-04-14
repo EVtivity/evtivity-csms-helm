@@ -10,14 +10,13 @@
   <img src="https://img.shields.io/badge/Kubernetes-1.26%2B-326CE5.svg" alt="Kubernetes" />
 </p>
 
-Helm chart for deploying EVtivity CSMS on Kubernetes.
+Helm chart for deploying [EVtivity CSMS](https://github.com/EVtivity/evtivity-csms) on Kubernetes.
 
 ## Prerequisites
 
 - Kubernetes 1.26+
 - Helm 3.12+
-
-For local development with minikube, see the [Minikube Setup Guide](docs/minikube-setup.md).
+- A Gateway API implementation (Istio or Envoy Gateway)
 
 ## Install
 
@@ -25,12 +24,18 @@ For local development with minikube, see the [Minikube Setup Guide](docs/minikub
 ./scripts/install.sh
 ```
 
-The script installs PostgreSQL, Redis, and the CSMS chart. It generates random secrets and prompts you to save them before proceeding.
+The script prompts for gateway implementation (Istio or Envoy Gateway), installs PostgreSQL, Redis, generates OCPP TLS certificates, and deploys the CSMS chart with random secrets.
 
 To provide your own secrets:
 
 ```bash
 POSTGRES_PASSWORD=mypass REDIS_PASSWORD=mypass JWT_SECRET=mysecret SETTINGS_ENCRYPTION_KEY=mykey ./scripts/install.sh
+```
+
+To use external databases instead of bundled ones:
+
+```bash
+POSTGRES_HOST=db.example.com REDIS_HOST=redis.example.com ./scripts/install.sh
 ```
 
 ## Uninstall
@@ -39,11 +44,25 @@ POSTGRES_PASSWORD=mypass REDIS_PASSWORD=mypass JWT_SECRET=mysecret SETTINGS_ENCR
 ./scripts/uninstall.sh
 ```
 
-The script removes all releases and prompts to delete data and the namespace.
+Removes all Helm releases and prompts to delete PVCs and the namespace.
+
+## Services
+
+| Service | Default Port | Description |
+|---------|-------------|-------------|
+| API | 3001 | REST API (Fastify) |
+| OCPP | 8080 (ws), 8443 (wss) | OCPP 1.6/2.1 WebSocket server |
+| OCPI | 3002 | OCPI 2.2.1/2.3.0 roaming server |
+| CSMS | 80 | Operator dashboard (React + Nginx) |
+| Portal | 80 | Driver portal (React + Nginx) |
+| Worker | - | Background job processor (BullMQ) |
+| CSS | - | Charging station simulator (internal) |
+
+Each service can be toggled with `{service}.enabled` and configured with `replicaCount`, `resources`, `nodeSelector`, `tolerations`, and `affinity`. API and OCPP support HPA autoscaling.
 
 ## Configuration
 
-All configuration is in `values.yaml`. Override values with `--set` flags or a custom values file.
+All configuration is in `values.yaml`. Override with `--set` flags or a custom values file.
 
 ### Secrets
 
@@ -52,35 +71,38 @@ All configuration is in `values.yaml`. Override values with `--set` flags or a c
 | `secrets.databaseUrl` | PostgreSQL connection string |
 | `secrets.redisUrl` | Redis connection string |
 | `secrets.jwtSecret` | JWT signing secret |
-| `secrets.settingsEncryptionKey` | Settings encryption key |
+| `secrets.settingsEncryptionKey` | AES-256 encryption key for settings |
 
 For GitOps or Vault workflows, set `secrets.create: false` and `secrets.existingSecret: my-secret-name`. The Secret must contain: `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `SETTINGS_ENCRYPTION_KEY`.
 
 ### Initial Admin User
 
-The chart creates an admin user on first install via a `post-install` Helm hook. The user is created with `mustResetPassword: true`. On first login, the CSMS redirects to a password change form where the admin sets a new password.
+Created on first install via a `post-install` Helm hook. The user has `mustResetPassword: true` and must set a new password on first login.
 
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `initialAdmin.enabled` | `true` | Create admin user on install |
+| `initialAdmin.email` | `admin@evtivity.local` | Admin email |
+| `initialAdmin.password` | `admin123` | Initial password (must be changed) |
 
 ### Gateway API
 
-Enabled by default. The install script prompts you to choose a gateway implementation:
-
-- **Istio** (default) - Service mesh with inter-service mTLS and AuthorizationPolicy. Each service only accepts traffic from the Istio gateway.
-- **Envoy Gateway** - Lightweight ingress-only routing. No mesh policies.
-
-Each service gets its own hostname and HTTPRoute.
-
-Default routes:
+Each service gets its own hostname via HTTPRoute.
 
 | Host | Service |
 |------|---------|
-| `csms.evtivity.dev` | CSMS frontend |
-| `portal.evtivity.dev` | Portal frontend |
+| `csms.evtivity.dev` | Operator dashboard |
+| `portal.evtivity.dev` | Driver portal |
 | `api.evtivity.dev` | REST API |
 | `ocpp.evtivity.dev` | OCPP WebSocket |
-| `ocpi.evtivity.dev` | OCPI roaming |
+| `ocpi.evtivity.dev` | OCPI server |
 
-To use an existing Gateway instead of creating one:
+The install script prompts for gateway implementation:
+
+- **Istio** (default): Service mesh with inter-service mTLS and AuthorizationPolicy
+- **Envoy Gateway**: Lightweight ingress-only routing
+
+To use an existing Gateway:
 
 ```yaml
 gatewayAPI:
@@ -91,18 +113,29 @@ gatewayAPI:
       namespace: gateway-infra
 ```
 
+### OCPP TLS
+
+Enabled by default. Creates a LoadBalancer service on port 8443 for direct station connections with TLS. Supports SP3 mTLS (client certificate authentication) alongside SP0-SP2 stations on the same port.
+
+The install script generates self-signed certificates automatically. To use your own:
+
+```yaml
+ocpp:
+  tls:
+    enabled: true
+    certSecret: my-ocpp-tls-secret
+```
+
+The Secret must contain `tls.crt`, `tls.key`, and `ca.crt`.
+
 ### Istio Policies
 
-When Istio is selected, the chart creates:
+When Istio is selected:
 
-- **PeerAuthentication**: Enforces mTLS between all pods in the namespace
+- **PeerAuthentication**: Enforces mTLS between all pods
 - **AuthorizationPolicy**: Each service only accepts traffic from the Istio gateway
 
-OCPP TLS port (8443) is excluded from the Istio sidecar so stations connect directly with their own TLS.
-
-No policies are created for PostgreSQL or Redis. Manage those independently.
-
-To customize:
+OCPP TLS port (8443) is excluded from the sidecar so stations connect with their own TLS.
 
 ```yaml
 istio:
@@ -111,9 +144,29 @@ istio:
     mode: STRICT
 ```
 
-### Services
+### Monitoring
 
-Each service (api, ocpp, ocpi, csms, portal) supports `enabled`, `replicaCount`, `resources`, `nodeSelector`, `tolerations`, and `affinity`. API and OCPP also support `autoscaling`.
+Disabled by default. When enabled, deploys Prometheus, Grafana, Loki, and Alloy with persistent storage.
+
+```yaml
+monitoring:
+  enabled: true
+  loki:
+    enabled: true
+  alloy:
+    enabled: true
+```
+
+Grafana provisions Prometheus and Loki datasources with pre-built dashboards (system metrics, business metrics, logs).
+
+### Rate Limiting
+
+```yaml
+api:
+  env:
+    rateLimitMax: 1000
+    rateLimitWindow: "1 minute"
+```
 
 ## License
 
