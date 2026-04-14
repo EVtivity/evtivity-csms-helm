@@ -16,7 +16,37 @@ Helm chart for deploying [EVtivity CSMS](https://github.com/EVtivity/evtivity-cs
 
 - Kubernetes 1.26+
 - Helm 3.12+
-- A Gateway API implementation (Istio or Envoy Gateway)
+
+## Quick Start (minikube)
+
+```bash
+minikube start --cpus=4 --memory=8192
+./scripts/install.sh
+```
+
+The script installs all dependencies (Istio or Envoy Gateway, PostgreSQL, Redis), generates TLS certificates, and deploys the CSMS.
+
+After install, start the tunnel in a separate terminal (keeps running):
+
+```bash
+minikube tunnel
+```
+
+Then add hostnames to `/etc/hosts` using the tunnel IP (usually `127.0.0.1`):
+
+```bash
+echo "127.0.0.1 csms.evtivity.local portal.evtivity.local api.evtivity.local ocpp.evtivity.local" | sudo tee -a /etc/hosts
+```
+
+Check pod status:
+
+```bash
+kubectl get pods -n evtivity
+```
+
+The install script prints the admin email and password on completion. Save the password - you must change it on first login.
+
+Access the dashboard at `http://csms.evtivity.local`.
 
 ## Install
 
