@@ -121,6 +121,13 @@ else
   fi
 fi
 
+# Ensure Gateway API CRDs are present
+if ! kubectl get crd gateways.gateway.networking.k8s.io >/dev/null 2>&1; then
+  echo "Installing Gateway API CRDs..."
+  kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml > /dev/null 2>&1
+  echo "Gateway API CRDs ready."
+fi
+
 # --- Install PostgreSQL ---
 if [ "$INSTALL_POSTGRES" = "y" ]; then
   echo "Installing PostgreSQL..."
@@ -228,8 +235,7 @@ helm upgrade --install "$RELEASE" "$CHART_DIR" \
   --set ocpiSim.enabled=true \
   --set ocpiCpoSim.enabled=true \
   --set initialAdmin.password="$ADMIN_PASSWORD" \
-  --set api.env.cookieDomain=".evtivity.local" \
-  > /dev/null 2>&1
+  --set api.env.cookieDomain=".evtivity.local"
 echo "EVtivity CSMS ready."
 echo "Admin email: admin@evtivity.local"
 echo "Admin password: $ADMIN_PASSWORD (must be changed on first login)"
