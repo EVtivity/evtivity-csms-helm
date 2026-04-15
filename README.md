@@ -5,6 +5,7 @@
 <h1 align="center">EVtivity CSMS Helm Chart</h1>
 
 <p align="center">
+  <a href="https://github.com/EVtivity/evtivity-csms-helm/releases/latest"><img src="https://img.shields.io/github/v/release/EVtivity/evtivity-csms-helm?label=Release&color=4ade80" alt="Release" /></a>
   <a href="https://github.com/EVtivity/evtivity-csms/blob/main/LICENSE.md"><img src="https://img.shields.io/badge/License-BUSL--1.1-blue.svg" alt="License: BUSL-1.1" /></a>
   <img src="https://img.shields.io/badge/Helm-3.12%2B-0F1689.svg" alt="Helm" />
   <img src="https://img.shields.io/badge/Kubernetes-1.26%2B-326CE5.svg" alt="Kubernetes" />
