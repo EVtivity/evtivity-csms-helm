@@ -20,9 +20,11 @@ Helm chart for deploying [EVtivity CSMS](https://github.com/EVtivity/evtivity-cs
 ## Quick Start (minikube)
 
 ```bash
-minikube start --cpus=4 --memory=8192
+minikube start --cpus=4 --memory=12288
 ./scripts/install.sh
 ```
+
+12GB is the minimum with all services enabled (monitoring, simulators). Set Docker Desktop memory to at least 14GB (Settings > Resources) to allow headroom for rolling updates. With monitoring and simulators disabled, 8GB is sufficient.
 
 The script installs all dependencies (Istio or Envoy Gateway, PostgreSQL, Redis), generates TLS certificates, and deploys the CSMS.
 
@@ -75,6 +77,26 @@ POSTGRES_HOST=db.example.com REDIS_HOST=redis.example.com ./scripts/install.sh
 ```
 
 Removes all Helm releases and prompts to delete PVCs and the namespace.
+
+## Upgrading
+
+To upgrade to a new version:
+
+```bash
+helm upgrade evtivity . --namespace evtivity --reuse-values --set image.tag=0.2.0
+```
+
+To reload the same version (pulls fresh images):
+
+```bash
+helm upgrade evtivity . --namespace evtivity --reuse-values --set image.pullPolicy=Always
+```
+
+To restart all pods without changing Helm values:
+
+```bash
+kubectl rollout restart deployment -n evtivity
+```
 
 ## Services
 
