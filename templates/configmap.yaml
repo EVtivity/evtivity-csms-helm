@@ -73,6 +73,7 @@ data:
   CSS_ACTION_INTERVAL_MS: {{ .Values.css.env.actionIntervalMs | quote }}
   CSS_STATION_PASSWORD: {{ .Values.css.env.stationPassword | quote }}
   CSS_STATION_LIMIT: {{ .Values.css.env.stationLimit | quote }}
+  TLS_REJECT_UNAUTHORIZED: {{ .Values.css.env.tlsRejectUnauthorized | quote }}
   CSS_CONNECT_CONCURRENCY: {{ .Values.css.env.connectConcurrency | quote }}
   CSS_API_TOKEN: {{ .Values.css.env.apiToken | quote }}
   CSS_API_URL: "http://{{ include "evtivity-csms.fullname" . }}-api:{{ .Values.api.port }}"

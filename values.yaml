@@ -185,6 +185,7 @@ css:
     actionIntervalMs: "1000"
     stationPassword: "password"
     stationLimit: "0"
+    tlsRejectUnauthorized: "false"
     connectConcurrency: "50"
     apiToken: ""
   # Mount SP3 test certificates from a Kubernetes secret.
