@@ -59,7 +59,7 @@ You must conspicuously display this License on each original or modified copy of
 
 Any use of the Licensed Work in violation of this License will automatically terminate your rights under this License for the current and all other versions of the Licensed Work.
 
-This License does not grant you any right in any trademark or logo of the Licensor or its affiliates. "EVtivity," the EVtivity logo, and associated visual branding are trademarks of EVtivity. Modified or redistributed versions of the Licensed Work must not use the EVtivity name, logo, or branding as their own product identity or in any way that implies endorsement by or official affiliation with EVtivity. Derivative works must retain the following attribution in a prominent location (e.g., application footer, about page, or README): "Based on EVtivity CSMS (https://evtivity.com)".
+This License does not grant you any right in any trademark or logo of the Licensor or its affiliates. "EVtivity," the EVtivity logo, and associated visual branding are trademarks of EVtivity. Modified or redistributed versions of the Licensed Work must not use the EVtivity name, logo, or branding as their own product identity or in any way that implies endorsement by or official affiliation with EVtivity. Derivative works must retain the following attribution in a prominent location (e.g., application footer, about page, or README): "Based on EVtivity CSMS (https://github.com/EVtivity/evtivity-csms)".
 
 TO THE EXTENT PERMITTED BY APPLICABLE LAW, THE LICENSED WORK IS PROVIDED ON AN "AS IS" BASIS. LICENSOR HEREBY DISCLAIMS ALL WARRANTIES AND CONDITIONS, EXPRESS OR IMPLIED, INCLUDING (WITHOUT LIMITATION) WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, NON-INFRINGEMENT, AND TITLE.
 
