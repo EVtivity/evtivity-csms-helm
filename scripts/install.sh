@@ -59,6 +59,23 @@ INSTALL_POSTGRES="${INSTALL_POSTGRES:-y}"
 read -r -p "Install bundled Redis? (y/n) [y]: " INSTALL_REDIS
 INSTALL_REDIS="${INSTALL_REDIS:-y}"
 
+# --- Install monitoring stack? ---
+read -r -p "Install monitoring stack (Prometheus + Grafana)? (y/n) [n]: " INSTALL_MONITORING
+INSTALL_MONITORING="${INSTALL_MONITORING:-n}"
+
+MONITORING_ENABLED="false"
+LOKI_ENABLED="false"
+ALLOY_ENABLED="false"
+if [ "$INSTALL_MONITORING" = "y" ]; then
+  MONITORING_ENABLED="true"
+  read -r -p "Also install log aggregation (Loki + Alloy)? (y/n) [n]: " INSTALL_LOGS
+  INSTALL_LOGS="${INSTALL_LOGS:-n}"
+  if [ "$INSTALL_LOGS" = "y" ]; then
+    LOKI_ENABLED="true"
+    ALLOY_ENABLED="true"
+  fi
+fi
+
 if [ "$INSTALL_POSTGRES" != "y" ] && [ -z "$POSTGRES_HOST" ]; then
   read -r -p "PostgreSQL host: " POSTGRES_HOST
   read -r -p "PostgreSQL port [5432]: " POSTGRES_PORT
@@ -230,7 +247,9 @@ helm upgrade --install "$RELEASE" "$CHART_DIR" \
   --set ocpp.tls.certSecret="$OCPP_TLS_SECRET" \
   --set css.tls.enabled=true \
   --set css.tls.certSecret="$CSS_TLS_SECRET" \
-  --set monitoring.enabled=true \
+  --set monitoring.enabled="$MONITORING_ENABLED" \
+  --set monitoring.loki.enabled="$LOKI_ENABLED" \
+  --set monitoring.alloy.enabled="$ALLOY_ENABLED" \
   --set ocpi.enabled=true \
   --set ocpiSim.enabled=true \
   --set ocpiCpoSim.enabled=true \
