@@ -42,16 +42,23 @@ spec:
                 name: {{ include "evtivity-csms.secretName" . }}
           {{- if .Values.css.tls.enabled }}
           env:
-            - name: CSS_CLIENT_CERT
-              value: /etc/css/tls/client.pem
-            - name: CSS_CLIENT_KEY
-              value: /etc/css/tls/client-key.pem
-            - name: CSS_CA_CERT
-              value: /etc/css/tls/ca.pem
-          volumeMounts:
-            - name: tls-certs
-              mountPath: /etc/css/tls
-              readOnly: true
+            # SP3 client cert PEMs sourced from the TLS Secret. The simulator
+            # reads inlined PEM content directly from these env vars.
+            - name: CSS_CLIENT_CERT_PEM
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.css.tls.certSecret }}
+                  key: client.pem
+            - name: CSS_CLIENT_KEY_PEM
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.css.tls.certSecret }}
+                  key: client-key.pem
+            - name: CSS_CA_PEM
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.css.tls.certSecret }}
+                  key: ca.pem
           {{- end }}
           livenessProbe:
             httpGet:
@@ -69,12 +76,6 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-      {{- if .Values.css.tls.enabled }}
-      volumes:
-        - name: tls-certs
-          secret:
-            secretName: {{ .Values.css.tls.certSecret }}
-      {{- end }}
       {{- with .Values.css.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

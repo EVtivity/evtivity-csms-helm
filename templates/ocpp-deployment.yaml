@@ -53,17 +53,30 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
+            {{- if .Values.ocpp.tls.enabled }}
+            # SP3 / mTLS PEMs sourced from the TLS Secret. The OCPP server
+            # reads inlined PEM content directly from these env vars.
+            - name: OCPP_TLS_CERT_PEM
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.ocpp.tls.certSecret }}
+                  key: tls.crt
+            - name: OCPP_TLS_KEY_PEM
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.ocpp.tls.certSecret }}
+                  key: tls.key
+            - name: OCPP_TLS_CA_PEM
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.ocpp.tls.certSecret }}
+                  key: ca.crt
+            {{- end }}
           envFrom:
             - configMapRef:
                 name: {{ include "evtivity-csms.configMapName" . }}
             - secretRef:
                 name: {{ include "evtivity-csms.secretName" . }}
-          {{- if .Values.ocpp.tls.enabled }}
-          volumeMounts:
-            - name: tls-certs
-              mountPath: /etc/ocpp/tls
-              readOnly: true
-          {{- end }}
           livenessProbe:
             httpGet:
               path: /
@@ -80,12 +93,6 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-      {{- if .Values.ocpp.tls.enabled }}
-      volumes:
-        - name: tls-certs
-          secret:
-            secretName: {{ .Values.ocpp.tls.certSecret }}
-      {{- end }}
       {{- with .Values.ocpp.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
