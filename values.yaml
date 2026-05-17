@@ -397,8 +397,11 @@ appSettings:
   pricing:
     currency: "USD"
     splitBillingEnabled: true
-    displayFormat: "standard"
-    pushDisplayEnabled: true
+  stationMessage:
+    enabled: false
+    pricingFormat: "compact"
+    chargingRefreshSeconds: 30
+    brandLine: ""
   idling:
     gracePeriodMinutes: 30
   session:
@@ -445,6 +448,8 @@ appSettings:
     mfaEmailEnabled: true
     mfaTotpEnabled: true
     mfaSmsEnabled: false
+  audit:
+    retentionDays: 1095
   supportAi:
     enabled: false
     provider: ""
