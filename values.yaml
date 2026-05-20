@@ -450,6 +450,14 @@ appSettings:
     mfaSmsEnabled: false
   audit:
     retentionDays: 1095
+  logs:
+    accessRetentionDays: 30
+    ocppMessageRetentionDays: 30
+    connectionRetentionDays: 90
+    notificationsRetentionDays: 90
+    securityEventsRetentionDays: 365
+    portStatusRetentionDays: 30
+    workerJobRetentionDays: 30
   supportAi:
     enabled: false
     provider: ""
