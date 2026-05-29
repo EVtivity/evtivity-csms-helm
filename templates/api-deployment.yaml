@@ -49,13 +49,13 @@ spec:
                 name: {{ include "evtivity-csms.secretName" . }}
           livenessProbe:
             httpGet:
-              path: /health
+              path: /v1/health
               port: http
             initialDelaySeconds: 10
             periodSeconds: 30
           readinessProbe:
             httpGet:
-              path: /health
+              path: /v1/health
               port: http
             initialDelaySeconds: 5
             periodSeconds: 10

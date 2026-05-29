@@ -448,6 +448,8 @@ appSettings:
     mfaEmailEnabled: true
     mfaTotpEnabled: true
     mfaSmsEnabled: false
+  portal:
+    registrationEnabled: true
   audit:
     retentionDays: 1095
   logs:
