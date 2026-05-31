@@ -10,6 +10,8 @@ data:
     {{- .Files.Get "dashboards/system-metrics.json" | nindent 4 }}
   business-metrics.json: |
     {{- .Files.Get "dashboards/business-metrics.json" | nindent 4 }}
+  alerts.json: |
+    {{- .Files.Get "dashboards/alerts.json" | nindent 4 }}
 {{- if .Values.monitoring.loki.enabled }}
   logs.json: |
     {{- .Files.Get "dashboards/logs.json" | nindent 4 }}

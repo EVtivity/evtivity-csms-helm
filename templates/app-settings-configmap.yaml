@@ -70,6 +70,7 @@ data:
       "security.mfa.smsEnabled": {{ .Values.appSettings.security.mfaSmsEnabled | toJson }},
       "portal.registrationEnabled": {{ .Values.appSettings.portal.registrationEnabled | toJson }},
       "audit.retentionDays": {{ .Values.appSettings.audit.retentionDays | toJson }},
+      "refreshTokens.retentionDays": {{ .Values.appSettings.refreshTokens.retentionDays | toJson }},
       "logs.access.retentionDays": {{ .Values.appSettings.logs.accessRetentionDays | toJson }},
       "logs.ocppMessage.retentionDays": {{ .Values.appSettings.logs.ocppMessageRetentionDays | toJson }},
       "logs.connection.retentionDays": {{ .Values.appSettings.logs.connectionRetentionDays | toJson }},

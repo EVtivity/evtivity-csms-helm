@@ -452,6 +452,8 @@ appSettings:
     registrationEnabled: true
   audit:
     retentionDays: 1095
+  refreshTokens:
+    retentionDays: 30
   logs:
     accessRetentionDays: 30
     ocppMessageRetentionDays: 30
