@@ -81,6 +81,8 @@ spec:
                 path: EVtivity Dashboards/system-metrics.json
               - key: business-metrics.json
                 path: EVtivity Dashboards/business-metrics.json
+              - key: alerts.json
+                path: EVtivity Dashboards/alerts.json
               {{- if .Values.monitoring.loki.enabled }}
               - key: logs.json
                 path: EVtivity Logs/logs.json
