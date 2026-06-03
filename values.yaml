@@ -402,6 +402,8 @@ appSettings:
     pricingFormat: "compact"
     chargingRefreshSeconds: 30
     brandLine: ""
+  maintenance:
+    defaultMessageTemplate: "This site is temporarily unavailable for maintenance. {{reason}}"
   idling:
     gracePeriodMinutes: 30
   session:
