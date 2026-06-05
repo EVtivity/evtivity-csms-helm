@@ -186,8 +186,6 @@ css:
     stationPassword: "password"
     stationLimit: "0"
     tlsRejectUnauthorized: "false"
-    connectConcurrency: "50"
-    apiToken: ""
   # Mount SP3 test certificates from a Kubernetes secret.
   # Secret must contain: client.pem, client-key.pem, ca.pem
   tls:
