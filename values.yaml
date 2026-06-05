@@ -34,7 +34,7 @@ api:
       memory: 512Mi
     limits:
       cpu: 500m
-      memory: 1Gi
+      memory: 2Gi
   autoscaling:
     enabled: false
     minReplicas: 1
@@ -94,7 +94,7 @@ ocpp:
       memory: 1Gi
     limits:
       cpu: "1"
-      memory: 2Gi
+      memory: 4Gi
   autoscaling:
     enabled: false
     minReplicas: 1
