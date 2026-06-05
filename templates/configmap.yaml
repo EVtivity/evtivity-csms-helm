@@ -7,7 +7,7 @@ metadata:
 data:
   NODE_ENV: {{ .Values.api.env.nodeEnv | quote }}
   LOG_LEVEL: {{ .Values.api.env.logLevel | quote }}
-  SEED_DEMO: {{ .Values.migrate.seedDemo | quote }}
+  SEED_DEMO: {{ if and .Values.seedDemo.enabled .Values.seedDemo.confirmed }}"true"{{ else }}"false"{{ end }}
   {{- $proto := "http" }}
   {{- range .Values.gatewayAPI.gateway.listeners }}
     {{- if or (eq .protocol "HTTPS") (eq .protocol "TLS") }}{{ $proto = "https" }}{{ end }}

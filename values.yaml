@@ -268,9 +268,19 @@ initialAdmin:
   email: "admin@evtivity.local"
   password: ""  # Required. Set via --set or install script generates one.
 
+# --- Demo Data Seed Job (post-install) ---
+# Seeds the full demo dataset: 20 sites, 2000 simulator stations, drivers,
+# sessions, payments, support cases. This is TEST DATA and is NOT suitable
+# for production deployments. Both flags must be set to true for the job to
+# run; `confirmed` is a deliberate second acknowledgement of that warning.
+# The job is idempotent and skips generation when any non-baseline site or
+# station already exists.
+seedDemo:
+  enabled: false
+  confirmed: false
+
 # --- Database Migration Job ---
 migrate:
-  seedDemo: "false"  # Set to "true" to populate demo stations, sessions, drivers
   image:
     repository: ""
     tag: ""

@@ -1,0 +1,64 @@
+{{- if .Values.seedDemo.enabled }}
+{{- if not .Values.seedDemo.confirmed }}
+{{- fail "seedDemo.enabled requires seedDemo.confirmed=true. The demo seed creates TEST DATA (2000 simulator stations, fake drivers, sessions, payments) that is not suitable for production. Set seedDemo.confirmed=true to acknowledge." }}
+{{- end }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "evtivity-csms.fullname" . }}-seed-demo
+  labels:
+    {{- include "evtivity-csms.componentLabels" (dict "context" . "component" "seed-demo") | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install
+    "helm.sh/hook-weight": "2"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        {{- include "evtivity-csms.componentSelectorLabels" (dict "context" . "component" "seed-demo") | nindent 8 }}
+    spec:
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      restartPolicy: Never
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.37
+          command: ['sh', '-c', 'until nc -z {{ .Values.dependencies.postgresHost }} {{ .Values.dependencies.postgresPort }}; do echo "waiting for postgres..."; sleep 2; done']
+      containers:
+        - name: seed-demo
+          image: {{ include "evtivity-csms.image" (dict "context" . "component" "migrate" "values" .Values.migrate) }}
+          imagePullPolicy: {{ include "evtivity-csms.imagePullPolicy" . }}
+          # Demo seed creates TEST DATA only: simulator stations, fake drivers,
+          # sessions, and payments. Never enable on a production deployment.
+          # Runs seed.ts directly because the `npm run seed` script loads a
+          # repo-root .env file that does not exist in the image. Idempotent:
+          # skips demo generation when non-baseline inventory already exists.
+          command:
+            ['sh', '-c', 'cd packages/database && node --import=tsx/esm src/seed.ts']
+          env:
+            - name: SEED_DEMO
+              value: "true"
+            # target_url for css_stations rows, as seen from the CSS pod.
+            - name: SEED_CSS_TARGET_URL
+              value: "ws://{{ include "evtivity-csms.fullname" . }}-ocpp:{{ .Values.ocpp.port }}"
+            - name: SEED_CSS_TLS_TARGET_URL
+              value: "wss://{{ include "evtivity-csms.fullname" . }}-ocpp:{{ .Values.ocpp.tls.port }}"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "evtivity-csms.secretName" . }}
+                  key: DATABASE_URL
+            - name: SETTINGS_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "evtivity-csms.secretName" . }}
+                  key: SETTINGS_ENCRYPTION_KEY
+          {{- with .Values.migrate.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+{{- end }}
