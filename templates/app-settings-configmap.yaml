@@ -74,6 +74,8 @@ data:
       "refreshTokens.retentionDays": {{ .Values.appSettings.refreshTokens.retentionDays | toJson }},
       "logs.access.retentionDays": {{ .Values.appSettings.logs.accessRetentionDays | toJson }},
       "logs.ocppMessage.retentionDays": {{ .Values.appSettings.logs.ocppMessageRetentionDays | toJson }},
+      "logs.domainEvents.retentionDays": {{ .Values.appSettings.logs.domainEventsRetentionDays | toJson }},
+      "logs.meterValues.retentionDays": {{ .Values.appSettings.logs.meterValuesRetentionDays | toJson }},
       "logs.connection.retentionDays": {{ .Values.appSettings.logs.connectionRetentionDays | toJson }},
       "logs.notifications.retentionDays": {{ .Values.appSettings.logs.notificationsRetentionDays | toJson }},
       "logs.securityEvents.retentionDays": {{ .Values.appSettings.logs.securityEventsRetentionDays | toJson }},

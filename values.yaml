@@ -467,6 +467,8 @@ appSettings:
   logs:
     accessRetentionDays: 30
     ocppMessageRetentionDays: 30
+    domainEventsRetentionDays: 30
+    meterValuesRetentionDays: 90
     connectionRetentionDays: 90
     notificationsRetentionDays: 90
     securityEventsRetentionDays: 365
