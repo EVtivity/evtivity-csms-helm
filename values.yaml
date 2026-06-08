@@ -375,7 +375,7 @@ appSettings:
   ocpp:
     heartbeatInterval: 300
     meterValueInterval: 60
-    clockAlignedInterval: 60
+    clockAlignedInterval: 900
     sampledMeasurands: "Energy.Active.Import.Register,Power.Active.Import,Voltage,SoC,Current.Import"
     alignedMeasurands: "Energy.Active.Import.Register,Power.Active.Import,Voltage,SoC,Current.Import"
     txEndedMeasurands: "Energy.Active.Import.Register"
