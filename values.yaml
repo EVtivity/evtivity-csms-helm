@@ -460,6 +460,15 @@ appSettings:
     mfaSmsEnabled: false
   portal:
     registrationEnabled: true
+  mobile:
+    attestation:
+      enabled: false
+      iosTeamId: ""
+      iosBundleId: ""
+      iosEnvironment: development
+      androidCloudProjectNumber: ""
+      androidPackageName: ""
+      androidServiceAccount: ""
   audit:
     retentionDays: 1095
   refreshTokens:
