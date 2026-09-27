@@ -88,6 +88,9 @@ ocpp:
     logLevel: info
     maxConnectionsPerIp: 2500
     maxMessagesPerIpPerSecond: 5000
+    # Comma-separated CIDRs of proxies (e.g. the ingress gateway pod range) whose
+    # X-Forwarded-For header is trusted for the station IP. Empty trusts no proxy.
+    trustedProxyCidrs: ""
   resources:
     requests:
       cpu: 200m

@@ -50,6 +50,7 @@ data:
   OCPP_HEALTH_PORT: {{ .Values.ocpp.healthPort | quote }}
   OCPP_MAX_CONNECTIONS_PER_IP: {{ .Values.ocpp.env.maxConnectionsPerIp | quote }}
   OCPP_MAX_MESSAGES_PER_IP_PER_SECOND: {{ .Values.ocpp.env.maxMessagesPerIpPerSecond | quote }}
+  OCPP_TRUSTED_PROXY_CIDRS: {{ .Values.ocpp.env.trustedProxyCidrs | default "" | quote }}
   {{- if .Values.ocpp.tls.enabled }}
   OCPP_TLS_PORT: {{ .Values.ocpp.tls.port | quote }}
   {{- end }}
