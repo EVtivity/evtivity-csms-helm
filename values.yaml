@@ -391,7 +391,9 @@ appSettings:
     commandRetryMaxDelayMs: 30000
   company:
     name: "EVtivity"
-    currency: "USD"
+    # The platform's one currency (ISO 4217, two-decimal). Leave empty to keep
+    # the value set in Settings > Company; a fresh install starts at USD.
+    currency: ""
     contactEmail: "contact@evtivity.local"
     supportEmail: "support@evtivity.local"
     supportPhone: "+1 (555) 123-4567"
@@ -406,7 +408,6 @@ appSettings:
     portalUrl: ""
     themeColor: "#2563eb"
   pricing:
-    currency: "USD"
     splitBillingEnabled: true
   stationMessage:
     enabled: false
@@ -521,7 +522,6 @@ appSettings:
     bucket: ""
     region: ""
   stripe:
-    currency: "USD"
     preAuthAmountCents: 5000
     platformFeePercent: 0
 

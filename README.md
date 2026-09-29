@@ -87,6 +87,21 @@ To upgrade to a new version:
 helm upgrade evtivity . --namespace evtivity --reuse-values --set image.tag=0.2.0
 ```
 
+### Upgrading to 0.1.25: one platform currency
+
+The platform now runs in one currency, `appSettings.company.currency` (Settings > Company).
+
+- Upgrade with `--reset-then-reuse-values` (Helm 3.14 or later), or `--reset-values -f <your values file>`. Plain `--reuse-values` keeps the old chart's `"USD"` defaults, which would fail the removed-key check below and overwrite the aligned currency.
+
+  ```bash
+  helm upgrade evtivity . --namespace evtivity --reset-then-reuse-values --set image.tag=0.1.25
+  ```
+
+- `appSettings.stripe.currency` and `appSettings.pricing.currency` were removed. If your values set either, the upgrade fails with a message: move the value to `appSettings.company.currency`, or clear it with `--set appSettings.stripe.currency=`.
+- `appSettings.company.currency` now defaults to empty, which keeps the value stored in the database. The upgrade migration sets it to the currency your drivers were charged in. Only two-decimal currencies are supported; an install on JPY, KRW, or CLP bills in USD until you pick a supported currency.
+- Past sessions, payments, and invoices keep the currency they were billed in.
+- While old and new pods overlap during the rollout, OCPI tariff mappings created on a new pod can return an error from an old pod until the rollout finishes.
+
 To reload the same version (pulls fresh images):
 
 ```bash

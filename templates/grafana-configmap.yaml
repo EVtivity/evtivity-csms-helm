@@ -28,7 +28,7 @@ data:
   dashboards.yaml: |
     apiVersion: 1
     providers:
-      - name: EVtivity
+      - name: evtivity-dashboards
         orgId: 1
         folder: EVtivity
         type: file

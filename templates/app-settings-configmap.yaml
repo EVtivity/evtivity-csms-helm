@@ -1,3 +1,13 @@
+{{- $stripeCurrency := (.Values.appSettings.stripe | default dict).currency | default "" }}
+{{- $pricingCurrency := (.Values.appSettings.pricing | default dict).currency | default "" }}
+{{- if or (ne (toString $stripeCurrency) "") (ne (toString $pricingCurrency) "") }}
+{{- fail "appSettings.stripe.currency and appSettings.pricing.currency were removed: the platform runs in one currency. Set appSettings.company.currency instead, or leave it empty to keep the current value." }}
+{{- end }}
+{{- $supported := list "USD" "EUR" "GBP" "CAD" "AUD" "CHF" "CNY" "INR" "BRL" "MXN" "SEK" "NOK" "DKK" "NZD" "SGD" "HKD" "ZAR" "ILS" "AED" "SAR" "TWD" "THB" "PLN" "CZK" "HUF" "TRY" "COP" "ARS" "PHP" "MYR" "IDR" }}
+{{- $currency := .Values.appSettings.company.currency | default "" }}
+{{- if and (ne $currency "") (not (has $currency $supported)) }}
+{{- fail (printf "appSettings.company.currency %q is not supported. Use an uppercase ISO 4217 code with two decimals, for example USD or EUR." $currency) }}
+{{- end }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -37,7 +47,6 @@ data:
       "company.ogImage": {{ .Values.appSettings.company.ogImage | toJson }},
       "company.portalUrl": {{ .Values.appSettings.company.portalUrl | toJson }},
       "company.themeColor": {{ .Values.appSettings.company.themeColor | toJson }},
-      "pricing.currency": {{ .Values.appSettings.pricing.currency | toJson }},
       "pricing.splitBillingEnabled": {{ .Values.appSettings.pricing.splitBillingEnabled | toJson }},
       "stationMessage.enabled": {{ .Values.appSettings.stationMessage.enabled | toJson }},
       "stationMessage.pricingFormat": {{ .Values.appSettings.stationMessage.pricingFormat | toJson }},
@@ -101,7 +110,6 @@ data:
       "ftp.path": {{ .Values.appSettings.ftp.path | toJson }},
       "s3.bucket": {{ .Values.appSettings.s3.bucket | toJson }},
       "s3.region": {{ .Values.appSettings.s3.region | toJson }},
-      "stripe.currency": {{ .Values.appSettings.stripe.currency | toJson }},
       "stripe.preAuthAmountCents": {{ .Values.appSettings.stripe.preAuthAmountCents | toJson }},
       "stripe.platformFeePercent": {{ .Values.appSettings.stripe.platformFeePercent | toJson }},
       "sso.enabled": {{ .Values.appSettings.sso.enabled | toJson }},
