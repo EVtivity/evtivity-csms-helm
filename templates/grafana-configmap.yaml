@@ -30,10 +30,10 @@ data:
     providers:
       - name: EVtivity
         orgId: 1
+        folder: EVtivity
         type: file
         disableDeletion: false
         editable: true
         options:
           path: /var/lib/grafana/dashboards
-          foldersFromFilesStructure: true
 {{- end }}
