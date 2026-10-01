@@ -15,6 +15,7 @@ data:
   {{- $corsOrigins := list }}
   {{- $portalHost := "" }}
   {{- $csmsHost := "" }}
+  {{- $ocppHost := "" }}
   {{- range $route := .Values.gatewayAPI.routes }}
     {{- range $route.rules }}
       {{- if has .service (list "csms" "portal") }}
@@ -22,6 +23,7 @@ data:
       {{- end }}
       {{- if eq .service "portal" }}{{ $portalHost = $route.host }}{{ end }}
       {{- if eq .service "csms" }}{{ $csmsHost = $route.host }}{{ end }}
+      {{- if eq .service "ocpp" }}{{ $ocppHost = $route.host }}{{ end }}
     {{- end }}
   {{- end }}
   {{- if $corsOrigins }}
@@ -36,6 +38,11 @@ data:
   {{- end }}
   {{- if $csmsHost }}
   CSMS_URL: {{ printf "%s://%s" $proto $csmsHost | quote }}
+  {{- end }}
+  {{- if .Values.api.env.stationTlsUrl }}
+  OCPP_STATION_TLS_URL: {{ .Values.api.env.stationTlsUrl | quote }}
+  {{- else if and (eq $proto "https") $ocppHost }}
+  OCPP_STATION_TLS_URL: {{ printf "wss://%s" $ocppHost | quote }}
   {{- end }}
   {{- if .Values.api.env.cookieDomain }}
   COOKIE_DOMAIN: {{ .Values.api.env.cookieDomain | quote }}

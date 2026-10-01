@@ -28,6 +28,11 @@ api:
     authRateLimitWindow: "1 minute"
     metricsPort: "9091"
     cookieDomain: ""
+    # Public wss:// address stations use for security profiles 2 and 3, without the
+    # station ID. Used to move a connected OCPP 2.1 station from ws:// to TLS. Empty:
+    # wss://<ocpp route host> when the gateway serves HTTPS, otherwise unset (the
+    # upgrade is refused). Set it to the TLS LoadBalancer address for SP3 mTLS.
+    stationTlsUrl: ""
   resources:
     requests:
       cpu: 100m
