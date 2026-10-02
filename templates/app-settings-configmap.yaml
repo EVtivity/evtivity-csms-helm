@@ -100,6 +100,7 @@ data:
       "pnc.provider": {{ .Values.appSettings.pnc.provider | toJson }},
       "pnc.expirationWarningDays": {{ .Values.appSettings.pnc.expirationWarningDays | toJson }},
       "pnc.expirationCriticalDays": {{ .Values.appSettings.pnc.expirationCriticalDays | toJson }},
+      "pnc.ocsp.allowedPrivateHosts": {{ .Values.appSettings.pnc.ocspAllowedPrivateHosts | toJson }},
       "smtp.host": {{ .Values.appSettings.smtp.host | toJson }},
       "smtp.port": {{ .Values.appSettings.smtp.port | toJson }},
       "smtp.username": {{ .Values.appSettings.smtp.username | toJson }},

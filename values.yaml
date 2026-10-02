@@ -515,6 +515,8 @@ appSettings:
     provider: "manual"
     expirationWarningDays: 30
     expirationCriticalDays: 7
+    # Private hostnames or IPs the CSMS may call as OCSP responders (max 20)
+    ocspAllowedPrivateHosts: []
   smtp:
     host: ""
     port: ""
