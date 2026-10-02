@@ -401,6 +401,10 @@ appSettings:
     # The platform's one currency (ISO 4217, two-decimal). Leave empty to keep
     # the value set in Settings > Company; a fresh install starts at USD.
     currency: ""
+    # Whether the driver portal shows prices including ("gross") or excluding
+    # ("net") tax for guests and drivers who have not chosen. Leave empty to keep
+    # the value set in Settings > Company; a fresh install starts at net.
+    priceDisplay: ""
     contactEmail: "contact@evtivity.local"
     supportEmail: "support@evtivity.local"
     supportPhone: "+1 (555) 123-4567"

@@ -8,6 +8,10 @@
 {{- if and (ne $currency "") (not (has $currency $supported)) }}
 {{- fail (printf "appSettings.company.currency %q is not supported. Use an uppercase ISO 4217 code with two decimals, for example USD or EUR." $currency) }}
 {{- end }}
+{{- $priceDisplay := .Values.appSettings.company.priceDisplay | default "" }}
+{{- if and (ne $priceDisplay "") (not (has $priceDisplay (list "gross" "net"))) }}
+{{- fail (printf "appSettings.company.priceDisplay %q is not supported. Use gross or net." $priceDisplay) }}
+{{- end }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -34,6 +38,7 @@ data:
       "ocpp.commandRetryMaxDelayMs": {{ .Values.appSettings.ocpp.commandRetryMaxDelayMs | toJson }},
       "company.name": {{ .Values.appSettings.company.name | toJson }},
       "company.currency": {{ .Values.appSettings.company.currency | toJson }},
+      "company.priceDisplay": {{ .Values.appSettings.company.priceDisplay | default "" | toJson }},
       "company.contactEmail": {{ .Values.appSettings.company.contactEmail | toJson }},
       "company.supportEmail": {{ .Values.appSettings.company.supportEmail | toJson }},
       "company.supportPhone": {{ .Values.appSettings.company.supportPhone | toJson }},
