@@ -8,6 +8,11 @@ data:
   NODE_ENV: {{ .Values.api.env.nodeEnv | quote }}
   LOG_LEVEL: {{ .Values.api.env.logLevel | quote }}
   SEED_DEMO: {{ if and .Values.seedDemo.enabled .Values.seedDemo.confirmed }}"true"{{ else }}"false"{{ end }}
+  {{- $allowSimulated := (.Values.payments | default dict).allowSimulatedProvider | default false }}
+  {{- if and .Values.seedDemo.enabled .Values.seedDemo.confirmed (not $allowSimulated) }}
+  {{- fail "seedDemo needs payments.allowSimulatedProvider=true: demo drivers pay with simulated cards." }}
+  {{- end }}
+  PAYMENTS_ALLOW_SIMULATED: {{ if $allowSimulated }}"true"{{ else }}"false"{{ end }}
   {{- $proto := "http" }}
   {{- range .Values.gatewayAPI.gateway.listeners }}
     {{- if or (eq .protocol "HTTPS") (eq .protocol "TLS") }}{{ $proto = "https" }}{{ end }}

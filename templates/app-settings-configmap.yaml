@@ -16,6 +16,12 @@
 {{- if and (ne $taxBasis "") (not (has $taxBasis (list "gross" "net"))) }}
 {{- fail (printf "appSettings.company.taxBasis %q is not supported. Use net or gross." $taxBasis) }}
 {{- end }}
+{{- $paymentProvider := (.Values.appSettings.payments | default dict).provider | default "" }}
+{{- $paymentProviders := list "none" "stripe" }}
+{{- if (.Values.payments | default dict).allowSimulatedProvider }}{{ $paymentProviders = append $paymentProviders "simulated" }}{{ end }}
+{{- if and (ne $paymentProvider "") (not (has $paymentProvider $paymentProviders)) }}
+{{- fail (printf "appSettings.payments.provider %q is not supported. Use %s." $paymentProvider (join ", " $paymentProviders)) }}
+{{- end }}
 {{- $stationLanguage := .Values.appSettings.stationMessage.language | default "" }}
 {{- if and (ne $stationLanguage "") (not (has $stationLanguage (list "en" "de" "es" "ko" "zh" "zh-TW"))) }}
 {{- fail (printf "appSettings.stationMessage.language %q is not supported. Use en, de, es, ko, zh, or zh-TW." $stationLanguage) }}
@@ -126,6 +132,7 @@ data:
       "ftp.path": {{ .Values.appSettings.ftp.path | toJson }},
       "s3.bucket": {{ .Values.appSettings.s3.bucket | toJson }},
       "s3.region": {{ .Values.appSettings.s3.region | toJson }},
+      "payments.provider": {{ $paymentProvider | toJson }},
       "stripe.preAuthAmountCents": {{ .Values.appSettings.stripe.preAuthAmountCents | toJson }},
       "stripe.platformFeePercent": {{ .Values.appSettings.stripe.platformFeePercent | toJson }},
       "sso.enabled": {{ .Values.appSettings.sso.enabled | toJson }},
