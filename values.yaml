@@ -405,6 +405,10 @@ appSettings:
     # ("net") tax for guests and drivers who have not chosen. Leave empty to keep
     # the value set in Settings > Company; a fresh install starts at net.
     priceDisplay: ""
+    # Whether tariff prices are entered excluding tax ("net", tax is added) or
+    # including tax ("gross", tax is taken out). Leave empty to keep the value set
+    # in Settings > Company; a fresh install starts at net.
+    taxBasis: ""
     contactEmail: "contact@evtivity.local"
     supportEmail: "support@evtivity.local"
     supportPhone: "+1 (555) 123-4567"

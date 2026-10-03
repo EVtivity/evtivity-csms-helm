@@ -12,6 +12,10 @@
 {{- if and (ne $priceDisplay "") (not (has $priceDisplay (list "gross" "net"))) }}
 {{- fail (printf "appSettings.company.priceDisplay %q is not supported. Use gross or net." $priceDisplay) }}
 {{- end }}
+{{- $taxBasis := .Values.appSettings.company.taxBasis | default "" }}
+{{- if and (ne $taxBasis "") (not (has $taxBasis (list "gross" "net"))) }}
+{{- fail (printf "appSettings.company.taxBasis %q is not supported. Use net or gross." $taxBasis) }}
+{{- end }}
 {{- $stationLanguage := .Values.appSettings.stationMessage.language | default "" }}
 {{- if and (ne $stationLanguage "") (not (has $stationLanguage (list "en" "de" "es" "ko" "zh" "zh-TW"))) }}
 {{- fail (printf "appSettings.stationMessage.language %q is not supported. Use en, de, es, ko, zh, or zh-TW." $stationLanguage) }}
@@ -43,6 +47,7 @@ data:
       "company.name": {{ .Values.appSettings.company.name | toJson }},
       "company.currency": {{ .Values.appSettings.company.currency | toJson }},
       "company.priceDisplay": {{ .Values.appSettings.company.priceDisplay | default "" | toJson }},
+      "company.taxBasis": {{ .Values.appSettings.company.taxBasis | default "" | toJson }},
       "company.contactEmail": {{ .Values.appSettings.company.contactEmail | toJson }},
       "company.supportEmail": {{ .Values.appSettings.company.supportEmail | toJson }},
       "company.supportPhone": {{ .Values.appSettings.company.supportPhone | toJson }},
