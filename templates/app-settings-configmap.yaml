@@ -12,6 +12,10 @@
 {{- if and (ne $priceDisplay "") (not (has $priceDisplay (list "gross" "net"))) }}
 {{- fail (printf "appSettings.company.priceDisplay %q is not supported. Use gross or net." $priceDisplay) }}
 {{- end }}
+{{- $stationLanguage := .Values.appSettings.stationMessage.language | default "" }}
+{{- if and (ne $stationLanguage "") (not (has $stationLanguage (list "en" "de" "es" "ko" "zh" "zh-TW"))) }}
+{{- fail (printf "appSettings.stationMessage.language %q is not supported. Use en, de, es, ko, zh, or zh-TW." $stationLanguage) }}
+{{- end }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -57,6 +61,7 @@ data:
       "stationMessage.pricingFormat": {{ .Values.appSettings.stationMessage.pricingFormat | toJson }},
       "stationMessage.charging.refreshSeconds": {{ .Values.appSettings.stationMessage.chargingRefreshSeconds | toJson }},
       "stationMessage.brandLine": {{ .Values.appSettings.stationMessage.brandLine | toJson }},
+      "stationMessage.language": {{ .Values.appSettings.stationMessage.language | default "" | toJson }},
       "maintenance.defaultMessageTemplate": {{ .Values.appSettings.maintenance.defaultMessageTemplate | toJson }},
       "idling.gracePeriodMinutes": {{ .Values.appSettings.idling.gracePeriodMinutes | toJson }},
       "session.staleTimeoutHours": {{ .Values.appSettings.session.staleTimeoutHours | toJson }},

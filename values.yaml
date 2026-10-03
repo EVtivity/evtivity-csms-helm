@@ -425,6 +425,9 @@ appSettings:
     pricingFormat: "compact"
     chargingRefreshSeconds: 30
     brandLine: ""
+    # Display language of every station (en, de, es, ko, zh, zh-TW). Leave empty
+    # to keep the value set in Settings > Messages; a fresh install starts at en.
+    language: ""
   maintenance:
     defaultMessageTemplate: "This site is temporarily unavailable for maintenance. {{reason}}"
   idling:
