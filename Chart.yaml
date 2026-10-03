@@ -2,8 +2,8 @@ apiVersion: v2
 name: evtivity-csms
 description: EVtivity CSMS - EV Charging Station Management System
 type: application
-version: 0.1.34
-appVersion: "0.1.34"
+version: 0.1.35
+appVersion: "0.1.35"
 home: https://github.com/evtivity/evtivity-csms
 maintainers:
   - name: EVtivity
