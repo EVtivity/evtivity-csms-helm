@@ -549,14 +549,33 @@ appSettings:
     bucket: ""
     region: ""
   payments:
-    # Provider for new payments: none (payments off), stripe, or simulated (needs
-    # payments.allowSimulatedProvider). Leave empty to keep the value set in
+    # Provider for new payments: none (payments off), stripe, adyen, or simulated
+    # (needs payments.allowSimulatedProvider). Leave empty to keep the value set in
     # Settings > Payment; a fresh install starts at none, or stripe when a Stripe
     # secret key is already stored.
     provider: ""
   stripe:
     preAuthAmountCents: 5000
     platformFeePercent: 0
+  # Adyen payment provider. Leave a value empty to keep the one set in
+  # Settings > Payment. Secrets go in sensitive.adyen*.
+  adyen:
+    merchantAccount: ""
+    # Adyen public client key (not a secret). Its allowed origins must list the
+    # portal and CSMS URLs.
+    clientKey: ""
+    # test or live
+    environment: ""
+    # Required when live: Customer Area > Developers > API URLs > Prefix,
+    # for example 1797a841fbb37ca7-AdyenDemo.
+    liveUrlPrefix: ""
+    # Live endpoint region of the client SDKs: eu, us, au, nea or in.
+    liveRegion: ""
+    # Basic auth username configured on the Adyen webhook.
+    webhookUsername: ""
+    # true only after Adyen enables pre-authorization adjustment for the
+    # merchant category; otherwise a shortfall is a second charge.
+    authorisationAdjustment: ""
 
   # Sensitive settings. Pass via --set flags. Never commit values here.
   # To use an external Secret (Vault, Sealed Secrets, ExternalSecrets), set:
@@ -575,6 +594,11 @@ appSettings:
     stripeSecretKey: ""
     stripePublishableKey: ""
     stripeWebhookSecret: ""
+    adyenApiKey: ""
+    # Hex HMAC key of the Adyen webhook, and the previous one during a rotation.
+    adyenHmacKey: ""
+    adyenHmacKeyPrevious: ""
+    adyenWebhookPassword: ""
     recaptchaSiteKey: ""
     recaptchaSecretKey: ""
     googleMapsApiKey: ""

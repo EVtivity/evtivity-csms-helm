@@ -17,10 +17,31 @@
 {{- fail (printf "appSettings.company.taxBasis %q is not supported. Use net or gross." $taxBasis) }}
 {{- end }}
 {{- $paymentProvider := (.Values.appSettings.payments | default dict).provider | default "" }}
-{{- $paymentProviders := list "none" "stripe" }}
+{{- $paymentProviders := list "none" "stripe" "adyen" }}
 {{- if (.Values.payments | default dict).allowSimulatedProvider }}{{ $paymentProviders = append $paymentProviders "simulated" }}{{ end }}
 {{- if and (ne $paymentProvider "") (not (has $paymentProvider $paymentProviders)) }}
 {{- fail (printf "appSettings.payments.provider %q is not supported. Use %s." $paymentProvider (join ", " $paymentProviders)) }}
+{{- end }}
+{{- $adyen := .Values.appSettings.adyen | default dict }}
+{{- $adyenEnvironment := $adyen.environment | default "" }}
+{{- if and (ne $adyenEnvironment "") (not (has $adyenEnvironment (list "test" "live"))) }}
+{{- fail (printf "appSettings.adyen.environment %q is not supported. Use test or live." $adyenEnvironment) }}
+{{- end }}
+{{- $adyenLiveUrlPrefix := $adyen.liveUrlPrefix | default "" }}
+{{- if and (eq $adyenEnvironment "live") (eq $adyenLiveUrlPrefix "") }}
+{{- fail "appSettings.adyen.liveUrlPrefix is required when appSettings.adyen.environment is live." }}
+{{- end }}
+{{- if and (ne $adyenLiveUrlPrefix "") (not (regexMatch "^[a-z0-9]+-[A-Za-z0-9]+$" $adyenLiveUrlPrefix)) }}
+{{- fail (printf "appSettings.adyen.liveUrlPrefix %q is not an Adyen live URL prefix, for example 1797a841fbb37ca7-AdyenDemo." $adyenLiveUrlPrefix) }}
+{{- end }}
+{{- $adyenLiveRegion := $adyen.liveRegion | default "" }}
+{{- if and (ne $adyenLiveRegion "") (not (has $adyenLiveRegion (list "eu" "us" "au" "nea" "in"))) }}
+{{- fail (printf "appSettings.adyen.liveRegion %q is not supported. Use eu, us, au, nea, or in." $adyenLiveRegion) }}
+{{- end }}
+{{- $adyenAdjustment := "" }}
+{{- if not (kindIs "invalid" $adyen.authorisationAdjustment) }}{{ $adyenAdjustment = toString $adyen.authorisationAdjustment }}{{ end }}
+{{- if and (ne $adyenAdjustment "") (not (has $adyenAdjustment (list "true" "false"))) }}
+{{- fail (printf "appSettings.adyen.authorisationAdjustment %q is not supported. Use true or false." $adyenAdjustment) }}
 {{- end }}
 {{- $stationLanguage := .Values.appSettings.stationMessage.language | default "" }}
 {{- if and (ne $stationLanguage "") (not (has $stationLanguage (list "en" "de" "es" "ko" "zh" "zh-TW"))) }}
@@ -135,6 +156,13 @@ data:
       "payments.provider": {{ $paymentProvider | toJson }},
       "stripe.preAuthAmountCents": {{ .Values.appSettings.stripe.preAuthAmountCents | toJson }},
       "stripe.platformFeePercent": {{ .Values.appSettings.stripe.platformFeePercent | toJson }},
+      "adyen.merchantAccount": {{ $adyen.merchantAccount | default "" | toJson }},
+      "adyen.clientKey": {{ $adyen.clientKey | default "" | toJson }},
+      "adyen.environment": {{ $adyenEnvironment | toJson }},
+      "adyen.liveUrlPrefix": {{ $adyenLiveUrlPrefix | toJson }},
+      "adyen.liveRegion": {{ $adyenLiveRegion | toJson }},
+      "adyen.webhookUsername": {{ $adyen.webhookUsername | default "" | toJson }},
+      "adyen.authorisationAdjustment": {{ if eq $adyenAdjustment "" }}""{{ else }}{{ eq $adyenAdjustment "true" }}{{ end }},
       "sso.enabled": {{ .Values.appSettings.sso.enabled | toJson }},
       "sso.provider": {{ .Values.appSettings.sso.provider | toJson }},
       "sso.entryPoint": {{ .Values.appSettings.sso.entryPoint | toJson }},
