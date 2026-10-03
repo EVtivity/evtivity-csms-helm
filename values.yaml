@@ -593,7 +593,12 @@ appSettings:
     s3SecretAccessKey: ""
     stripeSecretKey: ""
     stripePublishableKey: ""
+    # Signing secrets (whsec_...) of the two Stripe webhook endpoints that
+    # Settings > Payment > Stripe > Create webhook makes: the platform endpoint
+    # (payment events) and the Connect endpoint (account.updated of site host
+    # accounts). Both send to /v1/webhooks/payments/stripe.
     stripeWebhookSecret: ""
+    stripeConnectWebhookSecret: ""
     adyenApiKey: ""
     # Hex HMAC key of the Adyen webhook, and the previous one during a rotation.
     adyenHmacKey: ""
