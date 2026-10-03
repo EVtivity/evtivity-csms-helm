@@ -561,6 +561,7 @@ appSettings:
     s3SecretAccessKey: ""
     stripeSecretKey: ""
     stripePublishableKey: ""
+    stripeWebhookSecret: ""
     recaptchaSiteKey: ""
     recaptchaSecretKey: ""
     googleMapsApiKey: ""
