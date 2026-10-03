@@ -87,6 +87,8 @@ To upgrade to a new version:
 helm upgrade evtivity . --namespace evtivity --reuse-values --set image.tag=0.2.0
 ```
 
+Database migrations run in a `pre-upgrade` hook job (`post-install` on a fresh install). On upgrade Helm runs the job before it updates the Deployments, so new pods never start against the old schema, and a failed migration stops the upgrade with the old pods still running. The job reads `DATABASE_URL` from the Secret of the installed release. To change the database URL, upgrade with the new `secrets.databaseUrl` first, then upgrade the image. The settings seed job (`post-upgrade`) runs after the migration and the new app settings.
+
 To reload the same version (pulls fresh images):
 
 ```bash
@@ -127,6 +129,24 @@ All configuration is in `values.yaml`. Override with `--set` flags or a custom v
 | `secrets.settingsEncryptionKey` | AES-256 encryption key for settings |
 
 For GitOps or Vault workflows, set `secrets.create: false` and `secrets.existingSecret: my-secret-name`. The Secret must contain: `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `SETTINGS_ENCRYPTION_KEY`.
+
+### Payment Settings
+
+Payment credentials are app settings, stored encrypted in the database. Pass them with `--set` or an existing Secret (`appSettings.sensitive.existingSecret`). An empty value keeps the one set in Settings > Payment.
+
+| Parameter | Setting |
+|-----------|---------|
+| `appSettings.payments.provider` | Provider of new payments: `none`, `stripe`, `adyen`, or `simulated` |
+| `appSettings.sensitive.stripeSecretKey` | Stripe secret or restricted key |
+| `appSettings.sensitive.stripePublishableKey` | Stripe publishable key |
+| `appSettings.sensitive.stripeWebhookSecret` | Signing secret of the Stripe platform webhook endpoint |
+| `appSettings.sensitive.stripeConnectWebhookSecret` | Signing secret of the Stripe Connect webhook endpoint |
+| `appSettings.sensitive.adyenApiKey` | Adyen API key |
+| `appSettings.sensitive.adyenHmacKey` | Adyen webhook HMAC key (hex) |
+| `appSettings.sensitive.adyenHmacKeyPrevious` | Previous Adyen HMAC key, accepted during a rotation |
+| `appSettings.sensitive.adyenWebhookPassword` | Adyen webhook Basic auth password |
+
+Both Stripe endpoints send to `https://<api host>/v1/webhooks/payments/stripe`, Adyen to `https://<api host>/v1/webhooks/payments/adyen`. Settings > Payment can create the webhooks and store these values for you.
 
 ### Initial Admin User
 
