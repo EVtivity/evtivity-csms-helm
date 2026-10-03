@@ -5,7 +5,11 @@ metadata:
   labels:
     {{- include "evtivity-csms.componentLabels" (dict "context" . "component" "migrate") | nindent 4 }}
   annotations:
-    "helm.sh/hook": post-install,post-upgrade
+    # Upgrade: runs before Helm updates the Deployments, so new pods never start
+    # against the old schema. It reads the ConfigMap and Secret of the installed
+    # release (it needs only DATABASE_URL). Install: runs after the Secret exists.
+    # seed-settings (weight 1) and the post-install seed jobs run after it.
+    "helm.sh/hook": pre-upgrade,post-install
     "helm.sh/hook-weight": "0"
     "helm.sh/hook-delete-policy": before-hook-creation
 spec:
