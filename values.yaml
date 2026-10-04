@@ -361,12 +361,22 @@ istio:
 # To use an existing Secret (Vault, Sealed Secrets, ExternalSecrets), set:
 #   create: false
 #   existingSecret: "my-evtivity-secrets"
-# Your Secret must contain: DATABASE_URL, REDIS_URL, JWT_SECRET, SETTINGS_ENCRYPTION_KEY
+# Your Secret must contain: DATABASE_URL, REDIS_URL_API, REDIS_URL_OCPP, REDIS_URL_OCPI,
+# REDIS_URL_WORKER, REDIS_URL_CSS, JWT_SECRET, SETTINGS_ENCRYPTION_KEY
 secrets:
   create: true
   existingSecret: ""
   databaseUrl: ""
-  redisUrl: ""
+  # One Redis URL per service. Each service connects as its own Redis ACL user
+  # (users and permissions in redis/acl-rules.conf), e.g.
+  # redis://api:<password>@evtivity-redis-master:6379. scripts/install.sh creates
+  # the users in the bundled Redis and sets these. Required for every enabled service.
+  redisUrls:
+    api: ""
+    ocpp: ""
+    ocpi: ""
+    worker: ""
+    css: ""
   jwtSecret: ""
   settingsEncryptionKey: ""
 

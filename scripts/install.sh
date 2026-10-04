@@ -23,7 +23,56 @@ REDIS_HOST="${REDIS_HOST:-${RELEASE}-redis-master}"
 REDIS_PORT="${REDIS_PORT:-6379}"
 
 DATABASE_URL="postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}"
-REDIS_URL="redis://default:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}"
+
+# Each service connects to Redis as its own ACL user. Users, keys, channels and
+# commands are in redis/acl-rules.conf. REDIS_PASSWORD stays the password of the
+# Redis default (admin) user, which no service uses.
+REDIS_ACL_RULES="$CHART_DIR/redis/acl-rules.conf"
+REDIS_ACL_USERS="api ocpp ocpi worker css"
+
+# Temporary files (certificates, Redis ACL values with passwords), removed on exit.
+WORK_DIR=$(mktemp -d)
+trap 'rm -rf "$WORK_DIR"' EXIT
+
+redis_password_of() {
+  local var
+  var="REDIS_$(echo "$1" | tr '[:lower:]' '[:upper:]')_PASSWORD"
+  printf '%s' "${!var}"
+}
+
+redis_url_of() {
+  printf 'redis://%s:%s@%s:%s' "$1" "$(redis_password_of "$1")" "$REDIS_HOST" "$REDIS_PORT"
+}
+
+# Prints Bitnami Redis values that create one ACL user per line of the rules
+# file. Bitnami needs keys, channels and commands as separate fields, and
+# defaults an empty keys field to "~*", so a user without keys gets "resetkeys".
+redis_acl_values() {
+  local keyword name rest tok keys channels commands
+  printf 'auth:\n  acl:\n    enabled: true\n    users:\n'
+  while read -r keyword name rest; do
+    [ "$keyword" = "user" ] || continue
+    keys=""
+    channels=""
+    commands=""
+    set -f
+    for tok in $rest; do
+      case "$tok" in
+        "~"* | "%"*) keys="$keys $tok" ;;
+        "&"*) channels="$channels $tok" ;;
+        *) commands="$commands $tok" ;;
+      esac
+    done
+    set +f
+    [ -n "$keys" ] || keys=" resetkeys"
+    printf '      - username: "%s"\n' "$name"
+    printf '        password: "%s"\n' "$(redis_password_of "$name")"
+    printf '        enabled: "on"\n'
+    printf '        keys: "%s"\n' "${keys# }"
+    printf '        channels: "%s"\n' "${channels# }"
+    printf '        commands: "%s"\n' "${commands# }"
+  done < "$REDIS_ACL_RULES"
+}
 
 echo "Release:   $RELEASE"
 echo "Namespace: $NAMESPACE"
@@ -93,10 +142,23 @@ if [ "$INSTALL_REDIS" != "y" ] && [ -z "$REDIS_HOST" ]; then
   read -r -p "Redis host: " REDIS_HOST
   read -r -p "Redis port [6379]: " REDIS_PORT
   REDIS_PORT="${REDIS_PORT:-6379}"
-  read -r -s -p "Redis password: " REDIS_PASSWORD
-  echo ""
-  REDIS_URL="redis://default:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}"
 fi
+
+# --- Redis ACL users: one per service (redis/acl-rules.conf) ---
+# Bundled Redis: passwords are generated unless REDIS_<USER>_PASSWORD is set.
+# External Redis: create the users first (README, "External Redis") and enter
+# their passwords, or set REDIS_<USER>_PASSWORD.
+for user in $REDIS_ACL_USERS; do
+  var="REDIS_$(echo "$user" | tr '[:lower:]' '[:upper:]')_PASSWORD"
+  if [ -z "${!var:-}" ]; then
+    if [ "$INSTALL_REDIS" = "y" ]; then
+      printf -v "$var" '%s' "$(generate_secret)"
+    else
+      read -r -s -p "Password of Redis user '$user': " "$var"
+      echo ""
+    fi
+  fi
+done
 
 echo ""
 
@@ -166,6 +228,10 @@ fi
 # --- Install Redis ---
 if [ "$INSTALL_REDIS" = "y" ]; then
   echo "Installing Redis..."
+  # Passwords go into a values file, not auth.acl.userSecret: Bitnami reads that
+  # Secret with lookup, which renders the users without a password under
+  # helm template or Argo CD.
+  (umask 077 && redis_acl_values > "$WORK_DIR/redis-acl.yaml")
   helm upgrade --install "${RELEASE}-redis" bitnami/redis \
     --namespace "$NAMESPACE" \
     --create-namespace \
@@ -173,6 +239,7 @@ if [ "$INSTALL_REDIS" = "y" ]; then
     --set auth.enabled=true \
     --set auth.password="$REDIS_PASSWORD" \
     --set replica.replicaCount=0 \
+    -f "$WORK_DIR/redis-acl.yaml" \
     > /dev/null 2>&1
   echo "Redis ready."
 else
@@ -182,8 +249,8 @@ fi
 # --- Generate OCPP mTLS and CSS Client Certificates ---
 OCPP_TLS_SECRET="${RELEASE}-ocpp-tls"
 CSS_TLS_SECRET="${RELEASE}-css-tls"
-CERT_DIR=$(mktemp -d)
-trap 'rm -rf "$CERT_DIR"' EXIT
+CERT_DIR="$WORK_DIR/certs"
+mkdir -p "$CERT_DIR"
 
 echo "Generating OCPP mTLS certificates..."
 
@@ -240,7 +307,11 @@ helm upgrade --install "$RELEASE" "$CHART_DIR" \
   --set dependencies.redisHost="$REDIS_HOST" \
   --set dependencies.redisPort="$REDIS_PORT" \
   --set secrets.databaseUrl="$DATABASE_URL" \
-  --set secrets.redisUrl="$REDIS_URL" \
+  --set secrets.redisUrls.api="$(redis_url_of api)" \
+  --set secrets.redisUrls.ocpp="$(redis_url_of ocpp)" \
+  --set secrets.redisUrls.ocpi="$(redis_url_of ocpi)" \
+  --set secrets.redisUrls.worker="$(redis_url_of worker)" \
+  --set secrets.redisUrls.css="$(redis_url_of css)" \
   --set secrets.jwtSecret="$JWT_SECRET" \
   --set secrets.settingsEncryptionKey="$SETTINGS_ENCRYPTION_KEY" \
   --set ocpp.tls.enabled=true \
