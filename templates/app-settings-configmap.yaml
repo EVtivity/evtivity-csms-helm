@@ -78,6 +78,25 @@
 {{- if and (ne $adyenAdjustment "") (not (has $adyenAdjustment (list "true" "false"))) }}
 {{- fail (printf "appSettings.adyen.authorisationAdjustment %q is not supported. Use true or false." $adyenAdjustment) }}
 {{- end }}
+{{- $mobileApp := (.Values.appSettings.mobile | default dict).app | default dict }}
+{{- $mobileUrlSchemes := $mobileApp.urlSchemes | default list }}
+{{- if not (kindIs "slice" $mobileUrlSchemes) }}
+{{- fail "appSettings.mobile.app.urlSchemes must be a list of the custom URL schemes of your app builds, for example [evtivity]." }}
+{{- end }}
+{{- range $scheme := $mobileUrlSchemes }}
+{{- if or (not (regexMatch "^[a-z][a-z0-9+.-]*$" (toString $scheme))) (has (toString $scheme) (list "http" "https" "javascript" "data" "file" "about" "blob" "adyencheckout")) }}
+{{- fail (printf "appSettings.mobile.app.urlSchemes entry %q is not an app URL scheme. Use the lowercase scheme of the app brand (brands/index.js scheme), not http, https or adyencheckout." (toString $scheme)) }}
+{{- end }}
+{{- end }}
+{{- $mobileAndroidPackages := $mobileApp.androidPackageNames | default list }}
+{{- if not (kindIs "slice" $mobileAndroidPackages) }}
+{{- fail "appSettings.mobile.app.androidPackageNames must be a list of the Android application ids of your app builds, for example [com.evtivity.driver]." }}
+{{- end }}
+{{- range $package := $mobileAndroidPackages }}
+{{- if not (regexMatch "^[a-zA-Z][a-zA-Z0-9_]*([.][a-zA-Z][a-zA-Z0-9_]*)+$" (toString $package)) }}
+{{- fail (printf "appSettings.mobile.app.androidPackageNames entry %q is not an Android application id, for example com.evtivity.driver." (toString $package)) }}
+{{- end }}
+{{- end }}
 {{- $stationLanguage := .Values.appSettings.stationMessage.language | default "" }}
 {{- if and (ne $stationLanguage "") (not (has $stationLanguage (list "en" "de" "es" "ko" "zh" "zh-TW"))) }}
 {{- fail (printf "appSettings.stationMessage.language %q is not supported. Use en, de, es, ko, zh, or zh-TW." $stationLanguage) }}
@@ -163,6 +182,8 @@ data:
       "mobile.attestation.android.cloudProjectNumber": {{ .Values.appSettings.mobile.attestation.androidCloudProjectNumber | toJson }},
       "mobile.attestation.android.packageName": {{ .Values.appSettings.mobile.attestation.androidPackageName | toJson }},
       "mobile.attestation.android.serviceAccountEnc": {{ .Values.appSettings.mobile.attestation.androidServiceAccount | toJson }},
+      "mobile.app.urlSchemes": {{ $mobileUrlSchemes | toJson }},
+      "mobile.app.androidPackageNames": {{ $mobileAndroidPackages | toJson }},
       "audit.retentionDays": {{ .Values.appSettings.audit.retentionDays | toJson }},
       "refreshTokens.retentionDays": {{ .Values.appSettings.refreshTokens.retentionDays | toJson }},
       "logs.access.retentionDays": {{ .Values.appSettings.logs.accessRetentionDays | toJson }},

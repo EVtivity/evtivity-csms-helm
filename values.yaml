@@ -498,6 +498,17 @@ appSettings:
       androidCloudProjectNumber: ""
       androidPackageName: ""
       androidServiceAccount: ""
+    # The operator's mobile app builds (mobile repo brands/index.js). The API
+    # accepts a card 3D Secure return URL from the app (Adyen) only when it
+    # leads back to one of them. urlSchemes: the brand scheme (iOS returns to
+    # <scheme>://). androidPackageNames: the brand androidPackage (the Adyen
+    # Android SDK returns to adyencheckout://<application id>). Defaults match
+    # the default brand.
+    app:
+      urlSchemes:
+        - evtivity
+      androidPackageNames:
+        - com.evtivity.driver
   audit:
     retentionDays: 1095
   refreshTokens:
