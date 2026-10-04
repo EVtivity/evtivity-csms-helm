@@ -549,10 +549,11 @@ appSettings:
     bucket: ""
     region: ""
   payments:
-    # Provider for new payments: none (payments off), stripe, adyen, or simulated
+    # Provider for new payments: none (payments off), stripe, or simulated
     # (needs payments.allowSimulatedProvider). Leave empty to keep the value set in
     # Settings > Payment; a fresh install starts at none, or stripe when a Stripe
-    # secret key is already stored.
+    # secret key is already stored. Adyen is selected only in Settings > Payment,
+    # after the upgrade: the chart refuses adyen here.
     provider: ""
   stripe:
     preAuthAmountCents: 5000

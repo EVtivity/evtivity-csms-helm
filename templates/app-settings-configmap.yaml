@@ -17,8 +17,11 @@
 {{- fail (printf "appSettings.company.taxBasis %q is not supported. Use net or gross." $taxBasis) }}
 {{- end }}
 {{- $paymentProvider := (.Values.appSettings.payments | default dict).provider | default "" }}
-{{- $paymentProviders := list "none" "stripe" "adyen" }}
+{{- $paymentProviders := list "none" "stripe" }}
 {{- if (.Values.payments | default dict).allowSimulatedProvider }}{{ $paymentProviders = append $paymentProviders "simulated" }}{{ end }}
+{{- if eq $paymentProvider "adyen" }}
+{{- fail "appSettings.payments.provider adyen cannot be set by the chart: this settings job runs while pods of the previous release can still run. Leave it empty and select Adyen in Settings > Payment after the upgrade." }}
+{{- end }}
 {{- if and (ne $paymentProvider "") (not (has $paymentProvider $paymentProviders)) }}
 {{- fail (printf "appSettings.payments.provider %q is not supported. Use %s." $paymentProvider (join ", " $paymentProviders)) }}
 {{- end }}

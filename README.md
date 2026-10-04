@@ -136,7 +136,7 @@ Payment credentials are app settings, stored encrypted in the database. Pass the
 
 | Parameter | Setting |
 |-----------|---------|
-| `appSettings.payments.provider` | Provider of new payments: `none`, `stripe`, `adyen`, or `simulated` |
+| `appSettings.payments.provider` | Provider of new payments: `none`, `stripe`, or `simulated`. Adyen is selected in Settings > Payment after the upgrade; the chart refuses `adyen` |
 | `appSettings.sensitive.stripeSecretKey` | Stripe secret or restricted key |
 | `appSettings.sensitive.stripePublishableKey` | Stripe publishable key |
 | `appSettings.sensitive.stripeWebhookSecret` | Signing secret of the Stripe platform webhook endpoint |
