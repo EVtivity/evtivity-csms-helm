@@ -555,9 +555,21 @@ appSettings:
     # secret key is already stored. Adyen is selected only in Settings > Payment,
     # after the upgrade: the chart refuses adyen here.
     provider: ""
-  stripe:
-    preAuthAmountCents: 5000
-    platformFeePercent: 0
+    # Default pre-authorization amount in cents (1 to 1000000). Leave empty to
+    # keep the value set in Settings > Payment (5000 on a fresh install).
+    preAuthAmountCents: ""
+    # Default platform fee percentage (0 to 100). Leave empty to keep the value
+    # set in Settings > Payment (0 on a fresh install).
+    platformFeePercent: ""
+  # Test (simulated) payment provider, used only when payments.allowSimulatedProvider
+  # is true. Leave a value empty to keep the one set in Settings > Payment.
+  simulated:
+    # sync (the only mode available in this release)
+    resultMode: ""
+    # Delay of async results in seconds (0 to 3600)
+    asyncDelaySeconds: ""
+    # Failure rate of test cards without a scenario (0 to 1)
+    randomFailureRate: ""
   # Adyen payment provider. Leave a value empty to keep the one set in
   # Settings > Payment. Secrets go in sensitive.adyen*.
   adyen:

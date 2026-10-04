@@ -132,11 +132,16 @@ For GitOps or Vault workflows, set `secrets.create: false` and `secrets.existing
 
 ### Payment Settings
 
-Payment credentials are app settings, stored encrypted in the database. Pass them with `--set` or an existing Secret (`appSettings.sensitive.existingSecret`). An empty value keeps the one set in Settings > Payment.
+Payment settings are app settings in the database, and credentials are stored encrypted. Pass credentials with `--set` or an existing Secret (`appSettings.sensitive.existingSecret`). An empty value keeps the one set in Settings > Payment.
 
 | Parameter | Setting |
 |-----------|---------|
 | `appSettings.payments.provider` | Provider of new payments: `none`, `stripe`, or `simulated`. Adyen is selected in Settings > Payment after the upgrade; the chart refuses `adyen` |
+| `appSettings.payments.preAuthAmountCents` | Default pre-authorization amount in cents, 1 to 1000000 (5000 on a fresh install) |
+| `appSettings.payments.platformFeePercent` | Default platform fee percentage, 0 to 100 (0 on a fresh install) |
+| `appSettings.simulated.resultMode` | Test provider result mode: `sync` |
+| `appSettings.simulated.asyncDelaySeconds` | Test provider delay of async results in seconds, 0 to 3600 |
+| `appSettings.simulated.randomFailureRate` | Test provider failure rate of cards without a scenario, 0 to 1 |
 | `appSettings.sensitive.stripeSecretKey` | Stripe secret or restricted key |
 | `appSettings.sensitive.stripePublishableKey` | Stripe publishable key |
 | `appSettings.sensitive.stripeWebhookSecret` | Signing secret of the Stripe platform webhook endpoint |
@@ -145,6 +150,8 @@ Payment credentials are app settings, stored encrypted in the database. Pass the
 | `appSettings.sensitive.adyenHmacKey` | Adyen webhook HMAC key (hex) |
 | `appSettings.sensitive.adyenHmacKeyPrevious` | Previous Adyen HMAC key, accepted during a rotation |
 | `appSettings.sensitive.adyenWebhookPassword` | Adyen webhook Basic auth password |
+
+`appSettings.stripe.preAuthAmountCents` and `appSettings.stripe.platformFeePercent` moved to `appSettings.payments.*`, because they apply to every provider. The chart refuses the old names, also when `--reuse-values` carries them over from an earlier release. The upgrade copies the stored values to the new settings.
 
 Both Stripe endpoints send to `https://<api host>/v1/webhooks/payments/stripe`, Adyen to `https://<api host>/v1/webhooks/payments/adyen`. Settings > Payment can create the webhooks and store these values for you.
 

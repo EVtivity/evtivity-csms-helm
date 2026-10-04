@@ -16,7 +16,39 @@
 {{- if and (ne $taxBasis "") (not (has $taxBasis (list "gross" "net"))) }}
 {{- fail (printf "appSettings.company.taxBasis %q is not supported. Use net or gross." $taxBasis) }}
 {{- end }}
-{{- $paymentProvider := (.Values.appSettings.payments | default dict).provider | default "" }}
+{{- $stripeSettings := .Values.appSettings.stripe | default dict }}
+{{- range $key := list "preAuthAmountCents" "platformFeePercent" }}
+{{- if and (hasKey $stripeSettings $key) (not (kindIs "invalid" (get $stripeSettings $key))) (ne (toString (get $stripeSettings $key)) "") }}
+{{- fail (printf "appSettings.stripe.%s moved to appSettings.payments.%s: the setting applies to every payment provider." $key $key) }}
+{{- end }}
+{{- end }}
+{{- $payments := .Values.appSettings.payments | default dict }}
+{{- $preAuthAmountCents := "" }}
+{{- if kindIs "float64" $payments.preAuthAmountCents }}{{ $preAuthAmountCents = ternary (toString (int64 $payments.preAuthAmountCents)) (toString $payments.preAuthAmountCents) (eq $payments.preAuthAmountCents (floor $payments.preAuthAmountCents)) }}{{ else if not (kindIs "invalid" $payments.preAuthAmountCents) }}{{ $preAuthAmountCents = toString $payments.preAuthAmountCents }}{{ end }}
+{{- if and (ne $preAuthAmountCents "") (not (and (regexMatch "^[0-9]+$" $preAuthAmountCents) (ge (atoi $preAuthAmountCents) 1) (le (atoi $preAuthAmountCents) 1000000))) }}
+{{- fail (printf "appSettings.payments.preAuthAmountCents %q is not supported. Use a whole number of cents from 1 to 1000000." $preAuthAmountCents) }}
+{{- end }}
+{{- $platformFeePercent := "" }}
+{{- if or (kindIs "float64" $payments.platformFeePercent) (kindIs "int64" $payments.platformFeePercent) (kindIs "int" $payments.platformFeePercent) }}{{ $platformFeePercent = printf "%f" (float64 $payments.platformFeePercent) }}{{ else if not (kindIs "invalid" $payments.platformFeePercent) }}{{ $platformFeePercent = toString $payments.platformFeePercent }}{{ end }}
+{{- if and (ne $platformFeePercent "") (not (and (regexMatch "^[0-9]+(\\.[0-9]+)?$" $platformFeePercent) (le (float64 $platformFeePercent) 100.0))) }}
+{{- fail (printf "appSettings.payments.platformFeePercent %v is not supported. Use a number from 0 to 100." $payments.platformFeePercent) }}
+{{- end }}
+{{- $simulated := .Values.appSettings.simulated | default dict }}
+{{- $simulatedResultMode := $simulated.resultMode | default "" }}
+{{- if and (ne $simulatedResultMode "") (ne $simulatedResultMode "sync") }}
+{{- fail (printf "appSettings.simulated.resultMode %q is not supported. Use sync." $simulatedResultMode) }}
+{{- end }}
+{{- $simulatedDelay := "" }}
+{{- if kindIs "float64" $simulated.asyncDelaySeconds }}{{ $simulatedDelay = ternary (toString (int64 $simulated.asyncDelaySeconds)) (toString $simulated.asyncDelaySeconds) (eq $simulated.asyncDelaySeconds (floor $simulated.asyncDelaySeconds)) }}{{ else if not (kindIs "invalid" $simulated.asyncDelaySeconds) }}{{ $simulatedDelay = toString $simulated.asyncDelaySeconds }}{{ end }}
+{{- if and (ne $simulatedDelay "") (not (and (regexMatch "^[0-9]+$" $simulatedDelay) (le (atoi $simulatedDelay) 3600))) }}
+{{- fail (printf "appSettings.simulated.asyncDelaySeconds %q is not supported. Use a whole number of seconds from 0 to 3600." $simulatedDelay) }}
+{{- end }}
+{{- $simulatedFailureRate := "" }}
+{{- if or (kindIs "float64" $simulated.randomFailureRate) (kindIs "int64" $simulated.randomFailureRate) (kindIs "int" $simulated.randomFailureRate) }}{{ $simulatedFailureRate = printf "%f" (float64 $simulated.randomFailureRate) }}{{ else if not (kindIs "invalid" $simulated.randomFailureRate) }}{{ $simulatedFailureRate = toString $simulated.randomFailureRate }}{{ end }}
+{{- if and (ne $simulatedFailureRate "") (not (and (regexMatch "^[0-9]+(\\.[0-9]+)?$" $simulatedFailureRate) (le (float64 $simulatedFailureRate) 1.0))) }}
+{{- fail (printf "appSettings.simulated.randomFailureRate %v is not supported. Use a number from 0 to 1." $simulated.randomFailureRate) }}
+{{- end }}
+{{- $paymentProvider := $payments.provider | default "" }}
 {{- $paymentProviders := list "none" "stripe" }}
 {{- if (.Values.payments | default dict).allowSimulatedProvider }}{{ $paymentProviders = append $paymentProviders "simulated" }}{{ end }}
 {{- if eq $paymentProvider "adyen" }}
@@ -157,8 +189,11 @@ data:
       "s3.bucket": {{ .Values.appSettings.s3.bucket | toJson }},
       "s3.region": {{ .Values.appSettings.s3.region | toJson }},
       "payments.provider": {{ $paymentProvider | toJson }},
-      "stripe.preAuthAmountCents": {{ .Values.appSettings.stripe.preAuthAmountCents | toJson }},
-      "stripe.platformFeePercent": {{ .Values.appSettings.stripe.platformFeePercent | toJson }},
+      "payments.preAuthAmountCents": {{ if eq $preAuthAmountCents "" }}""{{ else }}{{ atoi $preAuthAmountCents }}{{ end }},
+      "payments.platformFeePercent": {{ if eq $platformFeePercent "" }}""{{ else }}{{ float64 $platformFeePercent | toJson }}{{ end }},
+      "simulated.resultMode": {{ $simulatedResultMode | toJson }},
+      "simulated.asyncDelaySeconds": {{ if eq $simulatedDelay "" }}""{{ else }}{{ atoi $simulatedDelay }}{{ end }},
+      "simulated.randomFailureRate": {{ if eq $simulatedFailureRate "" }}""{{ else }}{{ float64 $simulatedFailureRate | toJson }}{{ end }},
       "adyen.merchantAccount": {{ $adyen.merchantAccount | default "" | toJson }},
       "adyen.clientKey": {{ $adyen.clientKey | default "" | toJson }},
       "adyen.environment": {{ $adyenEnvironment | toJson }},
