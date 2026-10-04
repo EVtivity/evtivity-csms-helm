@@ -155,6 +155,17 @@ Payment settings are app settings in the database, and credentials are stored en
 
 Both Stripe endpoints send to `https://<api host>/v1/webhooks/payments/stripe`, Adyen to `https://<api host>/v1/webhooks/payments/adyen`. Settings > Payment can create the webhooks and store these values for you.
 
+### Database Connections
+
+Each api, ocpp, ocpi, worker and css pod pools `dependencies.postgresPoolMax` connections (default 10, env `DB_POOL_MAX`). Keep the sum over all pods, with HPA at `maxReplicas` plus one migrate or seed job, below the PostgreSQL `max_connections` minus its reserved connections (stock PostgreSQL: 100 minus 3).
+
+| Setup | Pods | Connections |
+|-------|------|-------------|
+| Defaults (api, ocpp, worker at 1 replica) | 3 | 30 |
+| HPA at 5 api and 5 ocpp, worker, ocpi | 12 | 120 |
+
+Raise `max_connections` on the database or lower the pool for the second case. The OCPP server authenticates at most half its pool of station connections at once and queues the rest, so a reconnect wave leaves connections for connected stations.
+
 ### Initial Admin User
 
 Created on first install via a `post-install` Helm hook. The user has `mustResetPassword: true` and must set a new password on first login.

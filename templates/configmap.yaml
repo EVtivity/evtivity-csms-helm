@@ -58,6 +58,7 @@ data:
   RATE_LIMIT_WINDOW: {{ .Values.api.env.rateLimitWindow | quote }}
   AUTH_RATE_LIMIT_MAX: {{ .Values.api.env.authRateLimitMax | quote }}
   AUTH_RATE_LIMIT_WINDOW: {{ .Values.api.env.authRateLimitWindow | quote }}
+  DB_POOL_MAX: {{ .Values.dependencies.postgresPoolMax | default 10 | quote }}
   OCPP_PORT: {{ .Values.ocpp.port | quote }}
   OCPP_HEALTH_PORT: {{ .Values.ocpp.healthPort | quote }}
   OCPP_MAX_CONNECTIONS_PER_IP: {{ .Values.ocpp.env.maxConnectionsPerIp | quote }}
