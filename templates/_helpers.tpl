@@ -71,6 +71,29 @@ Secret name
 {{- end }}
 
 {{/*
+REDIS_URL of one service, from its own Secret key (REDIS_URL_API, REDIS_URL_OCPP,
+REDIS_URL_OCPI, REDIS_URL_WORKER, REDIS_URL_CSS). Each service connects to Redis
+as its own ACL user (redis/acl-rules.conf). An explicit env entry wins over the
+Secret's envFrom. With redisTls.enabled it also sets REDIS_TLS_CA_PEM, the CA
+that signed the Redis server certificate, which the services trust for rediss://.
+Usage: include "evtivity-csms.redisUrlEnv" (dict "context" . "component" "api")
+*/}}
+{{- define "evtivity-csms.redisUrlEnv" -}}
+- name: REDIS_URL
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "evtivity-csms.secretName" .context }}
+      key: REDIS_URL_{{ upper .component }}
+{{- if .context.Values.redisTls.enabled }}
+- name: REDIS_TLS_CA_PEM
+  valueFrom:
+    secretKeyRef:
+      name: {{ required "redisTls.caSecret is required when redisTls.enabled is true" .context.Values.redisTls.caSecret }}
+      key: {{ .context.Values.redisTls.caKey }}
+{{- end }}
+{{- end }}
+
+{{/*
 ConfigMap name
 */}}
 {{- define "evtivity-csms.configMapName" -}}

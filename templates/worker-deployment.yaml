@@ -36,6 +36,8 @@ spec:
                 name: {{ include "evtivity-csms.configMapName" . }}
             - secretRef:
                 name: {{ include "evtivity-csms.secretName" . }}
+          env:
+            {{- include "evtivity-csms.redisUrlEnv" (dict "context" . "component" "worker") | nindent 12 }}
           {{- with .Values.worker.resources }}
           resources:
             {{- toYaml . | nindent 12 }}

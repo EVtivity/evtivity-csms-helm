@@ -89,6 +89,12 @@ helm upgrade evtivity . --namespace evtivity --reuse-values --set image.tag=0.2.
 
 Database migrations run in a `pre-upgrade` hook job (`post-install` on a fresh install). On upgrade Helm runs the job before it updates the Deployments, so new pods never start against the old schema, and a failed migration stops the upgrade with the old pods still running. The job reads `DATABASE_URL` from the Secret of the installed release. To change the database URL, upgrade with the new `secrets.databaseUrl` first, then upgrade the image. The settings seed job (`post-upgrade`) runs after the migration and the new app settings.
 
+**Upgrading to per-service Redis users (0.1.38).** `secrets.redisUrl` and the Secret key `REDIS_URL` were replaced by one URL per service (see [Redis Access Control](#redis-access-control)). The chart refuses to render while `secrets.redisUrl` is set or a URL of an enabled service is missing.
+
+1. Create the five users in Redis. Keep the credential the running pods use. With the bundled Redis, re-running `scripts/install.sh` does this step and the next one.
+2. Upgrade with `--set secrets.redisUrl=` and the five `secrets.redisUrls.*` values, or add the five `REDIS_URL_*` keys to your existing Secret. Pods switch users as they roll. A pod that starts without its key fails with `CreateContainerConfigError` while the old pods keep running.
+3. When every pod runs the new version, disable or rotate the old credential.
+
 To reload the same version (pulls fresh images):
 
 ```bash
@@ -124,11 +130,54 @@ All configuration is in `values.yaml`. Override with `--set` flags or a custom v
 | Parameter | Description |
 |-----------|-------------|
 | `secrets.databaseUrl` | PostgreSQL connection string |
-| `secrets.redisUrl` | Redis connection string |
+| `secrets.redisUrls.api` | Redis URL of the `api` ACL user |
+| `secrets.redisUrls.ocpp` | Redis URL of the `ocpp` ACL user |
+| `secrets.redisUrls.ocpi` | Redis URL of the `ocpi` ACL user (required when `ocpi.enabled`) |
+| `secrets.redisUrls.worker` | Redis URL of the `worker` ACL user |
+| `secrets.redisUrls.css` | Redis URL of the `css` ACL user (required when `css.enabled`) |
 | `secrets.jwtSecret` | JWT signing secret |
 | `secrets.settingsEncryptionKey` | AES-256 encryption key for settings |
 
-For GitOps or Vault workflows, set `secrets.create: false` and `secrets.existingSecret: my-secret-name`. The Secret must contain: `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `SETTINGS_ENCRYPTION_KEY`.
+For GitOps or Vault workflows, set `secrets.create: false` and `secrets.existingSecret: my-secret-name`. The Secret must contain: `DATABASE_URL`, `REDIS_URL_API`, `REDIS_URL_OCPP`, `REDIS_URL_OCPI`, `REDIS_URL_WORKER`, `REDIS_URL_CSS`, `JWT_SECRET`, `SETTINGS_ENCRYPTION_KEY`.
+
+### Redis Access Control
+
+Each service connects to Redis as its own ACL user. `redis/acl-rules.conf` lists the users and what each may do:
+
+| User | Keys | Channels |
+|------|------|----------|
+| `api` | response cache (`rc:*`), attestation nonces, the payment process watch key (read only) | core channels, simulator channels |
+| `ocpp` | station connection registry (`ocpp:conn:*`) | core channels |
+| `worker` | BullMQ queues (`bull:*`), maintenance locks, the payment process watch key | core channels |
+| `ocpi` | OCPI pull locks (`opl:*`) | `ocpp_commands`, `ocpp_command_results`, `csms_events`, `ocpi_*` |
+| `css` | none | `css_commands`, `css_command_results` |
+
+Every user may run all commands except the `@dangerous` category (`CONFIG`, `MODULE`, `FLUSHALL`, `KEYS`, `REPLICAOF`, `SHUTDOWN`, `ACL SETUSER` and others), plus `INFO`, which BullMQ needs. A leaked simulator or OCPI credential can no longer command stations, read queued jobs, or reconfigure Redis. No service uses the Redis `default` user.
+
+**Bundled Redis.** `scripts/install.sh` creates the five users in the Bitnami Redis release (`auth.acl.users`), with generated passwords unless `REDIS_API_PASSWORD`, `REDIS_OCPP_PASSWORD`, `REDIS_OCPI_PASSWORD`, `REDIS_WORKER_PASSWORD` or `REDIS_CSS_PASSWORD` is set, and passes each service its URL. `REDIS_PASSWORD` stays the password of the Redis `default` (admin) user.
+
+**External Redis.** Create the users before you install or upgrade the chart. Redis 7 or later is required for the `%R~` read-only key rule. This prints one `ACL SETUSER` command per user. Replace each `CHANGE_ME_*` with a password (URL-safe, no commas):
+
+```bash
+awk '$1 == "user" { name = $2; $1 = $2 = ""; printf "ACL SETUSER %s reset on >CHANGE_ME_%s%s\n", name, toupper(name), $0 }' redis/acl-rules.conf
+```
+
+Run the commands with `redis-cli` as an admin user, then persist them (`ACL SAVE` with an ACL file, or `CONFIG REWRITE`). Set `secrets.redisUrls.<user>` to `redis://<user>:<password>@<host>:<port>` (or `rediss://` for TLS). To install against a Redis without ACL support, set all five URLs to the same URL.
+
+### Redis TLS
+
+Off by default. With TLS on, the per-service passwords and all Redis traffic are encrypted between the pods and Redis, which sits outside the Istio mesh.
+
+**Bundled Redis.** Run `REDIS_TLS=true ./scripts/install.sh` (or answer yes to the TLS prompt). The script stores the Redis server certificate in the Secret `<release>-redis-tls` (`tls.crt`, `tls.key`, `ca.crt`), starts Bitnami Redis with TLS only on port 6379 (`tls.enabled`, no client certificates), switches the service URLs to `rediss://`, and sets `redisTls.enabled` and `redisTls.caSecret`. The certificate covers `<release>-redis-master` (short, namespace, and cluster names), the headless pod names, and `localhost`.
+
+- Self-signed (default): the script makes a private CA and the server certificate (P-256, 10 years).
+- cert-manager: set `REDIS_TLS_ISSUER` (and `REDIS_TLS_ISSUER_KIND`, default `ClusterIssuer`). The script creates a `Certificate` and waits for it. Use a CA or self-signed issuer, so the Secret carries `ca.crt`.
+
+An existing `<release>-redis-tls` Secret is kept on a re-run, so the running Redis and the services keep the same CA.
+
+**Chart values.** `redisTls.enabled: true` with `redisTls.caSecret` (and `redisTls.caKey`, default `ca.crt`) gives every service `REDIS_TLS_CA_PEM` from that Secret, and the services verify the Redis certificate against it. The chart refuses to render while a URL of an enabled service is not `rediss://`. A Redis with a certificate from a public CA (a managed Redis) needs only `rediss://` URLs, not `redisTls`.
+
+**External Redis with a private CA.** Run the install script with `REDIS_TLS=true REDIS_TLS_CA_SECRET=<secret with ca.crt>`, or set the values above yourself.
 
 ### Payment Settings
 

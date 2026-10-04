@@ -23,7 +23,58 @@ REDIS_HOST="${REDIS_HOST:-${RELEASE}-redis-master}"
 REDIS_PORT="${REDIS_PORT:-6379}"
 
 DATABASE_URL="postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}"
-REDIS_URL="redis://default:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}"
+
+# Each service connects to Redis as its own ACL user. Users, keys, channels and
+# commands are in redis/acl-rules.conf. REDIS_PASSWORD stays the password of the
+# Redis default (admin) user, which no service uses.
+REDIS_ACL_RULES="$CHART_DIR/redis/acl-rules.conf"
+REDIS_ACL_USERS="api ocpp ocpi worker css"
+
+# Temporary files (certificates, Redis ACL values with passwords), removed on exit.
+WORK_DIR=$(mktemp -d)
+trap 'rm -rf "$WORK_DIR"' EXIT
+
+redis_password_of() {
+  local var
+  var="REDIS_$(echo "$1" | tr '[:lower:]' '[:upper:]')_PASSWORD"
+  printf '%s' "${!var}"
+}
+
+redis_url_of() {
+  local scheme=redis
+  [ "$REDIS_TLS" = "true" ] && scheme=rediss
+  printf '%s://%s:%s@%s:%s' "$scheme" "$1" "$(redis_password_of "$1")" "$REDIS_HOST" "$REDIS_PORT"
+}
+
+# Prints Bitnami Redis values that create one ACL user per line of the rules
+# file. Bitnami needs keys, channels and commands as separate fields, and
+# defaults an empty keys field to "~*", so a user without keys gets "resetkeys".
+redis_acl_values() {
+  local keyword name rest tok keys channels commands
+  printf 'auth:\n  acl:\n    enabled: true\n    users:\n'
+  while read -r keyword name rest; do
+    [ "$keyword" = "user" ] || continue
+    keys=""
+    channels=""
+    commands=""
+    set -f
+    for tok in $rest; do
+      case "$tok" in
+        "~"* | "%"*) keys="$keys $tok" ;;
+        "&"*) channels="$channels $tok" ;;
+        *) commands="$commands $tok" ;;
+      esac
+    done
+    set +f
+    [ -n "$keys" ] || keys=" resetkeys"
+    printf '      - username: "%s"\n' "$name"
+    printf '        password: "%s"\n' "$(redis_password_of "$name")"
+    printf '        enabled: "on"\n'
+    printf '        keys: "%s"\n' "${keys# }"
+    printf '        channels: "%s"\n' "${channels# }"
+    printf '        commands: "%s"\n' "${commands# }"
+  done < "$REDIS_ACL_RULES"
+}
 
 echo "Release:   $RELEASE"
 echo "Namespace: $NAMESPACE"
@@ -59,6 +110,25 @@ INSTALL_POSTGRES="${INSTALL_POSTGRES:-y}"
 read -r -p "Install bundled Redis? (y/n) [y]: " INSTALL_REDIS
 INSTALL_REDIS="${INSTALL_REDIS:-y}"
 
+# --- Redis TLS (opt in) ---
+# REDIS_TLS=true serves the bundled Redis over TLS. Its certificate comes from
+# cert-manager when REDIS_TLS_ISSUER names an issuer (REDIS_TLS_ISSUER_KIND,
+# default ClusterIssuer; it must fill ca.crt, as CA and self-signed issuers do),
+# else from a self-signed CA made here. Both land in the Secret
+# <release>-redis-tls. For an external Redis, REDIS_TLS=true switches the URLs to
+# rediss://; set REDIS_TLS_CA_SECRET to a Secret with its CA in ca.crt when the
+# certificate is not from a public CA.
+if [ -z "${REDIS_TLS:-}" ] && [ "$INSTALL_REDIS" = "y" ]; then
+  read -r -p "Serve the bundled Redis over TLS? (y/n) [n]: " REDIS_TLS_ANSWER
+  [ "${REDIS_TLS_ANSWER:-n}" = "y" ] && REDIS_TLS=true
+fi
+REDIS_TLS="${REDIS_TLS:-false}"
+REDIS_TLS_SECRET="${RELEASE}-redis-tls"
+REDIS_TLS_CA_SECRET="${REDIS_TLS_CA_SECRET:-}"
+if [ "$REDIS_TLS" = "true" ] && [ "$INSTALL_REDIS" = "y" ]; then
+  REDIS_TLS_CA_SECRET="$REDIS_TLS_SECRET"
+fi
+
 # --- Install monitoring stack? ---
 read -r -p "Install monitoring stack (Prometheus + Grafana)? (y/n) [n]: " INSTALL_MONITORING
 INSTALL_MONITORING="${INSTALL_MONITORING:-n}"
@@ -93,9 +163,6 @@ if [ "$INSTALL_REDIS" != "y" ] && [ -z "$REDIS_HOST" ]; then
   read -r -p "Redis host: " REDIS_HOST
   read -r -p "Redis port [6379]: " REDIS_PORT
   REDIS_PORT="${REDIS_PORT:-6379}"
-  read -r -s -p "Redis password: " REDIS_PASSWORD
-  echo ""
-  REDIS_URL="redis://default:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}"
 fi
 
 # --- Names for the OCPP TLS server certificate ---
@@ -136,6 +203,22 @@ for ip in $(echo "$OCPP_TLS_IPS" | tr ',' ' '); do
   add_san "IP:$ip"
 done
 echo "OCPP TLS certificate names: $OCPP_SAN"
+
+# --- Redis ACL users: one per service (redis/acl-rules.conf) ---
+# Bundled Redis: passwords are generated unless REDIS_<USER>_PASSWORD is set.
+# External Redis: create the users first (README, "External Redis") and enter
+# their passwords, or set REDIS_<USER>_PASSWORD.
+for user in $REDIS_ACL_USERS; do
+  var="REDIS_$(echo "$user" | tr '[:lower:]' '[:upper:]')_PASSWORD"
+  if [ -z "${!var:-}" ]; then
+    if [ "$INSTALL_REDIS" = "y" ]; then
+      printf -v "$var" '%s' "$(generate_secret)"
+    else
+      read -r -s -p "Password of Redis user '$user': " "$var"
+      echo ""
+    fi
+  fi
+done
 
 echo ""
 
@@ -202,9 +285,92 @@ else
   echo "Skipping bundled PostgreSQL (using $POSTGRES_HOST:$POSTGRES_PORT)."
 fi
 
+# --- Redis TLS certificate (bundled Redis, REDIS_TLS=true) ---
+REDIS_TLS_ARGS=()
+if [ "$REDIS_TLS" = "true" ] && [ "$INSTALL_REDIS" = "y" ]; then
+  kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f - > /dev/null
+  REDIS_TLS_DNS=(
+    "${RELEASE}-redis-master"
+    "${RELEASE}-redis-master.${NAMESPACE}"
+    "${RELEASE}-redis-master.${NAMESPACE}.svc"
+    "${RELEASE}-redis-master.${NAMESPACE}.svc.cluster.local"
+    "*.${RELEASE}-redis-headless.${NAMESPACE}.svc.cluster.local"
+    "localhost"
+  )
+  if kubectl get secret "$REDIS_TLS_SECRET" --namespace "$NAMESPACE" > /dev/null 2>&1; then
+    # Keep the certificate the running Redis serves; a new CA would need a
+    # Redis restart before the services trust it.
+    echo "Redis TLS certificate exists ($REDIS_TLS_SECRET), keeping it."
+  elif [ -n "${REDIS_TLS_ISSUER:-}" ]; then
+    echo "Requesting the Redis TLS certificate from cert-manager ($REDIS_TLS_ISSUER)..."
+    {
+      echo "apiVersion: cert-manager.io/v1"
+      echo "kind: Certificate"
+      echo "metadata:"
+      echo "  name: ${REDIS_TLS_SECRET}"
+      echo "  namespace: ${NAMESPACE}"
+      echo "spec:"
+      echo "  secretName: ${REDIS_TLS_SECRET}"
+      echo "  commonName: ${RELEASE}-redis-master"
+      echo "  dnsNames:"
+      for name in "${REDIS_TLS_DNS[@]}"; do echo "    - \"${name}\""; done
+      echo "  ipAddresses:"
+      echo "    - 127.0.0.1"
+      echo "  issuerRef:"
+      echo "    name: ${REDIS_TLS_ISSUER}"
+      echo "    kind: ${REDIS_TLS_ISSUER_KIND:-ClusterIssuer}"
+    } | kubectl apply -f - > /dev/null
+    kubectl wait --for=condition=Ready "certificate/${REDIS_TLS_SECRET}" \
+      --namespace "$NAMESPACE" --timeout=3m > /dev/null
+    if [ -z "$(kubectl get secret "$REDIS_TLS_SECRET" --namespace "$NAMESPACE" -o jsonpath='{.data.ca\.crt}')" ]; then
+      echo "Error: ${REDIS_TLS_SECRET} has no ca.crt. Use a CA or self-signed issuer."
+      exit 1
+    fi
+  else
+    echo "Generating the Redis TLS certificate..."
+    REDIS_CERT_DIR="$WORK_DIR/redis-tls"
+    mkdir -p "$REDIS_CERT_DIR"
+    openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 \
+      -keyout "$REDIS_CERT_DIR/ca.key" -out "$REDIS_CERT_DIR/ca.crt" \
+      -days 3650 -nodes -subj "/CN=EVtivity Redis CA" 2>/dev/null
+    openssl req -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 \
+      -keyout "$REDIS_CERT_DIR/tls.key" -out "$REDIS_CERT_DIR/tls.csr" \
+      -nodes -subj "/CN=${RELEASE}-redis-master" 2>/dev/null
+    {
+      printf 'subjectAltName='
+      for name in "${REDIS_TLS_DNS[@]}"; do printf 'DNS:%s,' "$name"; done
+      printf 'IP:127.0.0.1\n'
+      printf 'extendedKeyUsage=serverAuth\n'
+    } > "$REDIS_CERT_DIR/san.ext"
+    openssl x509 -req -in "$REDIS_CERT_DIR/tls.csr" \
+      -CA "$REDIS_CERT_DIR/ca.crt" -CAkey "$REDIS_CERT_DIR/ca.key" -CAcreateserial \
+      -extfile "$REDIS_CERT_DIR/san.ext" \
+      -out "$REDIS_CERT_DIR/tls.crt" -days 3650 2>/dev/null
+    kubectl create secret generic "$REDIS_TLS_SECRET" \
+      --namespace "$NAMESPACE" \
+      --from-file=tls.crt="$REDIS_CERT_DIR/tls.crt" \
+      --from-file=tls.key="$REDIS_CERT_DIR/tls.key" \
+      --from-file=ca.crt="$REDIS_CERT_DIR/ca.crt" \
+      > /dev/null
+  fi
+  # Clients authenticate with their ACL password, not a client certificate.
+  REDIS_TLS_ARGS=(
+    --set tls.enabled=true
+    --set tls.authClients=false
+    --set tls.existingSecret="$REDIS_TLS_SECRET"
+    --set tls.certFilename=tls.crt
+    --set tls.certKeyFilename=tls.key
+    --set tls.certCAFilename=ca.crt
+  )
+fi
+
 # --- Install Redis ---
 if [ "$INSTALL_REDIS" = "y" ]; then
   echo "Installing Redis..."
+  # Passwords go into a values file, not auth.acl.userSecret: Bitnami reads that
+  # Secret with lookup, which renders the users without a password under
+  # helm template or Argo CD.
+  (umask 077 && redis_acl_values > "$WORK_DIR/redis-acl.yaml")
   helm upgrade --install "${RELEASE}-redis" bitnami/redis \
     --namespace "$NAMESPACE" \
     --create-namespace \
@@ -212,6 +378,8 @@ if [ "$INSTALL_REDIS" = "y" ]; then
     --set auth.enabled=true \
     --set auth.password="$REDIS_PASSWORD" \
     --set replica.replicaCount=0 \
+    -f "$WORK_DIR/redis-acl.yaml" \
+    ${REDIS_TLS_ARGS[@]+"${REDIS_TLS_ARGS[@]}"} \
     > /dev/null 2>&1
   echo "Redis ready."
 else
@@ -221,8 +389,8 @@ fi
 # --- Generate OCPP mTLS and CSS Client Certificates ---
 OCPP_TLS_SECRET="${RELEASE}-ocpp-tls"
 CSS_TLS_SECRET="${RELEASE}-css-tls"
-CERT_DIR=$(mktemp -d)
-trap 'rm -rf "$CERT_DIR"' EXIT
+CERT_DIR="$WORK_DIR/certs"
+mkdir -p "$CERT_DIR"
 
 echo "Generating OCPP mTLS certificates..."
 
@@ -286,7 +454,13 @@ helm upgrade --install "$RELEASE" "$CHART_DIR" \
   --set dependencies.redisHost="$REDIS_HOST" \
   --set dependencies.redisPort="$REDIS_PORT" \
   --set secrets.databaseUrl="$DATABASE_URL" \
-  --set secrets.redisUrl="$REDIS_URL" \
+  --set secrets.redisUrls.api="$(redis_url_of api)" \
+  --set secrets.redisUrls.ocpp="$(redis_url_of ocpp)" \
+  --set secrets.redisUrls.ocpi="$(redis_url_of ocpi)" \
+  --set secrets.redisUrls.worker="$(redis_url_of worker)" \
+  --set secrets.redisUrls.css="$(redis_url_of css)" \
+  --set redisTls.enabled="$([ -n "$REDIS_TLS_CA_SECRET" ] && echo true || echo false)" \
+  --set redisTls.caSecret="$REDIS_TLS_CA_SECRET" \
   --set secrets.jwtSecret="$JWT_SECRET" \
   --set secrets.settingsEncryptionKey="$SETTINGS_ENCRYPTION_KEY" \
   --set ocpp.tls.enabled=true \
