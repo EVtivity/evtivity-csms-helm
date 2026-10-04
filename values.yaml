@@ -447,6 +447,8 @@ appSettings:
     staleTimeoutHours: 24
   notifications:
     emailEnabled: true
+    # Private hostnames or IPs notification webhooks may reach (max 20)
+    webhookAllowedPrivateHosts: []
   sustainability:
     gridEmissionFactor: "0.386"
     evEfficiency: "3.3"

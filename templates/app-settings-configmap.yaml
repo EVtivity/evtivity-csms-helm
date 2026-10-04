@@ -98,6 +98,7 @@ data:
       "idling.gracePeriodMinutes": {{ .Values.appSettings.idling.gracePeriodMinutes | toJson }},
       "session.staleTimeoutHours": {{ .Values.appSettings.session.staleTimeoutHours | toJson }},
       "notifications.emailEnabled": {{ .Values.appSettings.notifications.emailEnabled | toJson }},
+      "notifications.webhookAllowedPrivateHosts": {{ .Values.appSettings.notifications.webhookAllowedPrivateHosts | toJson }},
       "sustainability.gridEmissionFactor": {{ .Values.appSettings.sustainability.gridEmissionFactor | toJson }},
       "sustainability.evEfficiency": {{ .Values.appSettings.sustainability.evEfficiency | toJson }},
       "sustainability.gasolineEmissionFactor": {{ .Values.appSettings.sustainability.gasolineEmissionFactor | toJson }},
