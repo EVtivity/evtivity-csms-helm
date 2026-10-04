@@ -19,7 +19,7 @@
 {{- $stripeSettings := .Values.appSettings.stripe | default dict }}
 {{- range $key := list "preAuthAmountCents" "platformFeePercent" }}
 {{- if and (hasKey $stripeSettings $key) (not (kindIs "invalid" (get $stripeSettings $key))) (ne (toString (get $stripeSettings $key)) "") }}
-{{- fail (printf "appSettings.stripe.%s moved to appSettings.payments.%s: the setting applies to every payment provider." $key $key) }}
+{{- fail (printf "appSettings.stripe.%s moved to appSettings.payments.%s: the setting applies to every payment provider. Remove appSettings.stripe from your values (with --reuse-values, add --set appSettings.stripe=null) and set appSettings.payments.%s if you changed it. The stored value is migrated." $key $key $key) }}
 {{- end }}
 {{- end }}
 {{- $payments := .Values.appSettings.payments | default dict }}
