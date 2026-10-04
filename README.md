@@ -156,13 +156,28 @@ Every user may run all commands except the `@dangerous` category (`CONFIG`, `MOD
 
 **Bundled Redis.** `scripts/install.sh` creates the five users in the Bitnami Redis release (`auth.acl.users`), with generated passwords unless `REDIS_API_PASSWORD`, `REDIS_OCPP_PASSWORD`, `REDIS_OCPI_PASSWORD`, `REDIS_WORKER_PASSWORD` or `REDIS_CSS_PASSWORD` is set, and passes each service its URL. `REDIS_PASSWORD` stays the password of the Redis `default` (admin) user.
 
-**External Redis.** Create the users before you install or upgrade the chart. Redis 7 or later is required for the `%R~` read-only key rule. This prints one `ACL SETUSER` command per user; replace each `CHANGE_ME_*` with a password (URL-safe, no commas):
+**External Redis.** Create the users before you install or upgrade the chart. Redis 7 or later is required for the `%R~` read-only key rule. This prints one `ACL SETUSER` command per user. Replace each `CHANGE_ME_*` with a password (URL-safe, no commas):
 
 ```bash
 awk '$1 == "user" { name = $2; $1 = $2 = ""; printf "ACL SETUSER %s reset on >CHANGE_ME_%s%s\n", name, toupper(name), $0 }' redis/acl-rules.conf
 ```
 
 Run the commands with `redis-cli` as an admin user, then persist them (`ACL SAVE` with an ACL file, or `CONFIG REWRITE`). Set `secrets.redisUrls.<user>` to `redis://<user>:<password>@<host>:<port>` (or `rediss://` for TLS). To install against a Redis without ACL support, set all five URLs to the same URL.
+
+### Redis TLS
+
+Off by default. With TLS on, the per-service passwords and all Redis traffic are encrypted between the pods and Redis, which sits outside the Istio mesh.
+
+**Bundled Redis.** Run `REDIS_TLS=true ./scripts/install.sh` (or answer yes to the TLS prompt). The script stores the Redis server certificate in the Secret `<release>-redis-tls` (`tls.crt`, `tls.key`, `ca.crt`), starts Bitnami Redis with TLS only on port 6379 (`tls.enabled`, no client certificates), switches the service URLs to `rediss://`, and sets `redisTls.enabled` and `redisTls.caSecret`. The certificate covers `<release>-redis-master` (short, namespace, and cluster names), the headless pod names, and `localhost`.
+
+- Self-signed (default): the script makes a private CA and the server certificate (P-256, 10 years).
+- cert-manager: set `REDIS_TLS_ISSUER` (and `REDIS_TLS_ISSUER_KIND`, default `ClusterIssuer`). The script creates a `Certificate` and waits for it. Use a CA or self-signed issuer, so the Secret carries `ca.crt`.
+
+An existing `<release>-redis-tls` Secret is kept on a re-run, so the running Redis and the services keep the same CA.
+
+**Chart values.** `redisTls.enabled: true` with `redisTls.caSecret` (and `redisTls.caKey`, default `ca.crt`) gives every service `REDIS_TLS_CA_PEM` from that Secret, and the services verify the Redis certificate against it. The chart refuses to render while a URL of an enabled service is not `rediss://`. A Redis with a certificate from a public CA (a managed Redis) needs only `rediss://` URLs, not `redisTls`.
+
+**External Redis with a private CA.** Run the install script with `REDIS_TLS=true REDIS_TLS_CA_SECRET=<secret with ca.crt>`, or set the values above yourself.
 
 ### Payment Settings
 

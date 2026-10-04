@@ -389,6 +389,18 @@ dependencies:
   redisHost: ""
   redisPort: 6379
 
+# --- Redis TLS ---
+# Opt in when Redis serves TLS with a private CA, such as the bundled Redis that
+# scripts/install.sh sets up with REDIS_TLS=true. The services trust the CA from
+# caSecret, and every secrets.redisUrls.* must be rediss://. A Redis with a
+# certificate from a public CA needs only rediss:// URLs, not this setting.
+redisTls:
+  enabled: false
+  # Secret holding the CA certificate that signed the Redis server certificate
+  # (install.sh: <release>-redis-tls; cert-manager: the Certificate's secret).
+  caSecret: ""
+  caKey: ca.crt
+
 # --- Application Settings ---
 # Settings seeded into the database on every install and upgrade.
 # All settings remain editable via the admin UI.
