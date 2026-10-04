@@ -98,6 +98,45 @@ if [ "$INSTALL_REDIS" != "y" ] && [ -z "$REDIS_HOST" ]; then
   REDIS_URL="redis://default:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}"
 fi
 
+# --- Names for the OCPP TLS server certificate ---
+# Stations that verify the hostname reject a certificate without a matching
+# subjectAltName. Checked here, before anything is installed.
+# OCPP_TLS_HOSTS: comma-separated DNS names. Default: the OCPP gateway route
+#   host(s) in values.yaml.
+# OCPP_TLS_IPS: comma-separated IP addresses (e.g. the TLS LoadBalancer IP).
+# The in-cluster OCPP Service names (used by the simulator) are always added.
+if [ -z "${OCPP_TLS_HOSTS:-}" ]; then
+  OCPP_TLS_HOSTS="$(awk '
+    /^[^[:space:]#]/ { in_gw = ($0 ~ /^gatewayAPI:/) }
+    in_gw && /^[[:space:]]*- host:/ { host = $3 }
+    in_gw && /^[[:space:]]*service:[[:space:]]*ocpp[[:space:]]*$/ && host != "" { print host }
+  ' "$CHART_DIR/values.yaml" | tr -d "\"'" | sort -u | paste -sd, -)"
+fi
+OCPP_TLS_IPS="${OCPP_TLS_IPS:-}"
+
+OCPP_SAN=""
+add_san() {
+  if [ -n "$OCPP_SAN" ]; then OCPP_SAN="${OCPP_SAN},"; fi
+  OCPP_SAN="${OCPP_SAN}$1"
+}
+OCPP_SERVICE="${RELEASE}-ocpp"
+for name in $(echo "$OCPP_TLS_HOSTS" | tr ',' ' ') "$OCPP_SERVICE" "${OCPP_SERVICE}.${NAMESPACE}" \
+  "${OCPP_SERVICE}.${NAMESPACE}.svc" "${OCPP_SERVICE}.${NAMESPACE}.svc.cluster.local"; do
+  if ! echo "$name" | grep -Eq '^(\*\.)?[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$'; then
+    echo "Invalid OCPP TLS host name: $name"
+    exit 1
+  fi
+  add_san "DNS:$name"
+done
+for ip in $(echo "$OCPP_TLS_IPS" | tr ',' ' '); do
+  if ! echo "$ip" | grep -Eq '^([0-9]{1,3}(\.[0-9]{1,3}){3}|[0-9A-Fa-f:]*:[0-9A-Fa-f:.]*)$'; then
+    echo "Invalid OCPP TLS IP address: $ip"
+    exit 1
+  fi
+  add_san "IP:$ip"
+done
+echo "OCPP TLS certificate names: $OCPP_SAN"
+
 echo ""
 
 if [ "$GATEWAY_CLASS" = "istio" ]; then
@@ -192,12 +231,19 @@ openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 \
   -keyout "$CERT_DIR/ca-key.pem" -out "$CERT_DIR/ca.pem" \
   -days 3650 -nodes -subj "/CN=EVtivity OCPP CA" 2>/dev/null
 
-# Server cert signed by CA
+# Server cert signed by CA. The extensions file sets the subjectAltName
+# (x509 -req does not copy CSR extensions on every OpenSSL or LibreSSL).
+cat > "$CERT_DIR/server-ext.cnf" <<EOF
+basicConstraints=CA:FALSE
+extendedKeyUsage=serverAuth
+subjectAltName=$OCPP_SAN
+EOF
 openssl req -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 \
   -keyout "$CERT_DIR/tls.key" -out "$CERT_DIR/server.csr" \
   -nodes -subj "/CN=EVtivity OCPP Server" 2>/dev/null
 openssl x509 -req -in "$CERT_DIR/server.csr" \
   -CA "$CERT_DIR/ca.pem" -CAkey "$CERT_DIR/ca-key.pem" -CAcreateserial \
+  -extfile "$CERT_DIR/server-ext.cnf" \
   -out "$CERT_DIR/tls.crt" -days 3650 2>/dev/null
 
 # Client cert for CSS simulator signed by same CA

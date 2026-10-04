@@ -197,7 +197,19 @@ gatewayAPI:
 
 Enabled by default. Creates a LoadBalancer service on port 8443 for direct station connections with TLS. Supports SP3 mTLS (client certificate authentication) alongside SP0-SP2 stations on the same port.
 
-The install script generates self-signed certificates automatically. To use your own:
+The install script generates self-signed certificates automatically. The server certificate keeps `CN=EVtivity OCPP Server` and lists the names stations connect to as subjectAltName entries, so stations that verify the hostname accept it:
+
+- The OCPP gateway route host(s) from `gatewayAPI.routes` in `values.yaml` (default `ocpp.evtivity.local`). Set `OCPP_TLS_HOSTS` (comma-separated DNS names) to use other names, such as the DNS name of the TLS LoadBalancer.
+- The IP addresses in `OCPP_TLS_IPS` (comma-separated), for stations that connect to the TLS LoadBalancer by IP.
+- The in-cluster OCPP Service names (`<release>-ocpp`, `<release>-ocpp.<namespace>`, `.svc`, `.svc.cluster.local`), used by the simulator.
+
+```bash
+OCPP_TLS_HOSTS=ocpp.example.com OCPP_TLS_IPS=203.0.113.10 ./scripts/install.sh
+```
+
+Check the names with `kubectl get secret evtivity-ocpp-tls -n evtivity -o jsonpath='{.data.tls\.crt}' | base64 -d | openssl x509 -noout -text`.
+
+To use your own certificates:
 
 ```yaml
 ocpp:
