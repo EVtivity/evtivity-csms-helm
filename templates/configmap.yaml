@@ -63,6 +63,9 @@ data:
   OCPP_MAX_CONNECTIONS_PER_IP: {{ .Values.ocpp.env.maxConnectionsPerIp | quote }}
   OCPP_MAX_MESSAGES_PER_IP_PER_SECOND: {{ .Values.ocpp.env.maxMessagesPerIpPerSecond | quote }}
   OCPP_TRUSTED_PROXY_CIDRS: {{ .Values.ocpp.env.trustedProxyCidrs | default "" | quote }}
+  {{- /* In-cluster addresses: conformance runs (worker), simulator, station pairing (API). */}}
+  OCPP_SERVER_URL: {{ .Values.ocpp.env.internalUrl | default (printf "ws://%s-ocpp:%v" (include "evtivity-csms.fullname" .) .Values.ocpp.port) | quote }}
+  API_BASE_URL: {{ .Values.api.env.internalUrl | default (printf "http://%s-api:%v" (include "evtivity-csms.fullname" .) .Values.api.port) | quote }}
   {{- if .Values.ocpp.tls.enabled }}
   OCPP_TLS_PORT: {{ .Values.ocpp.tls.port | quote }}
   {{- end }}
@@ -87,7 +90,6 @@ data:
   CSS_STATION_PASSWORD: {{ .Values.css.env.stationPassword | quote }}
   CSS_STATION_LIMIT: {{ .Values.css.env.stationLimit | quote }}
   TLS_REJECT_UNAUTHORIZED: {{ .Values.css.env.tlsRejectUnauthorized | quote }}
-  OCPP_SERVER_URL: "ws://{{ include "evtivity-csms.fullname" . }}-ocpp:{{ .Values.ocpp.port }}"
   {{- if .Values.ocpp.tls.enabled }}
   OCPP_TLS_SERVER_URL: "wss://{{ include "evtivity-csms.fullname" . }}-ocpp:{{ .Values.ocpp.tls.port }}"
   {{- end }}

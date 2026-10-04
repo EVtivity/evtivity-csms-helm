@@ -33,6 +33,9 @@ api:
     # wss://<ocpp route host> when the gateway serves HTTPS, otherwise unset (the
     # upgrade is refused). Set it to the TLS LoadBalancer address for SP3 mTLS.
     stationTlsUrl: ""
+    # Address other pods use to reach the API (API_BASE_URL), e.g. the worker's
+    # conformance runs. Empty: http://<release>-api:<api.port>.
+    internalUrl: ""
   resources:
     requests:
       cpu: 100m
@@ -105,6 +108,10 @@ ocpp:
     # Security profile 2 stations behind a TLS-terminating ingress need this set.
     # Empty trusts no proxy.
     trustedProxyCidrs: ""
+    # Address other pods use to reach the OCPP server (OCPP_SERVER_URL): the
+    # worker's conformance runs, the simulator, and station pairing in the API.
+    # Empty: ws://<release>-ocpp:<ocpp.port>.
+    internalUrl: ""
   resources:
     requests:
       cpu: 200m
