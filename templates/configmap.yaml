@@ -66,6 +66,9 @@ data:
   {{- if .Values.ocpp.tls.enabled }}
   OCPP_TLS_PORT: {{ .Values.ocpp.tls.port | quote }}
   {{- end }}
+  {{- with (.Values.worker.env | default dict).octtOcspResponderUrl }}
+  OCTT_OCSP_RESPONDER_URL: {{ . | quote }}
+  {{- end }}
   OCPI_PORT: {{ .Values.ocpi.port | quote }}
   OCPI_LOG_LEVEL: {{ .Values.ocpi.env.logLevel | quote }}
   {{- if .Values.ocpi.env.baseUrl }}

@@ -58,6 +58,13 @@ worker:
   image:
     repository: ""
     tag: ""
+  env:
+    # OCTT conformance runs started from the dashboard: the URL at which the OCPP
+    # pods reach the Test System OCSP responder the worker starts during a run
+    # (it listens on the URL's port, e.g. http://<worker pod or service>:7110/ocsp).
+    # The run adds the host to pnc.ocsp.allowedPrivateHosts while it runs.
+    # Empty: the OCSP tests (TC_C_50, TC_C_51, TC_C_52, TC_M_24) are skipped.
+    octtOcspResponderUrl: ""
   resources:
     requests:
       cpu: 100m
