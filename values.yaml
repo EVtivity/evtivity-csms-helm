@@ -564,7 +564,8 @@ appSettings:
   # Test (simulated) payment provider, used only when payments.allowSimulatedProvider
   # is true. Leave a value empty to keep the one set in Settings > Payment.
   simulated:
-    # sync (the only mode available in this release)
+    # sync (Stripe-like, results in the API response) or async (Adyen-like,
+    # results confirmed later through the payment webhook pipeline)
     resultMode: ""
     # Delay of async results in seconds (0 to 3600)
     asyncDelaySeconds: ""

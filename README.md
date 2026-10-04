@@ -139,7 +139,7 @@ Payment settings are app settings in the database, and credentials are stored en
 | `appSettings.payments.provider` | Provider of new payments: `none`, `stripe`, or `simulated`. Adyen is selected in Settings > Payment after the upgrade; the chart refuses `adyen` |
 | `appSettings.payments.preAuthAmountCents` | Default pre-authorization amount in cents, 1 to 1000000 (5000 on a fresh install) |
 | `appSettings.payments.platformFeePercent` | Default platform fee percentage, 0 to 100 (0 on a fresh install) |
-| `appSettings.simulated.resultMode` | Test provider result mode: `sync` |
+| `appSettings.simulated.resultMode` | Test provider result mode: `sync` (results in the API response) or `async` (results confirmed later through the payment webhook pipeline after `asyncDelaySeconds`) |
 | `appSettings.simulated.asyncDelaySeconds` | Test provider delay of async results in seconds, 0 to 3600 |
 | `appSettings.simulated.randomFailureRate` | Test provider failure rate of cards without a scenario, 0 to 1 |
 | `appSettings.sensitive.stripeSecretKey` | Stripe secret or restricted key |

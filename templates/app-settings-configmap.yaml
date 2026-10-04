@@ -34,9 +34,9 @@
 {{- fail (printf "appSettings.payments.platformFeePercent %v is not supported. Use a number from 0 to 100." $payments.platformFeePercent) }}
 {{- end }}
 {{- $simulated := .Values.appSettings.simulated | default dict }}
-{{- $simulatedResultMode := $simulated.resultMode | default "" }}
-{{- if and (ne $simulatedResultMode "") (ne $simulatedResultMode "sync") }}
-{{- fail (printf "appSettings.simulated.resultMode %q is not supported. Use sync." $simulatedResultMode) }}
+{{- $simulatedResultMode := $simulated.resultMode | default "" | toString }}
+{{- if not (has $simulatedResultMode (list "" "sync" "async")) }}
+{{- fail (printf "appSettings.simulated.resultMode %q is not supported. Use sync or async." $simulatedResultMode) }}
 {{- end }}
 {{- $simulatedDelay := "" }}
 {{- if kindIs "float64" $simulated.asyncDelaySeconds }}{{ $simulatedDelay = ternary (toString (int64 $simulated.asyncDelaySeconds)) (toString $simulated.asyncDelaySeconds) (eq $simulated.asyncDelaySeconds (floor $simulated.asyncDelaySeconds)) }}{{ else if not (kindIs "invalid" $simulated.asyncDelaySeconds) }}{{ $simulatedDelay = toString $simulated.asyncDelaySeconds }}{{ end }}
