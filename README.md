@@ -128,6 +128,17 @@ All configuration is in `values.yaml`. Override with `--set` flags or a custom v
 
 For GitOps or Vault workflows, set `secrets.create: false` and `secrets.existingSecret: my-secret-name`. The Secret must contain: `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `SETTINGS_ENCRYPTION_KEY`.
 
+### Database Connections
+
+Each api, ocpp, ocpi, worker and css pod pools `dependencies.postgresPoolMax` connections (default 10, env `DB_POOL_MAX`). Keep the sum over all pods, with HPA at `maxReplicas` plus one migrate or seed job, below the PostgreSQL `max_connections` minus its reserved connections (stock PostgreSQL: 100 minus 3).
+
+| Setup | Pods | Connections |
+|-------|------|-------------|
+| Defaults (api, ocpp, worker at 1 replica) | 3 | 30 |
+| HPA at 5 api and 5 ocpp, worker, ocpi | 12 | 120 |
+
+Raise `max_connections` on the database or lower the pool for the second case. The OCPP server authenticates at most half its pool of station connections at once and queues the rest, so a reconnect wave leaves connections for connected stations.
+
 ### Initial Admin User
 
 Created on first install via a `post-install` Helm hook. The user has `mustResetPassword: true` and must set a new password on first login.

@@ -376,6 +376,13 @@ secrets:
 dependencies:
   postgresHost: ""
   postgresPort: 5432
+  # Connections each api, ocpp, ocpi, worker and css pod pools (DB_POOL_MAX).
+  # Keep the sum over all pods (HPA at maxReplicas, plus one migrate or seed
+  # job) below the PostgreSQL max_connections minus its reserved connections
+  # (stock PostgreSQL: 100 - 3). Defaults: 3 pods, 30 connections. With HPA at
+  # 5 api and 5 ocpp pods: 120, so raise max_connections or lower this.
+  # The OCPP server authenticates at most half its pool of stations at once.
+  postgresPoolMax: 10
   redisHost: ""
   redisPort: 6379
 
