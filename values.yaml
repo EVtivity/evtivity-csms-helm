@@ -445,6 +445,11 @@ appSettings:
     gracePeriodMinutes: 30
   session:
     staleTimeoutHours: 24
+    # Connection timeout (seconds) assumed for a station that has not reported
+    # TxCtrlr.EVConnectionTimeOut (2.1) or ConnectionTimeOut (1.6). A portal or
+    # guest start with no EV plugged in is closed this long (plus 60 s) after
+    # the station accepted it: the session fails and the card hold is released.
+    evConnectionTimeoutSeconds: 180
   notifications:
     emailEnabled: true
   sustainability:
