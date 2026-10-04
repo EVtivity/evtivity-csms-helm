@@ -599,7 +599,13 @@ appSettings:
     defaultRoleId: ""
     attributeMapping: '{"email":"email","firstName":"firstName","lastName":"lastName"}'
   pnc:
+    # manual, hubject, or local (the CSMS issues ISO 15118 contract
+    # certificates from its own contract CA, created in Settings > Plug & Charge)
     provider: "manual"
+    # eMAID prefix of the contracts the local contract CA issues: ISO 3166-1
+    # alpha-2 country code and a 3 character provider ID (empty: set in Settings)
+    localEmaidCountry: ""
+    localEmaidProviderId: ""
     expirationWarningDays: 30
     expirationCriticalDays: 7
     # Private hostnames or IPs the CSMS may call as OCSP responders (max 20)
