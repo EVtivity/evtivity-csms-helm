@@ -103,6 +103,14 @@ ocpp:
     logLevel: info
     maxConnectionsPerIp: 2500
     maxMessagesPerIpPerSecond: 5000
+    # Station connection authentications after a reconnect wave, so it cannot
+    # fill the database pool. Empty keeps the server default: half of the
+    # pool (DB_POOL_MAX) at once, 1000 queued, 10000 ms wait. Over the
+    # queue or the wait the station gets 503 with Retry-After and retries.
+    # Keep authMaxConcurrent below the pool size; raise the pool instead.
+    authMaxConcurrent: ""
+    authMaxQueued: ""
+    authMaxWaitMs: ""
     # Comma-separated CIDRs of proxies (e.g. the ingress gateway pod range) whose
     # X-Forwarded-For (station IP) and X-Forwarded-Proto (TLS) headers are trusted.
     # Security profile 2 stations behind a TLS-terminating ingress need this set.
