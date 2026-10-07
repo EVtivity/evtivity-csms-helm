@@ -494,6 +494,10 @@ appSettings:
     defaultMessageTemplate: "This site is temporarily unavailable for maintenance. {{reason}}"
   idling:
     gracePeriodMinutes: 30
+  prepaid:
+    # Prepaid card balance, in cents of the company currency, below which a
+    # debit sends the driver the low credit notice. 0 turns the notice off.
+    lowCreditThresholdCents: 500
   session:
     staleTimeoutHours: 24
     # Connection timeout (seconds) assumed for a station that has not reported

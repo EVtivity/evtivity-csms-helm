@@ -28,6 +28,12 @@
 {{- if and (ne $preAuthAmountCents "") (not (and (regexMatch "^[0-9]+$" $preAuthAmountCents) (ge (atoi $preAuthAmountCents) 1) (le (atoi $preAuthAmountCents) 1000000))) }}
 {{- fail (printf "appSettings.payments.preAuthAmountCents %q is not supported. Use a whole number of cents from 1 to 1000000." $preAuthAmountCents) }}
 {{- end }}
+{{- $prepaid := .Values.appSettings.prepaid | default dict }}
+{{- $lowCreditThresholdCents := "500" }}
+{{- if kindIs "float64" $prepaid.lowCreditThresholdCents }}{{ $lowCreditThresholdCents = ternary (toString (int64 $prepaid.lowCreditThresholdCents)) (toString $prepaid.lowCreditThresholdCents) (eq $prepaid.lowCreditThresholdCents (floor $prepaid.lowCreditThresholdCents)) }}{{ else if not (kindIs "invalid" $prepaid.lowCreditThresholdCents) }}{{ $lowCreditThresholdCents = toString $prepaid.lowCreditThresholdCents }}{{ end }}
+{{- if not (and (regexMatch "^[0-9]+$" $lowCreditThresholdCents) (le (atoi $lowCreditThresholdCents) 100000000)) }}
+{{- fail (printf "appSettings.prepaid.lowCreditThresholdCents %q is not supported. Use a whole number of cents from 0 to 100000000 (0 turns the low credit notice off)." $lowCreditThresholdCents) }}
+{{- end }}
 {{- $platformFeePercent := "" }}
 {{- if or (kindIs "float64" $payments.platformFeePercent) (kindIs "int64" $payments.platformFeePercent) (kindIs "int" $payments.platformFeePercent) }}{{ $platformFeePercent = printf "%f" (float64 $payments.platformFeePercent) }}{{ else if not (kindIs "invalid" $payments.platformFeePercent) }}{{ $platformFeePercent = toString $payments.platformFeePercent }}{{ end }}
 {{- if and (ne $platformFeePercent "") (not (and (regexMatch "^[0-9]+(\\.[0-9]+)?$" $platformFeePercent) (le (float64 $platformFeePercent) 100.0))) }}
@@ -150,6 +156,7 @@ data:
       "stationMessage.language": {{ .Values.appSettings.stationMessage.language | default "" | toJson }},
       "maintenance.defaultMessageTemplate": {{ .Values.appSettings.maintenance.defaultMessageTemplate | toJson }},
       "idling.gracePeriodMinutes": {{ .Values.appSettings.idling.gracePeriodMinutes | toJson }},
+      "prepaid.lowCreditThresholdCents": {{ atoi $lowCreditThresholdCents }},
       "session.staleTimeoutHours": {{ .Values.appSettings.session.staleTimeoutHours | toJson }},
       "session.evConnectionTimeoutSeconds": {{ .Values.appSettings.session.evConnectionTimeoutSeconds | toJson }},
       "notifications.emailEnabled": {{ .Values.appSettings.notifications.emailEnabled | toJson }},
