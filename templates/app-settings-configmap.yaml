@@ -40,6 +40,12 @@
 {{- if and (ne $paymentTermsDays "") (not (and (regexMatch "^[0-9]+$" $paymentTermsDays) (le (atoi $paymentTermsDays) 365))) }}
 {{- fail (printf "appSettings.invoice.paymentTermsDays %q is not supported. Use a whole number of days from 0 to 365." $paymentTermsDays) }}
 {{- end }}
+{{- $fleet := .Values.appSettings.fleet | default dict }}
+{{- $creditReservationCents := "" }}
+{{- if kindIs "float64" $fleet.creditReservationCents }}{{ $creditReservationCents = ternary (toString (int64 $fleet.creditReservationCents)) (toString $fleet.creditReservationCents) (eq $fleet.creditReservationCents (floor $fleet.creditReservationCents)) }}{{ else if not (kindIs "invalid" $fleet.creditReservationCents) }}{{ $creditReservationCents = toString $fleet.creditReservationCents }}{{ end }}
+{{- if and (ne $creditReservationCents "") (not (and (regexMatch "^[0-9]+$" $creditReservationCents) (ge (atoi $creditReservationCents) 1) (le (atoi $creditReservationCents) 100000000))) }}
+{{- fail (printf "appSettings.fleet.creditReservationCents %q is not supported. Use a whole number of cents from 1 to 100000000." $creditReservationCents) }}
+{{- end }}
 {{- $platformFeePercent := "" }}
 {{- if or (kindIs "float64" $payments.platformFeePercent) (kindIs "int64" $payments.platformFeePercent) (kindIs "int" $payments.platformFeePercent) }}{{ $platformFeePercent = printf "%f" (float64 $payments.platformFeePercent) }}{{ else if not (kindIs "invalid" $payments.platformFeePercent) }}{{ $platformFeePercent = toString $payments.platformFeePercent }}{{ end }}
 {{- if and (ne $platformFeePercent "") (not (and (regexMatch "^[0-9]+(\\.[0-9]+)?$" $platformFeePercent) (le (float64 $platformFeePercent) 100.0))) }}
@@ -182,6 +188,7 @@ data:
       "reservation.cancellationWindowMinutes": {{ .Values.appSettings.features.reservationCancellationWindowMinutes | toJson }},
       "reservation.cancellationFeeCents": {{ .Values.appSettings.features.reservationCancellationFeeCents | toJson }},
       "fleet.enabled": {{ .Values.appSettings.features.fleetEnabled | toJson }},
+      "fleet.creditReservationCents": {{ if eq $creditReservationCents "" }}""{{ else }}{{ atoi $creditReservationCents }}{{ end }},
       "support.enabled": {{ .Values.appSettings.features.supportEnabled | toJson }},
       "guest.enabled": {{ .Values.appSettings.features.guestEnabled | toJson }},
       "security.autoDisableOnCritical": {{ .Values.appSettings.security.autoDisableOnCritical | toJson }},

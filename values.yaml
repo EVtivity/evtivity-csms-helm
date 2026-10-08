@@ -502,6 +502,12 @@ appSettings:
     # Days from issue to the due date of a new invoice (0 to 365). Leave empty to
     # keep the value set in Settings > Payment (30 on a fresh install).
     paymentTermsDays: ""
+  fleet:
+    # Fleet credit, in cents of the company currency, that an account session of
+    # a fleet with a credit limit reserves at its start and adds each time its
+    # cost nears the reservation (1 to 100000000). Leave empty to keep the value
+    # set in Settings > Integrations > Fleet (5000 on a fresh install).
+    creditReservationCents: ""
   session:
     staleTimeoutHours: 24
     # Connection timeout (seconds) assumed for a station that has not reported
