@@ -40,13 +40,12 @@
 {{- if and (ne $paymentTermsDays "") (not (and (regexMatch "^[0-9]+$" $paymentTermsDays) (le (atoi $paymentTermsDays) 365))) }}
 {{- fail (printf "appSettings.invoice.paymentTermsDays %q is not supported. Use a whole number of days from 0 to 365." $paymentTermsDays) }}
 {{- end }}
-{{- $fleetBilling := .Values.appSettings.fleetBilling | default dict }}
-{{- $monthlyRunDay := "" }}
-{{- if kindIs "float64" $fleetBilling.monthlyRunDay }}{{ $monthlyRunDay = ternary (toString (int64 $fleetBilling.monthlyRunDay)) (toString $fleetBilling.monthlyRunDay) (eq $fleetBilling.monthlyRunDay (floor $fleetBilling.monthlyRunDay)) }}{{ else if not (kindIs "invalid" $fleetBilling.monthlyRunDay) }}{{ $monthlyRunDay = toString $fleetBilling.monthlyRunDay }}{{ end }}
-{{- if and (ne $monthlyRunDay "") (not (and (regexMatch "^[0-9]+$" $monthlyRunDay) (ge (atoi $monthlyRunDay) 1) (le (atoi $monthlyRunDay) 28))) }}
-{{- fail (printf "appSettings.fleetBilling.monthlyRunDay %q is not supported. Use a whole day of the month from 1 to 28." $monthlyRunDay) }}
-{{- end }}
 {{- $fleet := .Values.appSettings.fleet | default dict }}
+{{- $invoiceRunDay := "" }}
+{{- if kindIs "float64" $fleet.invoiceRunDay }}{{ $invoiceRunDay = ternary (toString (int64 $fleet.invoiceRunDay)) (toString $fleet.invoiceRunDay) (eq $fleet.invoiceRunDay (floor $fleet.invoiceRunDay)) }}{{ else if not (kindIs "invalid" $fleet.invoiceRunDay) }}{{ $invoiceRunDay = toString $fleet.invoiceRunDay }}{{ end }}
+{{- if and (ne $invoiceRunDay "") (not (and (regexMatch "^[0-9]+$" $invoiceRunDay) (ge (atoi $invoiceRunDay) 1) (le (atoi $invoiceRunDay) 28))) }}
+{{- fail (printf "appSettings.fleet.invoiceRunDay %q is not supported. Use a whole day of the month from 1 to 28." $invoiceRunDay) }}
+{{- end }}
 {{- $creditReservationCents := "" }}
 {{- if kindIs "float64" $fleet.creditReservationCents }}{{ $creditReservationCents = ternary (toString (int64 $fleet.creditReservationCents)) (toString $fleet.creditReservationCents) (eq $fleet.creditReservationCents (floor $fleet.creditReservationCents)) }}{{ else if not (kindIs "invalid" $fleet.creditReservationCents) }}{{ $creditReservationCents = toString $fleet.creditReservationCents }}{{ end }}
 {{- if and (ne $creditReservationCents "") (not (and (regexMatch "^[0-9]+$" $creditReservationCents) (ge (atoi $creditReservationCents) 1) (le (atoi $creditReservationCents) 100000000))) }}
@@ -176,7 +175,6 @@ data:
       "idling.gracePeriodMinutes": {{ .Values.appSettings.idling.gracePeriodMinutes | toJson }},
       "prepaid.lowCreditThresholdCents": {{ atoi $lowCreditThresholdCents }},
       "invoice.paymentTermsDays": {{ if eq $paymentTermsDays "" }}""{{ else }}{{ atoi $paymentTermsDays }}{{ end }},
-      "fleetBilling.monthlyRunDay": {{ if eq $monthlyRunDay "" }}""{{ else }}{{ atoi $monthlyRunDay }}{{ end }},
       "session.staleTimeoutHours": {{ .Values.appSettings.session.staleTimeoutHours | toJson }},
       "session.evConnectionTimeoutSeconds": {{ .Values.appSettings.session.evConnectionTimeoutSeconds | toJson }},
       "notifications.emailEnabled": {{ .Values.appSettings.notifications.emailEnabled | toJson }},
@@ -196,6 +194,7 @@ data:
       "reservation.cancellationFeeCents": {{ .Values.appSettings.features.reservationCancellationFeeCents | toJson }},
       "fleet.enabled": {{ .Values.appSettings.features.fleetEnabled | toJson }},
       "fleet.creditReservationCents": {{ if eq $creditReservationCents "" }}""{{ else }}{{ atoi $creditReservationCents }}{{ end }},
+      "fleet.invoiceRunDay": {{ if eq $invoiceRunDay "" }}""{{ else }}{{ atoi $invoiceRunDay }}{{ end }},
       "support.enabled": {{ .Values.appSettings.features.supportEnabled | toJson }},
       "guest.enabled": {{ .Values.appSettings.features.guestEnabled | toJson }},
       "security.autoDisableOnCritical": {{ .Values.appSettings.security.autoDisableOnCritical | toJson }},
