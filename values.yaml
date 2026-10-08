@@ -502,6 +502,11 @@ appSettings:
     # Days from issue to the due date of a new invoice (0 to 365). Leave empty to
     # keep the value set in Settings > Payment (30 on a fresh install).
     paymentTermsDays: ""
+  fleetBilling:
+    # Day of the month (1 to 28, system timezone) from which the monthly run
+    # invoices the previous month for every fleet with automatic monthly invoice.
+    # Leave empty to keep the value set in Settings > Payment (1 on a fresh install).
+    monthlyRunDay: ""
   fleet:
     # Fleet credit, in cents of the company currency, that an account session of
     # a fleet with a credit limit reserves at its start and adds each time its

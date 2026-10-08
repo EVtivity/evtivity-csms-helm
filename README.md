@@ -189,6 +189,7 @@ Payment settings are app settings in the database, and credentials are stored en
 | `appSettings.payments.preAuthAmountCents` | Default pre-authorization amount in cents, 1 to 1000000 (5000 on a fresh install) |
 | `appSettings.payments.platformFeePercent` | Default platform fee percentage, 0 to 100 (0 on a fresh install) |
 | `appSettings.invoice.paymentTermsDays` | Days from issue to the due date of a new invoice, 0 to 365 (30 on a fresh install) |
+| `appSettings.fleetBilling.monthlyRunDay` | Day of the month, 1 to 28, from which the monthly run invoices fleets with automatic monthly invoice for the previous month (1 on a fresh install) |
 | `appSettings.fleet.creditReservationCents` | Fleet credit in cents an account session reserves at its start and adds each time its cost nears the reservation, for fleets with a credit limit, 1 to 100000000 (5000 on a fresh install) |
 | `appSettings.simulated.resultMode` | Test provider result mode: `sync` (results in the API response) or `async` (results confirmed later through the payment webhook pipeline after `asyncDelaySeconds`) |
 | `appSettings.simulated.asyncDelaySeconds` | Test provider delay of async results in seconds, 0 to 3600 |
