@@ -13,6 +13,23 @@ data:
   {{- fail "seedDemo needs payments.allowSimulatedProvider=true: demo drivers pay with simulated cards." }}
   {{- end }}
   PAYMENTS_ALLOW_SIMULATED: {{ if $allowSimulated }}"true"{{ else }}"false"{{ end }}
+  {{- /* The notification test sink (driver SMS and push to a local dev service
+         instead of Twilio and Expo) is for the local Compose stack only. */}}
+  {{- $notifications := .Values.notifications | default dict }}
+  {{- range $key := list "allowTestSink" "testSinkUrl" }}
+  {{- if hasKey $notifications $key }}
+  {{- fail (printf "notifications.%s is not supported: the notification test sink is for the local development stack only. Remove it from your values." $key) }}
+  {{- end }}
+  {{- end }}
+  {{- range $component := list "api" "ocpp" "worker" "ocpi" }}
+  {{- $env := (get $.Values $component | default dict).env | default dict }}
+  {{- range $key := list "notificationsAllowTestSink" "notificationsTestSinkUrl" }}
+  {{- if hasKey $env $key }}
+  {{- fail (printf "%s.env.%s is not supported: the notification test sink is for the local development stack only. Remove it from your values." $component $key) }}
+  {{- end }}
+  {{- end }}
+  {{- end }}
+  NOTIFICATIONS_ALLOW_TEST_SINK: "false"
   {{- $proto := "http" }}
   {{- range .Values.gatewayAPI.gateway.listeners }}
     {{- if or (eq .protocol "HTTPS") (eq .protocol "TLS") }}{{ $proto = "https" }}{{ end }}

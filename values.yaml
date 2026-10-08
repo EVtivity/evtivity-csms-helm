@@ -316,6 +316,14 @@ seedDemo:
 payments:
   allowSimulatedProvider: false
 
+# --- Notification test sink ---
+# The CSMS can send driver SMS and push to a local test service instead of
+# Twilio and Expo (NOTIFICATIONS_ALLOW_TEST_SINK, NOTIFICATIONS_TEST_SINK_URL).
+# It is for the local Docker Compose stack only. The chart always sets
+# NOTIFICATIONS_ALLOW_TEST_SINK to "false" and fails the render when
+# notifications.allowTestSink, notifications.testSinkUrl, or
+# <api|ocpp|worker|ocpi>.env.notificationsAllowTestSink / notificationsTestSinkUrl is set.
+
 # --- Database Migration Job ---
 migrate:
   image:
