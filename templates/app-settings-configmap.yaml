@@ -34,6 +34,12 @@
 {{- if not (and (regexMatch "^[0-9]+$" $lowCreditThresholdCents) (le (atoi $lowCreditThresholdCents) 100000000)) }}
 {{- fail (printf "appSettings.prepaid.lowCreditThresholdCents %q is not supported. Use a whole number of cents from 0 to 100000000 (0 turns the low credit notice off)." $lowCreditThresholdCents) }}
 {{- end }}
+{{- $invoice := .Values.appSettings.invoice | default dict }}
+{{- $paymentTermsDays := "" }}
+{{- if kindIs "float64" $invoice.paymentTermsDays }}{{ $paymentTermsDays = ternary (toString (int64 $invoice.paymentTermsDays)) (toString $invoice.paymentTermsDays) (eq $invoice.paymentTermsDays (floor $invoice.paymentTermsDays)) }}{{ else if not (kindIs "invalid" $invoice.paymentTermsDays) }}{{ $paymentTermsDays = toString $invoice.paymentTermsDays }}{{ end }}
+{{- if and (ne $paymentTermsDays "") (not (and (regexMatch "^[0-9]+$" $paymentTermsDays) (le (atoi $paymentTermsDays) 365))) }}
+{{- fail (printf "appSettings.invoice.paymentTermsDays %q is not supported. Use a whole number of days from 0 to 365." $paymentTermsDays) }}
+{{- end }}
 {{- $platformFeePercent := "" }}
 {{- if or (kindIs "float64" $payments.platformFeePercent) (kindIs "int64" $payments.platformFeePercent) (kindIs "int" $payments.platformFeePercent) }}{{ $platformFeePercent = printf "%f" (float64 $payments.platformFeePercent) }}{{ else if not (kindIs "invalid" $payments.platformFeePercent) }}{{ $platformFeePercent = toString $payments.platformFeePercent }}{{ end }}
 {{- if and (ne $platformFeePercent "") (not (and (regexMatch "^[0-9]+(\\.[0-9]+)?$" $platformFeePercent) (le (float64 $platformFeePercent) 100.0))) }}
@@ -157,6 +163,7 @@ data:
       "maintenance.defaultMessageTemplate": {{ .Values.appSettings.maintenance.defaultMessageTemplate | toJson }},
       "idling.gracePeriodMinutes": {{ .Values.appSettings.idling.gracePeriodMinutes | toJson }},
       "prepaid.lowCreditThresholdCents": {{ atoi $lowCreditThresholdCents }},
+      "invoice.paymentTermsDays": {{ if eq $paymentTermsDays "" }}""{{ else }}{{ atoi $paymentTermsDays }}{{ end }},
       "session.staleTimeoutHours": {{ .Values.appSettings.session.staleTimeoutHours | toJson }},
       "session.evConnectionTimeoutSeconds": {{ .Values.appSettings.session.evConnectionTimeoutSeconds | toJson }},
       "notifications.emailEnabled": {{ .Values.appSettings.notifications.emailEnabled | toJson }},

@@ -498,6 +498,10 @@ appSettings:
     # Prepaid card balance, in cents of the company currency, below which a
     # debit sends the driver the low credit notice. 0 turns the notice off.
     lowCreditThresholdCents: 500
+  invoice:
+    # Days from issue to the due date of a new invoice (0 to 365). Leave empty to
+    # keep the value set in Settings > Payment (30 on a fresh install).
+    paymentTermsDays: ""
   session:
     staleTimeoutHours: 24
     # Connection timeout (seconds) assumed for a station that has not reported
