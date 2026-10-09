@@ -150,7 +150,7 @@ Each service connects to Redis as its own ACL user. `redis/acl-rules.conf` lists
 |------|------|----------|
 | `api` | response cache (`rc:*`), attestation nonces, the payment process watch key (read only) | core channels, simulator channels |
 | `ocpp` | station connection registry (`ocpp:conn:*`) | core channels |
-| `worker` | BullMQ queues (`bull:*`), maintenance locks, the payment process watch key | core channels |
+| `worker` | BullMQ queues (`bull:*`), maintenance (`mfl:*`), station message (`sml:*`) and job (`wkl:*`) locks, the payment process watch key, the station connection registry (read only) | core channels |
 | `ocpi` | OCPI pull locks (`opl:*`) | `ocpp_commands`, `ocpp_command_results`, `csms_events`, `ocpi_*` |
 | `css` | none | `css_commands`, `css_command_results` |
 
@@ -165,6 +165,16 @@ awk '$1 == "user" { name = $2; $1 = $2 = ""; printf "ACL SETUSER %s reset on >CH
 ```
 
 Run the commands with `redis-cli` as an admin user, then persist them (`ACL SAVE` with an ACL file, or `CONFIG REWRITE`). Set `secrets.redisUrls.<user>` to `redis://<user>:<password>@<host>:<port>` (or `rediss://` for TLS). To install against a Redis without ACL support, set all five URLs to the same URL.
+
+**Rules on upgrade.** A release can add a key prefix or channel to a user. A `pre-install`/`pre-upgrade` hook job (`redisAcl.sync.enabled`, default `true`) applies `redis/acl-rules.conf` to the five users before the migration and before any Deployment changes: `ACL SETUSER <user> resetkeys resetchannels nocommands clearselectors <rules>`, so passwords stay as they are. It connects to `dependencies.redisHost` as `redisAcl.admin.user` (default `default`) with the password from `redisAcl.admin.passwordSecret` (default: the bundled Redis Secret `<release>-redis`, key `redis-password`). It persists the rules in the object the Redis loads its ACL file from at start (`redisAcl.aclFile`; default: the bundled Bitnami Secret `<release>-redis-acl`, or the ConfigMap `<release>-redis-configuration` of older Bitnami charts), else with `ACL SAVE` or `CONFIG REWRITE`. A failure stops the upgrade with the old pods running. Without the admin password Secret the job changes nothing.
+
+With an external Redis, apply the rules of the new release before you upgrade, then persist them as above. This prints one command per user and keeps the passwords:
+
+```bash
+awk '$1 == "user" { name = $2; $1 = $2 = ""; printf "ACL SETUSER %s resetkeys resetchannels nocommands clearselectors%s\n", name, $0 }' redis/acl-rules.conf
+```
+
+Or set `redisAcl.admin` (and `redisAcl.aclFile` when the Redis loads its ACL file from a Secret or ConfigMap) so the hook does it. Managed caches that manage users through their own API (ElastiCache, Memorystore, Azure Cache) need the change there; set `redisAcl.sync.enabled: false`. The worker checks its lock key grants at start and exits with an error naming the missing grant, so a missed step fails the rollout instead of the background jobs.
 
 ### Redis TLS
 

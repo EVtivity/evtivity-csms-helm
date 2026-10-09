@@ -448,6 +448,30 @@ redisTls:
   caSecret: ""
   caKey: ca.crt
 
+# --- Redis ACL sync ---
+# A pre-install/pre-upgrade hook applies redis/acl-rules.conf to the service
+# users (keys, channels, commands; passwords unchanged) and persists it, so a
+# release that adds a key prefix or channel works right after the upgrade
+# (README, "Redis Access Control"). It connects to dependencies.redisHost as the
+# admin user. Without the admin password Secret it changes nothing.
+redisAcl:
+  sync:
+    enabled: true
+  admin:
+    user: default
+    passwordSecret:
+      # Empty: <release>-redis, the Secret of the bundled Bitnami Redis.
+      name: ""
+      key: redis-password
+  # Secret or ConfigMap the Redis loads its ACL file from at start. Empty name:
+  # the bundled Bitnami Redis objects (<release>-redis-acl Secret, then
+  # <release>-redis-configuration ConfigMap); without them the job runs ACL SAVE
+  # (Redis with an aclfile) or CONFIG REWRITE.
+  aclFile:
+    kind: Secret
+    name: ""
+    key: users.acl
+
 # --- Credential Rotation ---
 # Rotates the PostgreSQL and Redis passwords of the services on a schedule (README,
 # "Credential Rotation"). Off by default: it needs admin credentials for both
