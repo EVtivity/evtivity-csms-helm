@@ -119,7 +119,7 @@ kubectl rollout restart deployment -n evtivity
 | Worker | - | Background job processor (BullMQ) |
 | CSS | - | Charging station simulator (internal) |
 
-Each service can be toggled with `{service}.enabled` and configured with `replicaCount`, `resources`, `nodeSelector`, `tolerations`, and `affinity`. API and OCPP support HPA autoscaling.
+Each service can be toggled with `{service}.enabled` and configured with `replicaCount`, `resources`, `nodeSelector`, `tolerations`, and `affinity`. API, OCPP, and the worker support HPA autoscaling (`{service}.autoscaling.enabled`, `minReplicas`, `maxReplicas`, `targetCPUUtilization`). The worker scales on CPU from 1 to 4 replicas when enabled. Keep it at one replica when `worker.env.octtOcspResponderUrl` is set: the chart refuses more.
 
 ## Configuration
 
@@ -215,6 +215,7 @@ Each api, ocpp, ocpi, worker and css pod pools `dependencies.postgresPoolMax` co
 |-------|------|-------------|
 | Defaults (api, ocpp, worker at 1 replica) | 3 | 30 |
 | HPA at 5 api and 5 ocpp, worker, ocpi | 12 | 120 |
+| HPA at 5 api, 5 ocpp, 4 worker, ocpi | 15 | 150 |
 
 Raise `max_connections` on the database or lower the pool for the second case. The OCPP server authenticates at most half its pool of station connections at once and queues the rest, so a reconnect wave leaves connections for connected stations.
 

@@ -1,4 +1,8 @@
 {{- if .Values.worker.enabled }}
+{{- $scalesOut := or (gt (int .Values.worker.replicaCount) 1) (and .Values.worker.autoscaling.enabled (gt (int .Values.worker.autoscaling.maxReplicas) 1)) }}
+{{- if and .Values.worker.env.octtOcspResponderUrl $scalesOut }}
+{{- fail "worker.env.octtOcspResponderUrl needs exactly one worker replica: the OCSP responder runs in the replica that picks up the conformance run. Set worker.replicaCount to 1 and turn worker.autoscaling off, or clear the URL." }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -6,7 +10,9 @@ metadata:
   labels:
     {{- include "evtivity-csms.componentLabels" (dict "context" . "component" "worker") | nindent 4 }}
 spec:
+  {{- if not .Values.worker.autoscaling.enabled }}
   replicas: {{ .Values.worker.replicaCount }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "evtivity-csms.componentSelectorLabels" (dict "context" . "component" "worker") | nindent 6 }}

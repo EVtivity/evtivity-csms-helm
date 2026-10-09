@@ -56,7 +56,9 @@ api:
 # --- Background Worker ---
 worker:
   enabled: true
-  # Single replica by default. Safe to scale up - BullMQ handles exactly-once delivery.
+  # Single replica by default. Safe to scale up: BullMQ job schedulers and
+  # deterministic job ids run each cron tick and bridged event once across
+  # replicas. Keep one replica when octtOcspResponderUrl is set.
   replicaCount: 1
   image:
     repository: ""
@@ -68,13 +70,21 @@ worker:
     # The run adds the host to pnc.ocsp.allowedPrivateHosts while it runs.
     # Empty: the OCSP tests (TC_C_50, TC_C_51, TC_C_52, TC_M_24) are skipped.
     octtOcspResponderUrl: ""
+  # A 0.5 vCPU worker ran at 72 to 94% CPU with 400 sessions charging
+  # (2026-10-09 AWS benchmark). The CDK prod config runs it on 1 vCPU / 2 GB.
   resources:
     requests:
-      cpu: 100m
-      memory: 512Mi
-    limits:
       cpu: 500m
       memory: 1Gi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+  # CPU target is a percentage of resources.requests.cpu.
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 4
+    targetCPUUtilization: 70
   nodeSelector: {}
   tolerations: []
   affinity: {}
