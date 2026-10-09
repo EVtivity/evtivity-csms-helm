@@ -1,5 +1,7 @@
 {{- if .Values.worker.enabled }}
-{{- $scalesOut := or (gt (int .Values.worker.replicaCount) 1) (and .Values.worker.autoscaling.enabled (gt (int .Values.worker.autoscaling.maxReplicas) 1)) }}
+{{- /* worker.autoscaling is missing after helm upgrade --reuse-values from a chart before 0.1.43. */}}
+{{- $autoscaling := .Values.worker.autoscaling | default dict }}
+{{- $scalesOut := or (gt (int .Values.worker.replicaCount) 1) (and $autoscaling.enabled (gt (int (dig "maxReplicas" 4 $autoscaling)) 1)) }}
 {{- if and .Values.worker.env.octtOcspResponderUrl $scalesOut }}
 {{- fail "worker.env.octtOcspResponderUrl needs exactly one worker replica: the OCSP responder runs in the replica that picks up the conformance run. Set worker.replicaCount to 1 and turn worker.autoscaling off, or clear the URL." }}
 {{- end }}
@@ -10,7 +12,7 @@ metadata:
   labels:
     {{- include "evtivity-csms.componentLabels" (dict "context" . "component" "worker") | nindent 4 }}
 spec:
-  {{- if not .Values.worker.autoscaling.enabled }}
+  {{- if not $autoscaling.enabled }}
   replicas: {{ .Values.worker.replicaCount }}
   {{- end }}
   selector:

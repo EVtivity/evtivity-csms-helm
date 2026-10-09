@@ -37,7 +37,7 @@ spec:
                 name: {{ include "evtivity-csms.configMapName" . }}
             - secretRef:
                 name: {{ include "evtivity-csms.secretName" . }}
-          {{- if .Values.credentialRotation.enabled }}
+          {{- if (.Values.credentialRotation | default dict).enabled }}
           # The owner credential from the credentials Secret wins over the
           # chart Secret's DATABASE_URL.
           env:

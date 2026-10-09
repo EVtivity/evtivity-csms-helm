@@ -1,4 +1,6 @@
-{{- if and .Values.worker.enabled .Values.worker.autoscaling.enabled }}
+{{- /* dig with defaults: helm upgrade --reuse-values from a chart before 0.1.43 has no worker.autoscaling. */}}
+{{- $autoscaling := .Values.worker.autoscaling | default dict }}
+{{- if and .Values.worker.enabled $autoscaling.enabled }}
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
@@ -10,13 +12,13 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: {{ include "evtivity-csms.fullname" . }}-worker
-  minReplicas: {{ .Values.worker.autoscaling.minReplicas }}
-  maxReplicas: {{ .Values.worker.autoscaling.maxReplicas }}
+  minReplicas: {{ dig "minReplicas" 1 $autoscaling }}
+  maxReplicas: {{ dig "maxReplicas" 4 $autoscaling }}
   metrics:
     - type: Resource
       resource:
         name: cpu
         target:
           type: Utilization
-          averageUtilization: {{ .Values.worker.autoscaling.targetCPUUtilization }}
+          averageUtilization: {{ dig "targetCPUUtilization" 70 $autoscaling }}
 {{- end }}

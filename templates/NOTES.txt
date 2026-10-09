@@ -38,9 +38,10 @@ Initial admin user: {{ .Values.initialAdmin.email }}
 You will be required to change your password on first login.
 {{- end }}
 
-{{- if .Values.credentialRotation.enabled }}
+{{- $rotation := include "evtivity-csms.credentialRotation" . | fromYaml }}
+{{- if $rotation.enabled }}
 
-Credential rotation is on (schedule "{{ .Values.credentialRotation.schedule }}"{{ if .Values.credentialRotation.suspend }}, suspended{{ end }}).
+Credential rotation is on (schedule "{{ $rotation.schedule }}"{{ if $rotation.suspend }}, suspended{{ end }}).
 The services read their database and Redis URLs from the Secret {{ include "evtivity-csms.credentialsSecretName" . }}.
 Rotate now:
 

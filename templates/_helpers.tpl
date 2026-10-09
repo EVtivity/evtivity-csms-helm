@@ -79,6 +79,53 @@ Helm never renders it, so an upgrade cannot put back a rotated-away password.
 {{- end }}
 
 {{/*
+Effective credentialRotation values as YAML. helm upgrade --reuse-values keeps
+the values of the installed chart, and charts before 0.1.43 have no
+credentialRotation block, so every key is read with dig and the default from
+values.yaml. Keep these defaults in step with values.yaml.
+Usage: {{- $r := include "evtivity-csms.credentialRotation" . | fromYaml }}
+*/}}
+{{- define "evtivity-csms.credentialRotation" -}}
+{{- $v := .Values.credentialRotation | default dict -}}
+{{- $r := dict
+  "enabled" (dig "enabled" false $v)
+  "schedule" (dig "schedule" "0 3 1 * *" $v)
+  "timeZone" (dig "timeZone" "" $v)
+  "suspend" (dig "suspend" false $v)
+  "rolloutTimeoutSeconds" (dig "rolloutTimeoutSeconds" 900 $v)
+  "revokeDelaySeconds" (dig "revokeDelaySeconds" 120 $v)
+  "database" (dict
+    "enabled" (dig "database" "enabled" true $v)
+    "appUser" (dig "database" "appUser" "evtivity_app" $v)
+    "groupRole" (dig "database" "groupRole" "evtivity_app_group" $v)
+    "rotateOwner" (dig "database" "rotateOwner" true $v)
+    "admin" (dict
+      "user" (dig "database" "admin" "user" "postgres" $v)
+      "passwordSecret" (dict
+        "name" (dig "database" "admin" "passwordSecret" "name" "" $v)
+        "key" (dig "database" "admin" "passwordSecret" "key" "postgres-password" $v))))
+  "redis" (dict
+    "enabled" (dig "redis" "enabled" true $v)
+    "admin" (dict
+      "user" (dig "redis" "admin" "user" "default" $v)
+      "passwordSecret" (dict
+        "name" (dig "redis" "admin" "passwordSecret" "name" "" $v)
+        "key" (dig "redis" "admin" "passwordSecret" "key" "redis-password" $v)))
+    "aclFile" (dict
+      "kind" (dig "redis" "aclFile" "kind" "Secret" $v)
+      "name" (dig "redis" "aclFile" "name" "" $v)
+      "key" (dig "redis" "aclFile" "key" "users.acl" $v)))
+  "resources" (dig "resources" (dict
+    "requests" (dict "cpu" "50m" "memory" "128Mi")
+    "limits" (dict "cpu" "500m" "memory" "256Mi")) $v)
+  "nodeSelector" (dig "nodeSelector" dict $v)
+  "tolerations" (dig "tolerations" list $v)
+  "affinity" (dig "affinity" dict $v)
+-}}
+{{- toYaml $r -}}
+{{- end }}
+
+{{/*
 Services that connect to PostgreSQL and Redis, as a comma-separated list of the
 enabled ones (api, ocpp, ocpi, worker, css).
 */}}
@@ -105,7 +152,7 @@ Usage: include "evtivity-csms.credentialsEnv" (dict "context" . "component" "api
 */}}
 {{- define "evtivity-csms.credentialsEnv" -}}
 {{- $secret := include "evtivity-csms.secretName" .context -}}
-{{- if .context.Values.credentialRotation.enabled -}}
+{{- if (.context.Values.credentialRotation | default dict).enabled -}}
 {{- $secret = include "evtivity-csms.credentialsSecretName" .context -}}
 - name: DATABASE_URL
   valueFrom:
@@ -135,7 +182,7 @@ credentialRotation.enabled it is MIGRATE_DATABASE_URL of the credentials Secret.
 - name: DATABASE_URL
   valueFrom:
     secretKeyRef:
-      {{- if .Values.credentialRotation.enabled }}
+      {{- if (.Values.credentialRotation | default dict).enabled }}
       name: {{ include "evtivity-csms.credentialsSecretName" . }}
       key: MIGRATE_DATABASE_URL
       {{- else }}
