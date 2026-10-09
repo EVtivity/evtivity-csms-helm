@@ -71,18 +71,52 @@ Secret name
 {{- end }}
 
 {{/*
-REDIS_URL of one service, from its own Secret key (REDIS_URL_API, REDIS_URL_OCPP,
-REDIS_URL_OCPI, REDIS_URL_WORKER, REDIS_URL_CSS). Each service connects to Redis
-as its own ACL user (redis/acl-rules.conf). An explicit env entry wins over the
-Secret's envFrom. With redisTls.enabled it also sets REDIS_TLS_CA_PEM, the CA
-that signed the Redis server certificate, which the services trust for rediss://.
-Usage: include "evtivity-csms.redisUrlEnv" (dict "context" . "component" "api")
+Name of the credentials Secret that the rotation job owns (credentialRotation).
+Helm never renders it, so an upgrade cannot put back a rotated-away password.
 */}}
-{{- define "evtivity-csms.redisUrlEnv" -}}
+{{- define "evtivity-csms.credentialsSecretName" -}}
+{{- include "evtivity-csms.fullname" . }}-credentials
+{{- end }}
+
+{{/*
+Services that connect to PostgreSQL and Redis, as a comma-separated list of the
+enabled ones (api, ocpp, ocpi, worker, css).
+*/}}
+{{- define "evtivity-csms.credentialComponents" -}}
+{{- $enabled := list }}
+{{- range $component := list "api" "ocpp" "ocpi" "worker" "css" }}
+{{- if (index $.Values $component).enabled }}
+{{- $enabled = append $enabled $component }}
+{{- end }}
+{{- end }}
+{{- join "," $enabled }}
+{{- end }}
+
+{{/*
+Connection credentials of one service. REDIS_URL comes from the service's own
+key (REDIS_URL_API, REDIS_URL_OCPP, REDIS_URL_OCPI, REDIS_URL_WORKER,
+REDIS_URL_CSS): each service connects to Redis as its own ACL user
+(redis/acl-rules.conf). With credentialRotation.enabled, DATABASE_URL and
+REDIS_URL come from the credentials Secret instead of the chart Secret. Explicit
+env entries win over the Secret's envFrom. With redisTls.enabled it also sets
+REDIS_TLS_CA_PEM, the CA that signed the Redis server certificate, which the
+services trust for rediss://.
+Usage: include "evtivity-csms.credentialsEnv" (dict "context" . "component" "api")
+*/}}
+{{- define "evtivity-csms.credentialsEnv" -}}
+{{- $secret := include "evtivity-csms.secretName" .context -}}
+{{- if .context.Values.credentialRotation.enabled -}}
+{{- $secret = include "evtivity-csms.credentialsSecretName" .context -}}
+- name: DATABASE_URL
+  valueFrom:
+    secretKeyRef:
+      name: {{ $secret }}
+      key: DATABASE_URL
+{{ end -}}
 - name: REDIS_URL
   valueFrom:
     secretKeyRef:
-      name: {{ include "evtivity-csms.secretName" .context }}
+      name: {{ $secret }}
       key: REDIS_URL_{{ upper .component }}
 {{- if .context.Values.redisTls.enabled }}
 - name: REDIS_TLS_CA_PEM
@@ -91,6 +125,23 @@ Usage: include "evtivity-csms.redisUrlEnv" (dict "context" . "component" "api")
       name: {{ required "redisTls.caSecret is required when redisTls.enabled is true" .context.Values.redisTls.caSecret }}
       key: {{ .context.Values.redisTls.caKey }}
 {{- end }}
+{{- end }}
+
+{{/*
+DATABASE_URL of the migrate and seed jobs: the database owner. With
+credentialRotation.enabled it is MIGRATE_DATABASE_URL of the credentials Secret.
+*/}}
+{{- define "evtivity-csms.ownerDatabaseUrlEnv" -}}
+- name: DATABASE_URL
+  valueFrom:
+    secretKeyRef:
+      {{- if .Values.credentialRotation.enabled }}
+      name: {{ include "evtivity-csms.credentialsSecretName" . }}
+      key: MIGRATE_DATABASE_URL
+      {{- else }}
+      name: {{ include "evtivity-csms.secretName" . }}
+      key: DATABASE_URL
+      {{- end }}
 {{- end }}
 
 {{/*
@@ -144,4 +195,23 @@ Uses dependencies.postgresHost/redisHost from values.yaml.
 - name: wait-for-redis
   image: busybox:1.37
   command: ['sh', '-c', 'until nc -z {{ .Values.dependencies.redisHost }} {{ .Values.dependencies.redisPort }}; do echo "waiting for redis..."; sleep 2; done']
+{{- end }}
+
+{{/*
+Pod and container security context of the credential rotation jobs. They run
+the migrate image as its unprivileged node user (uid 1000) and write no files.
+*/}}
+{{- define "evtivity-csms.rotationPodSecurityContext" -}}
+runAsNonRoot: true
+runAsUser: 1000
+runAsGroup: 1000
+seccompProfile:
+  type: RuntimeDefault
+{{- end }}
+
+{{- define "evtivity-csms.rotationContainerSecurityContext" -}}
+allowPrivilegeEscalation: false
+readOnlyRootFilesystem: true
+capabilities:
+  drop: ["ALL"]
 {{- end }}

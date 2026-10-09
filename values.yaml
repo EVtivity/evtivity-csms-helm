@@ -448,6 +448,81 @@ redisTls:
   caSecret: ""
   caKey: ca.crt
 
+# --- Credential Rotation ---
+# Rotates the PostgreSQL and Redis passwords of the services on a schedule (README,
+# "Credential Rotation"). Off by default: it needs admin credentials for both
+# servers, and the Redis must keep ACL changes across restarts.
+# When enabled, a pre-install/pre-upgrade hook copies DATABASE_URL and the
+# REDIS_URL_* values into the Secret <fullname>-credentials once. From then on
+# that Secret is the source of truth for those connections: the services read it,
+# the rotation job updates it, and later changes to secrets.databaseUrl or
+# secrets.redisUrls are ignored. Before turning rotation off, copy its current
+# values back into secrets.* (DATABASE_URL takes MIGRATE_DATABASE_URL).
+credentialRotation:
+  enabled: false
+  # Cron schedule of the rotation job (default: 03:00 on the 1st of each month).
+  schedule: "0 3 1 * *"
+  # IANA time zone of the schedule. Empty uses the controller's zone (usually UTC).
+  timeZone: ""
+  # Pauses the schedule without removing the job.
+  suspend: false
+  # Time each restarted Deployment has to finish its rollout. A rollout that
+  # does not finish fails the run and keeps the old credentials valid.
+  rolloutTimeoutSeconds: 900
+  # Wait after the rollouts before the old credentials are removed, so pods in
+  # their termination grace period finish with a working credential.
+  revokeDelaySeconds: 120
+  database:
+    # Alternating application logins: <appUser> and <appUser>_clone, members of
+    # groupRole. The pods move off the owner role at the first rotation.
+    enabled: true
+    appUser: evtivity_app
+    groupRole: evtivity_app_group
+    # Also rotate the owner password (used only by the migrate and seed jobs).
+    rotateOwner: true
+    # PostgreSQL user that creates the logins and changes passwords: a
+    # superuser, or a role with CREATEROLE and ADMIN on groupRole. The bundled
+    # Bitnami PostgreSQL: user postgres, Secret <release>-postgresql, key
+    # postgres-password. Its password is not rotated.
+    admin:
+      user: postgres
+      passwordSecret:
+        name: ""
+        key: postgres-password
+  redis:
+    # Each service user gets a second password, the pods restart, then the
+    # old password is removed. Needs ACL SETUSER and CONFIG GET as the admin user
+    # and a single primary (ACL changes do not replicate).
+    enabled: true
+    # Redis admin user. The bundled Bitnami Redis: user default, Secret
+    # <release>-redis, key redis-password. Its password is not rotated.
+    admin:
+      user: default
+      passwordSecret:
+        name: ""
+        key: redis-password
+    # Secret or ConfigMap holding the ACL file that Redis loads at start. The
+    # job writes the rotated passwords into it, so a Redis restart keeps them.
+    # Required for the bundled Bitnami Redis, which rebuilds its ACL file from
+    # it on every restart: chart 25 and later, Secret <release>-redis-acl;
+    # earlier charts, ConfigMap <release>-redis-configuration (key users.acl in
+    # both). Leave name empty for a Redis that loads a writable aclfile: the job
+    # runs ACL SAVE instead.
+    aclFile:
+      kind: Secret
+      name: ""
+      key: users.acl
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
 # --- Application Settings ---
 # Settings seeded into the database on every install and upgrade.
 # All settings remain editable via the admin UI.

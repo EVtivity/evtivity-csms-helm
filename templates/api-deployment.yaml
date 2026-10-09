@@ -48,7 +48,7 @@ spec:
             - secretRef:
                 name: {{ include "evtivity-csms.secretName" . }}
           env:
-            {{- include "evtivity-csms.redisUrlEnv" (dict "context" . "component" "api") | nindent 12 }}
+            {{- include "evtivity-csms.credentialsEnv" (dict "context" . "component" "api") | nindent 12 }}
           livenessProbe:
             httpGet:
               path: /v1/health

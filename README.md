@@ -140,6 +140,8 @@ All configuration is in `values.yaml`. Override with `--set` flags or a custom v
 
 For GitOps or Vault workflows, set `secrets.create: false` and `secrets.existingSecret: my-secret-name`. The Secret must contain: `DATABASE_URL`, `REDIS_URL_API`, `REDIS_URL_OCPP`, `REDIS_URL_OCPI`, `REDIS_URL_WORKER`, `REDIS_URL_CSS`, `JWT_SECRET`, `SETTINGS_ENCRYPTION_KEY`.
 
+With [Credential Rotation](#credential-rotation) on, the database and Redis URLs move to the job-owned Secret `<fullname>-credentials` once, and the services read them from there.
+
 ### Redis Access Control
 
 Each service connects to Redis as its own ACL user. `redis/acl-rules.conf` lists the users and what each may do:
@@ -218,6 +220,62 @@ Each api, ocpp, ocpi, worker and css pod pools `dependencies.postgresPoolMax` co
 | HPA at 5 api, 5 ocpp, 4 worker, ocpi | 15 | 150 |
 
 Raise `max_connections` on the database or lower the pool for the second case. The OCPP server authenticates at most half its pool of station connections at once and queues the rest, so a reconnect wave leaves connections for connected stations.
+
+### Credential Rotation
+
+Off by default. With `credentialRotation.enabled: true`, a CronJob rotates the PostgreSQL and Redis passwords of the services on `credentialRotation.schedule` (default 03:00 on the 1st of each month), without downtime. It needs admin credentials for both servers, so you turn it on deliberately.
+
+**How a run works.**
+
+1. Preflight. The job checks every connection and server setting first and changes nothing when one fails.
+2. New credentials next to the old ones:
+   - PostgreSQL: the services log in as one of two alternating roles, `<appUser>` and `<appUser>_clone` (default `evtivity_app`), both members of `groupRole` (`evtivity_app_group`), which holds the table, sequence and function privileges. The idle role gets a new password. The old role keeps working.
+   - Redis: each service user (`api`, `ocpp`, `ocpi`, `worker`, `css`) gets a second password (`ACL SETUSER <user> >new`). The old password keeps working.
+3. The job writes the new URLs to the Secret `<fullname>-credentials` and restarts the api, ocpp, ocpi, worker and css Deployments (a rolling restart, like `kubectl rollout restart`).
+4. When every rollout completes, it waits `revokeDelaySeconds` (default 120) for terminating pods, then removes the old credentials: the previous PostgreSQL role loses its password, and each Redis user keeps only the new one (`resetpass`).
+5. With `database.rotateOwner` (default on) it changes the owner password (the role in `secrets.databaseUrl`), which only the migrate and seed jobs use.
+
+A run that fails before step 4 leaves the old credentials valid, and the pods keep running. The next run finishes an unfinished rollout before it rotates again. New PostgreSQL passwords are sent as SCRAM-SHA-256 verifiers, so the plain password never reaches the server or its logs. Run one rotation now with `kubectl create job --from=cronjob/<fullname>-credential-rotation rotate-now -n <namespace>`.
+
+**The credentials Secret.** When you enable rotation, a `pre-install`/`pre-upgrade` hook copies `DATABASE_URL` and the `REDIS_URL_*` keys of the enabled services into `<fullname>-credentials` (`DATABASE_URL`, `MIGRATE_DATABASE_URL`, `REDIS_URL_*`). Helm never renders this Secret, so an upgrade cannot put back a password the job has rotated away. From then on it is the source of truth: the services read `DATABASE_URL` and their `REDIS_URL_*` from it, the migrate and seed jobs read `MIGRATE_DATABASE_URL`, and later changes to `secrets.databaseUrl` or `secrets.redisUrls` are ignored. The hook only adds keys that are missing, for example when you enable a service. `helm uninstall` keeps the Secret; `scripts/uninstall.sh` deletes it.
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `credentialRotation.enabled` | `false` | Create the credentials Secret and the rotation CronJob |
+| `credentialRotation.schedule` | `0 3 1 * *` | Cron schedule |
+| `credentialRotation.timeZone` | `""` | IANA time zone of the schedule (empty: the controller's zone) |
+| `credentialRotation.suspend` | `false` | Pause the schedule |
+| `credentialRotation.rolloutTimeoutSeconds` | `900` | Time each Deployment has to finish its rollout (60 or more) |
+| `credentialRotation.revokeDelaySeconds` | `120` | Wait after the rollouts before the old credentials are removed |
+| `credentialRotation.database.enabled` | `true` | Rotate the PostgreSQL credentials |
+| `credentialRotation.database.appUser` | `evtivity_app` | First alternating login role (the second is `<appUser>_clone`) |
+| `credentialRotation.database.groupRole` | `evtivity_app_group` | Role that holds the application privileges |
+| `credentialRotation.database.rotateOwner` | `true` | Also rotate the owner password |
+| `credentialRotation.database.admin.user` | `postgres` | PostgreSQL admin user (superuser, or CREATEROLE with ADMIN on `groupRole`) |
+| `credentialRotation.database.admin.passwordSecret.name` | `""` | Secret with the admin password (required) |
+| `credentialRotation.database.admin.passwordSecret.key` | `postgres-password` | Key of the admin password |
+| `credentialRotation.redis.enabled` | `true` | Rotate the Redis ACL user passwords |
+| `credentialRotation.redis.admin.user` | `default` | Redis admin user (needs `ACL`, `CONFIG GET` and `INFO`) |
+| `credentialRotation.redis.admin.passwordSecret.name` | `""` | Secret with the admin password (required) |
+| `credentialRotation.redis.admin.passwordSecret.key` | `redis-password` | Key of the admin password |
+| `credentialRotation.redis.aclFile.kind` | `Secret` | `Secret` or `ConfigMap` that holds the ACL file Redis loads at start |
+| `credentialRotation.redis.aclFile.name` | `""` | Its name (required for the bundled Bitnami Redis) |
+| `credentialRotation.redis.aclFile.key` | `users.acl` | Its key |
+| `credentialRotation.resources`, `nodeSelector`, `tolerations`, `affinity` | | Pod settings of the jobs |
+
+**Bundled PostgreSQL and Redis.** `CREDENTIAL_ROTATION=true ./scripts/install.sh` turns rotation on and sets the admin Secrets (`<release>-postgresql`, `<release>-redis`) and the Redis ACL file. Bitnami Redis rebuilds its ACL file at every start from `<release>-redis-acl` (Secret, chart 25 and later) or `<release>-redis-configuration` (ConfigMap, earlier charts). The job writes the rotated passwords into that object as SHA-256 hashes, so a Redis restart keeps them. It writes both passwords before the switch and only the new one after it, so a restart at any point accepts the credential the pods use. Re-running `bitnami/redis` with the install-time passwords (`helm upgrade` of the Redis release) puts the old passwords back: take the current ones from `<fullname>-credentials` first.
+
+**External PostgreSQL.** Give the job a user that can create roles and grant `groupRole`: a superuser, or a role with `CREATEROLE` that has `ADMIN` on `groupRole` and owns or is granted the owner role (on Amazon RDS, the master user). Store its password in a Secret and set `credentialRotation.database.admin.*`. The admin password itself is not rotated.
+
+**External Redis.** Rotation needs a single primary (ACL changes do not replicate, so the job refuses a primary with replicas, Sentinel or cluster setups) and an admin user that may run `ACL SETUSER`, `ACL GETUSER`, `ACL SAVE`, `CONFIG GET` and `INFO`. The rotated passwords must survive a restart: either Redis loads a writable `aclfile` (the job runs `ACL SAVE`), or you set `credentialRotation.redis.aclFile` to the Secret or ConfigMap it loads at start. Managed caches that manage users through their own API (ElastiCache, Memorystore, Azure Cache) are rotated by their provider: set `credentialRotation.redis.enabled: false`.
+
+**Rotation by another system.** With Vault, External Secrets or a cloud secret manager that rotates the credentials, leave `credentialRotation.enabled: false` and let that system update your `secrets.existingSecret` and restart the Deployments.
+
+**Failure alert.** A failed run shows as a failed Job of the CronJob (`kubectl get jobs -l app.kubernetes.io/component=credential-rotation`) and logs `[rotation] failed: <reason>`. With kube-state-metrics, alert on `kube_job_status_failed{job_name=~"<fullname>-credential-rotation-.*"} > 0`. A run that fails keeps the old credentials valid, so nothing breaks until the cause is fixed and the next run passes.
+
+**Turning rotation on for an existing install.** Upgrade with `credentialRotation.enabled=true` and the admin settings. The hook copies the current credentials, the pods restart once against `<fullname>-credentials`, and nothing rotates until the first scheduled run. At the first run the services move from the owner role to `<appUser>`: they then hold only the privileges of `groupRole` (data, not schema changes), which is all they need, since migrations run as the owner.
+
+**Turning rotation off.** Copy the current credentials back into your values first: `secrets.databaseUrl` from `MIGRATE_DATABASE_URL` and each `secrets.redisUrls.<service>` from `REDIS_URL_<SERVICE>` of `<fullname>-credentials`. The services then log in as the owner again. Then upgrade with `credentialRotation.enabled=false` and delete the Secret.
 
 ### Initial Admin User
 

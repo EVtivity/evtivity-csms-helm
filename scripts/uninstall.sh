@@ -17,6 +17,8 @@ helm uninstall "${RELEASE}-redis" --namespace "$NAMESPACE" 2>/dev/null || echo "
 
 kubectl delete jobs -l app.kubernetes.io/component=migrate -n "$NAMESPACE" 2>/dev/null || true
 kubectl delete secret "${RELEASE}-css-tls" -n "$NAMESPACE" 2>/dev/null || true
+# Created by the credential rotation hook, not by Helm, so uninstall keeps it.
+kubectl delete secret "${RELEASE}-credentials" -n "$NAMESPACE" --ignore-not-found 2>/dev/null || true
 
 echo ""
 echo "Uninstalled all releases from $NAMESPACE."
