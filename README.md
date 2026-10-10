@@ -221,6 +221,31 @@ Payment settings are app settings in the database, and credentials are stored en
 
 Both Stripe endpoints send to `https://<api host>/v1/webhooks/payments/stripe`, Adyen to `https://<api host>/v1/webhooks/payments/adyen`. Settings > Payment can create the webhooks and store these values for you.
 
+### AI Settings
+
+AI settings are app settings in the database, and provider API keys are stored encrypted. An empty value keeps the one set in the dashboard. A fresh install starts at the default in parentheses.
+
+| Parameter | Setting |
+|-----------|---------|
+| `appSettings.chatbotAi.provider`, `appSettings.supportAi.provider` | `anthropic`, `openai`, `gemini`, or `deepseek` |
+| `appSettings.chatbotAi.effort`, `appSettings.supportAi.effort` | Reasoning effort: `low`, `medium`, or `high` (provider default) |
+| `appSettings.ai.<provider>.baseUrl` | API base URL of `anthropic`, `openai`, `gemini`, or `deepseek`, for a proxy or gateway. Must start with `https://` (the provider's public API) |
+| `appSettings.ai.rateLimit.userPerMinute` | AI messages per user per minute (10) |
+| `appSettings.ai.rateLimit.sitePerMinute` | AI messages per minute across the installation (60) |
+| `appSettings.ai.budget.userDailyTokens` | Tokens per user per day, 0 for no limit (2000000) |
+| `appSettings.ai.maxToolCallsPerTurn` | Tool calls the model may make in one reply (20) |
+| `appSettings.ai.conversationRetentionDays` | Days a conversation is kept after its last message (30) |
+| `appSettings.ai.attachments.maxBytes` | Largest attachment in bytes (10485760) |
+| `appSettings.ai.attachments.maxPerMessage` | Attachments per message (5) |
+| `appSettings.sensitive.aiAnthropicApiKey` | Anthropic API key |
+| `appSettings.sensitive.aiOpenaiApiKey` | OpenAI API key |
+| `appSettings.sensitive.aiGeminiApiKey` | Google Gemini API key |
+| `appSettings.sensitive.aiDeepseekApiKey` | DeepSeek API key |
+
+`appSettings.chatbotAi` and `appSettings.supportAi` no longer take `temperature`, `topP`, or `topK`, and `appSettings.sensitive.chatbotAiApiKey` and `supportAiApiKey` were replaced by one key per provider. The chart refuses the old names when they hold a value, also when `--reuse-values` carries them over from an earlier release.
+
+AI uploads wait under `ai-uploads/quarantine/` in the S3 bucket until their checks pass. On a bucket you manage yourself, add a lifecycle rule that expires objects under the `ai-uploads/quarantine/` prefix after 1 day.
+
 ### Database Connections
 
 Each api, ocpp, ocpi, worker and css pod pools `dependencies.postgresPoolMax` connections (default 10, env `DB_POOL_MAX`). Keep the sum over all pods, with HPA at `maxReplicas` plus one migrate or seed job, below the PostgreSQL `max_connections` minus its reserved connections (stock PostgreSQL: 100 minus 3).
