@@ -232,7 +232,7 @@ AI settings are app settings in the database, and provider API keys are stored e
 | `appSettings.ai.<provider>.baseUrl` | API base URL of `anthropic`, `openai`, `gemini`, or `deepseek`, for a proxy or gateway. Must start with `https://` (the provider's public API) |
 | `appSettings.supportAi.tone` | Reply tone: `professional`, `friendly`, or `formal` |
 | `appSettings.ai.rateLimit.userPerMinute` | AI messages per user per minute, 1 to 1000 (10) |
-| `appSettings.ai.rateLimit.sitePerMinute` | AI messages per minute across the installation, 1 to 100000 (60) |
+| `appSettings.ai.rateLimit.sitePerMinute` | Support AI drafts per site per minute (the support case's site), 1 to 100000 (60) |
 | `appSettings.ai.budget.userDailyTokens` | Tokens per user per day, 0 to 10000000000, 0 for no limit (2000000) |
 | `appSettings.ai.maxToolCallsPerTurn` | Tool calls the model may make in one reply, 1 to 100 (20) |
 | `appSettings.ai.conversationRetentionDays` | Days a conversation is kept after its last message, 1 to 3650 (30) |
@@ -246,6 +246,21 @@ AI settings are app settings in the database, and provider API keys are stored e
 `appSettings.chatbotAi` and `appSettings.supportAi` no longer take `temperature`, `topP`, or `topK`, and `appSettings.sensitive.chatbotAiApiKey` and `supportAiApiKey` were replaced by one key per provider. The chart refuses the old names when they hold a value, also when `--reuse-values` carries them over from an earlier release.
 
 AI uploads wait under `ai-uploads/quarantine/` in the S3 bucket until their checks pass. On a bucket you manage yourself, add a lifecycle rule that expires objects under the `ai-uploads/quarantine/` prefix after 1 day.
+
+Support case and AI chat attachments upload straight from the browser to the bucket with a presigned POST. On a bucket you manage yourself, add a CORS rule that allows `POST` from the CSMS origin, for example:
+
+```json
+[
+  {
+    "AllowedOrigins": ["https://csms.example.com"],
+    "AllowedMethods": ["POST"],
+    "AllowedHeaders": ["*"],
+    "MaxAgeSeconds": 3000
+  }
+]
+```
+
+Without it the browser blocks the upload and the attachment fails.
 
 ### Database Connections
 

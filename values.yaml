@@ -745,8 +745,8 @@ appSettings:
     rateLimit:
       # AI messages per user per minute, 1 to 1000 (fresh install: 10).
       userPerMinute: ""
-      # AI messages per minute across the installation, 1 to 100000
-      # (fresh install: 60).
+      # Support AI drafts per site per minute (the support case's site),
+      # 1 to 100000 (fresh install: 60).
       sitePerMinute: ""
     budget:
       # Tokens per user per day, 0 to 10000000000, 0 for no limit
