@@ -63,6 +63,18 @@
 {{- if or (gt (len (regexFindAll "(?s)." $pdfFooter -1)) 500) (gt (len (splitList "\n" (trim $pdfFooter))) 5) }}
 {{- fail "appSettings.pdf.footer is not supported. Use plain text of at most 5 lines and 500 characters." }}
 {{- end }}
+{{- $company := .Values.appSettings.company | default dict }}
+{{- $sellerLimits := dict "taxId" 64 "taxIdLabel" 40 "registrationNumber" 100 "invoiceEmail" 254 "invoicePhone" 40 }}
+{{- range $field, $max := $sellerLimits }}
+{{- $value := index $company $field | default "" | toString }}
+{{- if or (regexMatch "[\\x00-\\x1f\\x7f]" $value) (gt (len (regexFindAll "(?s)." (trim $value) -1)) (int $max)) }}
+{{- fail (printf "appSettings.company.%s is not supported. Use one line of at most %d characters, or leave it empty." $field (int $max)) }}
+{{- end }}
+{{- end }}
+{{- $invoiceEmail := $company.invoiceEmail | default "" | toString | trim }}
+{{- if and (ne $invoiceEmail "") (not (regexMatch "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$" $invoiceEmail)) }}
+{{- fail (printf "appSettings.company.invoiceEmail %q is not supported. Use an email address, or leave it empty." $invoiceEmail) }}
+{{- end }}
 {{- $platformFeePercent := "" }}
 {{- if or (kindIs "float64" $payments.platformFeePercent) (kindIs "int64" $payments.platformFeePercent) (kindIs "int" $payments.platformFeePercent) }}{{ $platformFeePercent = printf "%f" (float64 $payments.platformFeePercent) }}{{ else if not (kindIs "invalid" $payments.platformFeePercent) }}{{ $platformFeePercent = toString $payments.platformFeePercent }}{{ end }}
 {{- if and (ne $platformFeePercent "") (not (and (regexMatch "^[0-9]+(\\.[0-9]+)?$" $platformFeePercent) (le (float64 $platformFeePercent) 100.0))) }}
@@ -225,6 +237,11 @@ data:
       "company.state": {{ .Values.appSettings.company.state | toJson }},
       "company.zip": {{ .Values.appSettings.company.zip | toJson }},
       "company.country": {{ .Values.appSettings.company.country | toJson }},
+      "company.taxId": {{ .Values.appSettings.company.taxId | default "" | toString | trim | toJson }},
+      "company.taxIdLabel": {{ .Values.appSettings.company.taxIdLabel | default "" | toString | trim | toJson }},
+      "company.registrationNumber": {{ .Values.appSettings.company.registrationNumber | default "" | toString | trim | toJson }},
+      "company.invoiceEmail": {{ .Values.appSettings.company.invoiceEmail | default "" | toString | trim | toJson }},
+      "company.invoicePhone": {{ .Values.appSettings.company.invoicePhone | default "" | toString | trim | toJson }},
       "company.metaDescription": {{ .Values.appSettings.company.metaDescription | toJson }},
       "company.metaKeywords": {{ .Values.appSettings.company.metaKeywords | toJson }},
       "company.ogImage": {{ .Values.appSettings.company.ogImage | toJson }},

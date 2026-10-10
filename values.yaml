@@ -592,6 +592,19 @@ appSettings:
     state: "CA"
     zip: "94105"
     country: "US"
+    # Invoice seller details printed in the "From" block of every invoice and
+    # credit note PDF, under the company name and address above: the tax ID
+    # (for example a VAT ID), the label printed before it (empty prints "Tax
+    # ID" in the invoice language), the company registration number, and the
+    # contact email and phone for invoices. One line each, at most 64, 40,
+    # 100, 254 and 40 characters. Leave empty to keep the value set in
+    # Settings > Company (empty on a fresh install, and an empty field is left
+    # off the invoice).
+    taxId: ""
+    taxIdLabel: ""
+    registrationNumber: ""
+    invoiceEmail: ""
+    invoicePhone: ""
     metaDescription: "EV charging station management"
     metaKeywords: "EV, charging, OCPP"
     ogImage: ""
