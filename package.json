@@ -3,7 +3,8 @@
   "version": "0.1.10",
   "private": true,
   "scripts": {
-    "prepare": "husky"
+    "prepare": "husky",
+    "test": "bash scripts/test-app-settings.sh"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.4.2",

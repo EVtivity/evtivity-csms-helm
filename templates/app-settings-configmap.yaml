@@ -187,7 +187,16 @@
 {{- $aiRateLimit := $ai.rateLimit | default dict }}
 {{- $aiBudget := $ai.budget | default dict }}
 {{- $aiAttachments := $ai.attachments | default dict }}
+{{- $aiMcp := $ai.mcp | default dict }}
+{{- $opsAi := .Values.appSettings.opsAi | default dict }}
+{{- $aiInsights := .Values.appSettings.aiInsights | default dict }}
+{{- $aiWorkers := .Values.appSettings.aiWorkers | default dict }}
+{{- $aiStuckSessions := $aiWorkers.stuckSessions | default dict }}
 {{- $aiNumberInputs := list (list "ai.rateLimit.userPerMinute" $aiRateLimit.userPerMinute 1 1000) (list "ai.rateLimit.sitePerMinute" $aiRateLimit.sitePerMinute 1 100000) (list "ai.budget.userDailyTokens" $aiBudget.userDailyTokens 0 10000000000) (list "ai.maxToolCallsPerTurn" $ai.maxToolCallsPerTurn 1 100) (list "ai.conversationRetentionDays" $ai.conversationRetentionDays 1 3650) (list "ai.attachments.maxBytes" $aiAttachments.maxBytes 1 33554432) (list "ai.attachments.maxPerMessage" $aiAttachments.maxPerMessage 1 20) }}
+{{- $aiNumberInputs = concat $aiNumberInputs (list (list "ai.budget.companyMonthlyTokens" $aiBudget.companyMonthlyTokens 0 1000000000000) (list "ai.budget.siteMonthlyTokens" $aiBudget.siteMonthlyTokens 0 1000000000000) (list "ai.budget.siteDailyTokens" $aiBudget.siteDailyTokens 0 10000000000) (list "ai.budget.warnPercent" $aiBudget.warnPercent 1 100)) }}
+{{- $aiNumberInputs = concat $aiNumberInputs (list (list "ai.mcp.rateLimitPerMinute" $aiMcp.rateLimitPerMinute 1 10000) (list "ai.mcp.dailyCallsPerKey" $aiMcp.dailyCallsPerKey 1 10000000) (list "ai.mcp.proposalTtlMinutes" $aiMcp.proposalTtlMinutes 5 1440)) }}
+{{- $aiNumberInputs = concat $aiNumberInputs (list (list "aiInsights.debounceSeconds" $aiInsights.debounceSeconds 0 3600) (list "aiInsights.cooldownMinutes" $aiInsights.cooldownMinutes 1 10080) (list "aiInsights.siteIncidentThreshold" $aiInsights.siteIncidentThreshold 2 1000) (list "aiInsights.maxPerSitePerDay" $aiInsights.maxPerSitePerDay 1 10000) (list "aiInsights.retentionDays" $aiInsights.retentionDays 1 3650)) }}
+{{- $aiNumberInputs = concat $aiNumberInputs (list (list "aiWorkers.stuckSessions.idleMinutes" $aiStuckSessions.idleMinutes 15 1440) (list "aiWorkers.proposalTtlHours" $aiWorkers.proposalTtlHours 1 168)) }}
 {{- $aiNumbers := dict }}
 {{- range $input := $aiNumberInputs }}
 {{- $aiName := index $input 0 }}
@@ -196,10 +205,48 @@
 {{- $aiMax := index $input 3 }}
 {{- $aiText := "" }}
 {{- if kindIs "float64" $aiValue }}{{ $aiText = ternary (toString (int64 $aiValue)) (toString $aiValue) (eq $aiValue (floor $aiValue)) }}{{ else if not (kindIs "invalid" $aiValue) }}{{ $aiText = toString $aiValue }}{{ end }}
-{{- if and (ne $aiText "") (not (and (regexMatch "^[0-9]{1,11}$" $aiText) (ge (atoi $aiText) $aiMin) (le (atoi $aiText) $aiMax))) }}
+{{- if and (ne $aiText "") (not (and (regexMatch "^[0-9]{1,13}$" $aiText) (ge (atoi $aiText) $aiMin) (le (atoi $aiText) $aiMax))) }}
 {{- fail (printf "appSettings.%s %q is not supported. Use a whole number from %d to %d." $aiName $aiText $aiMin $aiMax) }}
 {{- end }}
 {{- $_ := set $aiNumbers $aiName $aiText }}
+{{- end }}
+{{- $aiBoolInputs := list (list "opsAi.enabled" $opsAi.enabled) (list "aiInsights.station.enabled" ($aiInsights.station | default dict).enabled) (list "aiInsights.session.enabled" ($aiInsights.session | default dict).enabled) (list "aiInsights.authorization.enabled" ($aiInsights.authorization | default dict).enabled) }}
+{{- $aiBoolInputs = concat $aiBoolInputs (list (list "aiWorkers.networkSummary.enabled" ($aiWorkers.networkSummary | default dict).enabled) (list "aiWorkers.stuckSessions.enabled" $aiStuckSessions.enabled) (list "aiWorkers.stuckSessions.useModel" $aiStuckSessions.useModel) (list "aiWorkers.tariffAnomalies.enabled" ($aiWorkers.tariffAnomalies | default dict).enabled) (list "ai.mcp.enabled" $aiMcp.enabled)) }}
+{{- $aiBools := dict }}
+{{- range $input := $aiBoolInputs }}
+{{- $aiName := index $input 0 }}
+{{- $aiValue := index $input 1 }}
+{{- $aiText := "" }}
+{{- if not (kindIs "invalid" $aiValue) }}{{ $aiText = toString $aiValue }}{{ end }}
+{{- if not (has $aiText (list "" "true" "false")) }}
+{{- fail (printf "appSettings.%s %q is not supported. Use true or false, or leave it empty." $aiName $aiText) }}
+{{- end }}
+{{- $_ := set $aiBools $aiName $aiText }}
+{{- end }}
+{{- $aiLanguages := list "en" "de" "es" "ko" "zh" "zh-TW" }}
+{{- $aiEnumInputs := list (list "opsAi.provider" $opsAi.provider $aiProviders) (list "opsAi.effort" $opsAi.effort (list "low" "medium" "high")) (list "aiInsights.primaryLanguage" $aiInsights.primaryLanguage $aiLanguages) }}
+{{- $aiEnums := dict }}
+{{- range $input := $aiEnumInputs }}
+{{- $aiName := index $input 0 }}
+{{- $aiText := index $input 1 | default "" | toString }}
+{{- $aiAllowed := index $input 2 }}
+{{- if and (ne $aiText "") (not (has $aiText $aiAllowed)) }}
+{{- fail (printf "appSettings.%s %q is not supported. Use %s, or leave it empty." $aiName $aiText (join ", " $aiAllowed)) }}
+{{- end }}
+{{- $_ := set $aiEnums $aiName $aiText }}
+{{- end }}
+{{- $aiMcpOrigins := $aiMcp.allowedOrigins }}
+{{- if kindIs "slice" $aiMcpOrigins }}
+{{- if gt (len $aiMcpOrigins) 50 }}
+{{- fail "appSettings.ai.mcp.allowedOrigins has more than 50 entries. Use at most 50 origins." }}
+{{- end }}
+{{- range $origin := $aiMcpOrigins }}
+{{- if not (regexMatch "^https?://(\\[[0-9A-Fa-f:.]+\\]|[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?)(:[0-9]{1,5})?$" (toString $origin)) }}
+{{- fail (printf "appSettings.ai.mcp.allowedOrigins entry %q is not an origin. Use scheme://host[:port] with http or https and no path, for example https://agent.example.com." (toString $origin)) }}
+{{- end }}
+{{- end }}
+{{- else if not (or (kindIs "invalid" $aiMcpOrigins) (eq (toString $aiMcpOrigins) "")) }}
+{{- fail "appSettings.ai.mcp.allowedOrigins must be a list of origins, for example [https://agent.example.com], or empty to keep the dashboard value." }}
 {{- end }}
 apiVersion: v1
 kind: ConfigMap
@@ -359,6 +406,15 @@ data:
       "chatbotAi.model": {{ .Values.appSettings.chatbotAi.model | toJson }},
       "chatbotAi.effort": {{ .Values.appSettings.chatbotAi.effort | default "" | toJson }},
       "chatbotAi.systemPrompt": {{ .Values.appSettings.chatbotAi.systemPrompt | toJson }},
+      "opsAi.model": {{ $opsAi.model | default "" | toString | toJson }},
+      "opsAi.systemPrompt": {{ $opsAi.systemPrompt | default "" | toString | toJson }},
+      "ai.mcp.allowedOrigins": {{ if kindIs "slice" $aiMcpOrigins }}{{ $aiMcpOrigins | toJson }}{{ else }}""{{ end }},
+      {{- range $key, $value := $aiEnums }}
+      {{ $key | toJson }}: {{ $value | toJson }},
+      {{- end }}
+      {{- range $key, $value := $aiBools }}
+      {{ $key | toJson }}: {{ if eq $value "" }}""{{ else }}{{ $value }}{{ end }},
+      {{- end }}
       {{- range $key, $value := $aiBaseUrls }}
       {{ $key | toJson }}: {{ $value | toJson }},
       {{- end }}

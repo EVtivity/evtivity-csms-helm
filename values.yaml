@@ -780,6 +780,34 @@ appSettings:
       # Tokens per user per day, 0 to 10000000000, 0 for no limit
       # (fresh install: 2000000).
       userDailyTokens: ""
+      # Tokens the whole company may use per calendar month, 0 to
+      # 1000000000000, 0 for no limit (fresh install: 0).
+      companyMonthlyTokens: ""
+      # Tokens per site per calendar month, the default for every site,
+      # 0 to 1000000000000, 0 for no limit (fresh install: 0).
+      siteMonthlyTokens: ""
+      # Tokens per site per day for insights and AI workers, 0 to
+      # 10000000000, 0 for no limit (fresh install: 300000).
+      siteDailyTokens: ""
+      # Percent of a budget at which operators are warned, 1 to 100
+      # (fresh install: 80).
+      warnPercent: ""
+    # MCP server for external AI agents (API keys with AI scopes).
+    mcp:
+      # true or false (fresh install: false).
+      enabled: ""
+      # MCP calls per API key per minute, 1 to 10000 (fresh install: 60).
+      rateLimitPerMinute: ""
+      # MCP calls per API key per day, 1 to 10000000 (fresh install: 5000).
+      dailyCallsPerKey: ""
+      # Minutes an MCP write proposal waits for confirmation, 5 to 1440
+      # (fresh install: 30).
+      proposalTtlMinutes: ""
+      # Browser origins allowed to call the MCP endpoint, at most 50, each
+      # scheme://host[:port] with http or https and no path, for example
+      # [https://agent.example.com]. Empty keeps the dashboard value
+      # (fresh install: none; requests without an Origin header are allowed).
+      allowedOrigins: ""
     # Tool calls the model may make in one reply, 1 to 100 (fresh install: 20).
     maxToolCallsPerTurn: ""
     # Days a conversation is kept after its last message, 1 to 3650
@@ -790,6 +818,68 @@ appSettings:
       maxBytes: ""
       # Attachments per message, 1 to 20 (fresh install: 5).
       maxPerMessage: ""
+  # Operations AI: the model behind automatic insights and AI workers. Leave a
+  # value empty to keep the one set in the dashboard (fresh install default in
+  # each comment).
+  opsAi:
+    # true or false (fresh install: false).
+    enabled: ""
+    # anthropic, openai, gemini or deepseek (fresh install: anthropic).
+    provider: ""
+    # Model name (fresh install: empty, the provider's router model).
+    model: ""
+    # Reasoning effort: low, medium or high (fresh install: low).
+    effort: ""
+    # Fresh install: empty, the built-in prompt.
+    systemPrompt: ""
+  # Automatic AI insights on stations, sessions and authorizations.
+  aiInsights:
+    # true or false for each subject (fresh install: true).
+    station:
+      enabled: ""
+    session:
+      enabled: ""
+    authorization:
+      enabled: ""
+    # Seconds a station insight waits before it re-reads the station state,
+    # 0 to 3600 (fresh install: 120).
+    debounceSeconds: ""
+    # Minutes before the same subject gets a new insight, 1 to 10080
+    # (fresh install: 60).
+    cooldownMinutes: ""
+    # Stations of one site going offline or faulted inside the debounce
+    # window that make one site incident insight, 2 to 1000
+    # (fresh install: 3).
+    siteIncidentThreshold: ""
+    # Insights per site per day, 1 to 10000 (fresh install: 50).
+    maxPerSitePerDay: ""
+    # Language of the insight summary: en, de, es, ko, zh or zh-TW
+    # (fresh install: en).
+    primaryLanguage: ""
+    # Days an insight is kept, 1 to 3650 (fresh install: 90).
+    retentionDays: ""
+  # AI workers: scheduled jobs that report on the network and propose
+  # actions an operator approves.
+  aiWorkers:
+    networkSummary:
+      # true or false (fresh install: false).
+      enabled: ""
+    stuckSessions:
+      # true or false (fresh install: false).
+      enabled: ""
+      # Minutes without a meter value or transaction event before an active
+      # session counts as stuck, 15 to 1440, below the stale session timeout
+      # (fresh install: 90).
+      idleMinutes: ""
+      # true or false: add a one-line model rationale to each proposal
+      # (fresh install: false).
+      useModel: ""
+    tariffAnomalies:
+      # true or false (fresh install: false).
+      enabled: ""
+    # Hours a worker proposal waits for a decision, 1 to 168
+    # (fresh install: 24).
+    proposalTtlHours: ""
   sso:
     enabled: false
     provider: ""

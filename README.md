@@ -241,6 +241,31 @@ AI settings are app settings in the database, and provider API keys are stored e
 | `appSettings.ai.conversationRetentionDays` | Days a conversation is kept after its last message, 1 to 3650 (30) |
 | `appSettings.ai.attachments.maxBytes` | Largest attachment in bytes, 1 to 33554432 (10485760) |
 | `appSettings.ai.attachments.maxPerMessage` | Attachments per message, 1 to 20 (5) |
+| `appSettings.ai.budget.companyMonthlyTokens` | Tokens the whole company may use per calendar month, 0 to 1000000000000, 0 for no limit (0) |
+| `appSettings.ai.budget.siteMonthlyTokens` | Tokens per site per calendar month, the default for every site, 0 to 1000000000000, 0 for no limit (0) |
+| `appSettings.ai.budget.siteDailyTokens` | Tokens per site per day for insights and AI workers, 0 to 10000000000, 0 for no limit (300000) |
+| `appSettings.ai.budget.warnPercent` | Percent of a budget at which operators are warned, 1 to 100 (80) |
+| `appSettings.opsAi.enabled` | Operations AI for automatic insights and AI workers: `true` or `false` (`false`) |
+| `appSettings.opsAi.provider` | `anthropic`, `openai`, `gemini`, or `deepseek` (`anthropic`) |
+| `appSettings.opsAi.model` | Model name (empty: the provider's router model) |
+| `appSettings.opsAi.effort` | Reasoning effort: `low`, `medium`, or `high` (`low`) |
+| `appSettings.opsAi.systemPrompt` | System prompt (empty: the built-in prompt) |
+| `appSettings.aiInsights.station.enabled`, `session.enabled`, `authorization.enabled` | Automatic insights per subject: `true` or `false` (`true`) |
+| `appSettings.aiInsights.debounceSeconds` | Seconds a station insight waits before it re-reads the station state, 0 to 3600 (120) |
+| `appSettings.aiInsights.cooldownMinutes` | Minutes before the same subject gets a new insight, 1 to 10080 (60) |
+| `appSettings.aiInsights.siteIncidentThreshold` | Stations of one site going offline or faulted inside the debounce window that make one site incident insight, 2 to 1000 (3) |
+| `appSettings.aiInsights.maxPerSitePerDay` | Insights per site per day, 1 to 10000 (50) |
+| `appSettings.aiInsights.primaryLanguage` | Language of the insight summary: `en`, `de`, `es`, `ko`, `zh`, or `zh-TW` (`en`) |
+| `appSettings.aiInsights.retentionDays` | Days an insight is kept, 1 to 3650 (90) |
+| `appSettings.aiWorkers.networkSummary.enabled`, `stuckSessions.enabled`, `tariffAnomalies.enabled` | AI worker jobs: `true` or `false` (`false`) |
+| `appSettings.aiWorkers.stuckSessions.idleMinutes` | Minutes without a meter value or transaction event before an active session counts as stuck, 15 to 1440, below the stale session timeout (90) |
+| `appSettings.aiWorkers.stuckSessions.useModel` | Add a one-line model rationale to each stuck session proposal: `true` or `false` (`false`) |
+| `appSettings.aiWorkers.proposalTtlHours` | Hours a worker proposal waits for a decision, 1 to 168 (24) |
+| `appSettings.ai.mcp.enabled` | MCP server for external AI agents: `true` or `false` (`false`) |
+| `appSettings.ai.mcp.rateLimitPerMinute` | MCP calls per API key per minute, 1 to 10000 (60) |
+| `appSettings.ai.mcp.dailyCallsPerKey` | MCP calls per API key per day, 1 to 10000000 (5000) |
+| `appSettings.ai.mcp.proposalTtlMinutes` | Minutes an MCP write proposal waits for confirmation, 5 to 1440 (30) |
+| `appSettings.ai.mcp.allowedOrigins` | Browser origins allowed to call the MCP endpoint, a list of at most 50 `scheme://host[:port]` origins with `http` or `https` and no path, for example `[https://agent.example.com]`. Requests without an `Origin` header are allowed (none) |
 | `appSettings.sensitive.aiAnthropicApiKey` | Anthropic API key |
 | `appSettings.sensitive.aiOpenaiApiKey` | OpenAI API key |
 | `appSettings.sensitive.aiGeminiApiKey` | Google Gemini API key |
@@ -264,6 +289,8 @@ Support case and AI chat attachments upload straight from the browser to the buc
 ```
 
 Without it the browser blocks the upload and the attachment fails.
+
+`scripts/test-app-settings.sh` (`npm test`) renders the app settings with `helm template` and checks that every AI setting maps to its key and that out-of-range values fail the render.
 
 ### Database Connections
 
