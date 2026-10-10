@@ -88,11 +88,7 @@ spec:
               console.log('Upserted ' + count + ' settings from Helm values.');
               await sql.end();
           env:
-            - name: DATABASE_URL
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "evtivity-csms.secretName" . }}
-                  key: DATABASE_URL
+            {{- include "evtivity-csms.ownerDatabaseUrlEnv" . | nindent 12 }}
             - name: SETTINGS_ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:

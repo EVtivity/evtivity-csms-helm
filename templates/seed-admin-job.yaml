@@ -40,11 +40,7 @@ spec:
               value: {{ .Values.initialAdmin.email | quote }}
             - name: INITIAL_ADMIN_PASSWORD
               value: {{ .Values.initialAdmin.password | quote }}
-            - name: DATABASE_URL
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "evtivity-csms.secretName" . }}
-                  key: DATABASE_URL
+            {{- include "evtivity-csms.ownerDatabaseUrlEnv" . | nindent 12 }}
           {{- with .Values.migrate.resources }}
           resources:
             {{- toYaml . | nindent 12 }}

@@ -47,11 +47,7 @@ spec:
               value: "ws://{{ include "evtivity-csms.fullname" . }}-ocpp:{{ .Values.ocpp.port }}"
             - name: SEED_CSS_TLS_TARGET_URL
               value: "wss://{{ include "evtivity-csms.fullname" . }}-ocpp:{{ .Values.ocpp.tls.port }}"
-            - name: DATABASE_URL
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "evtivity-csms.secretName" . }}
-                  key: DATABASE_URL
+            {{- include "evtivity-csms.ownerDatabaseUrlEnv" . | nindent 12 }}
             - name: SETTINGS_ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:

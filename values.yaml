@@ -56,7 +56,9 @@ api:
 # --- Background Worker ---
 worker:
   enabled: true
-  # Single replica by default. Safe to scale up - BullMQ handles exactly-once delivery.
+  # Single replica by default. Safe to scale up: BullMQ job schedulers and
+  # deterministic job ids run each cron tick and bridged event once across
+  # replicas. Keep one replica when octtOcspResponderUrl is set.
   replicaCount: 1
   image:
     repository: ""
@@ -68,13 +70,21 @@ worker:
     # The run adds the host to pnc.ocsp.allowedPrivateHosts while it runs.
     # Empty: the OCSP tests (TC_C_50, TC_C_51, TC_C_52, TC_M_24) are skipped.
     octtOcspResponderUrl: ""
+  # A 0.5 vCPU worker ran at 72 to 94% CPU with 400 sessions charging
+  # (2026-10-09 AWS benchmark). The CDK prod config runs it on 1 vCPU / 2 GB.
   resources:
     requests:
-      cpu: 100m
-      memory: 512Mi
-    limits:
       cpu: 500m
       memory: 1Gi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+  # CPU target is a percentage of resources.requests.cpu.
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 4
+    targetCPUUtilization: 70
   nodeSelector: {}
   tolerations: []
   affinity: {}
@@ -438,6 +448,105 @@ redisTls:
   caSecret: ""
   caKey: ca.crt
 
+# --- Redis ACL sync ---
+# A pre-install/pre-upgrade hook applies redis/acl-rules.conf to the service
+# users (keys, channels, commands; passwords unchanged) and persists it, so a
+# release that adds a key prefix or channel works right after the upgrade
+# (README, "Redis Access Control"). It connects to dependencies.redisHost as the
+# admin user. Without the admin password Secret it changes nothing.
+redisAcl:
+  sync:
+    enabled: true
+  admin:
+    user: default
+    passwordSecret:
+      # Empty: <release>-redis, the Secret of the bundled Bitnami Redis.
+      name: ""
+      key: redis-password
+  # Secret or ConfigMap the Redis loads its ACL file from at start. Empty name:
+  # the bundled Bitnami Redis objects (<release>-redis-acl Secret, then
+  # <release>-redis-configuration ConfigMap); without them the job runs ACL SAVE
+  # (Redis with an aclfile) or CONFIG REWRITE.
+  aclFile:
+    kind: Secret
+    name: ""
+    key: users.acl
+
+# --- Credential Rotation ---
+# Rotates the PostgreSQL and Redis passwords of the services on a schedule (README,
+# "Credential Rotation"). Off by default: it needs admin credentials for both
+# servers, and the Redis must keep ACL changes across restarts.
+# When enabled, a pre-install/pre-upgrade hook copies DATABASE_URL and the
+# REDIS_URL_* values into the Secret <fullname>-credentials once. From then on
+# that Secret is the source of truth for those connections: the services read it,
+# the rotation job updates it, and later changes to secrets.databaseUrl or
+# secrets.redisUrls are ignored. Before turning rotation off, copy its current
+# values back into secrets.* (DATABASE_URL takes MIGRATE_DATABASE_URL).
+credentialRotation:
+  enabled: false
+  # Cron schedule of the rotation job (default: 03:00 on the 1st of each month).
+  schedule: "0 3 1 * *"
+  # IANA time zone of the schedule. Empty uses the controller's zone (usually UTC).
+  timeZone: ""
+  # Pauses the schedule without removing the job.
+  suspend: false
+  # Time each restarted Deployment has to finish its rollout. A rollout that
+  # does not finish fails the run and keeps the old credentials valid.
+  rolloutTimeoutSeconds: 900
+  # Wait after the rollouts before the old credentials are removed, so pods in
+  # their termination grace period finish with a working credential.
+  revokeDelaySeconds: 120
+  database:
+    # Alternating application logins: <appUser> and <appUser>_clone, members of
+    # groupRole. The pods move off the owner role at the first rotation.
+    enabled: true
+    appUser: evtivity_app
+    groupRole: evtivity_app_group
+    # Also rotate the owner password (used only by the migrate and seed jobs).
+    rotateOwner: true
+    # PostgreSQL user that creates the logins and changes passwords: a
+    # superuser, or a role with CREATEROLE and ADMIN on groupRole. The bundled
+    # Bitnami PostgreSQL: user postgres, Secret <release>-postgresql, key
+    # postgres-password. Its password is not rotated.
+    admin:
+      user: postgres
+      passwordSecret:
+        name: ""
+        key: postgres-password
+  redis:
+    # Each service user gets a second password, the pods restart, then the
+    # old password is removed. Needs ACL SETUSER and CONFIG GET as the admin user
+    # and a single primary (ACL changes do not replicate).
+    enabled: true
+    # Redis admin user. The bundled Bitnami Redis: user default, Secret
+    # <release>-redis, key redis-password. Its password is not rotated.
+    admin:
+      user: default
+      passwordSecret:
+        name: ""
+        key: redis-password
+    # Secret or ConfigMap holding the ACL file that Redis loads at start. The
+    # job writes the rotated passwords into it, so a Redis restart keeps them.
+    # Required for the bundled Bitnami Redis, which rebuilds its ACL file from
+    # it on every restart: chart 27 and later, Secret <release>-redis-acl;
+    # earlier charts, ConfigMap <release>-redis-configuration (key users.acl in
+    # both). Leave name empty for a Redis that loads a writable aclfile: the job
+    # runs ACL SAVE instead.
+    aclFile:
+      kind: Secret
+      name: ""
+      key: users.acl
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
 # --- Application Settings ---
 # Settings seeded into the database on every install and upgrade.
 # All settings remain editable via the admin UI.
@@ -483,6 +592,19 @@ appSettings:
     state: "CA"
     zip: "94105"
     country: "US"
+    # Invoice seller details printed in the "From" block of every invoice and
+    # credit note PDF, under the company name and address above: the tax ID
+    # (for example a VAT ID), the label printed before it (empty prints "Tax
+    # ID" in the invoice language), the company registration number, and the
+    # contact email and phone for invoices. One line each, at most 64, 40,
+    # 100, 254 and 40 characters. Leave empty to keep the value set in
+    # Settings > Company (empty on a fresh install, and an empty field is left
+    # off the invoice).
+    taxId: ""
+    taxIdLabel: ""
+    registrationNumber: ""
+    invoiceEmail: ""
+    invoicePhone: ""
     metaDescription: "EV charging station management"
     metaKeywords: "EV, charging, OCPP"
     ogImage: ""
@@ -520,6 +642,21 @@ appSettings:
     # cost nears the reservation (1 to 100000000). Leave empty to keep the value
     # set in Settings > Integrations > Fleet (5000 on a fresh install).
     creditReservationCents: ""
+  pdf:
+    # Logo on every PDF the platform generates (invoices, credit notes, fleet
+    # invoices, reports): a PNG or SVG data URI (data:image/png;base64,... or
+    # data:image/svg+xml;base64,...) of at most 512 KB. Prefer uploading it in
+    # Settings > Company: an SVG uploaded there is cleaned of scripts and
+    # external references, and a large value here counts toward the 1 MiB
+    # ConfigMap limit. Leave empty to keep the value set in the dashboard (the
+    # default EVtivity logo on a fresh install).
+    logo: ""
+    # Plain text shown centered at the bottom of every PDF page, exactly as
+    # entered and not translated (at most 5 lines and 500 characters). Leave
+    # empty to keep the value set in Settings > Company (www.evtivity.com on a
+    # fresh install). A value set here replaces the dashboard value on every
+    # upgrade.
+    footer: ""
   session:
     staleTimeoutHours: 24
     # Connection timeout (seconds) assumed for a station that has not reported
@@ -546,13 +683,15 @@ appSettings:
   sentry:
     enabled: false
     environment: "production"
+  # Operator AI assistant. provider: anthropic, openai, gemini or deepseek.
+  # effort: reasoning effort, low, medium or high; leave empty to keep the
+  # value set in the dashboard (the provider default on a fresh install).
+  # temperature, topP and topK were removed: the chart refuses them.
   chatbotAi:
     enabled: false
     provider: "anthropic"
     model: ""
-    temperature: ""
-    topP: ""
-    topK: ""
+    effort: ""
     systemPrompt: ""
   features:
     roamingEnabled: false
@@ -607,15 +746,50 @@ appSettings:
     securityEventsRetentionDays: 365
     portStatusRetentionDays: 30
     workerJobRetentionDays: 30
+  # Support case AI. provider and effort take the same values as chatbotAi.
+  # tone: professional, friendly or formal.
+  # temperature, topP and topK were removed: the chart refuses them.
   supportAi:
     enabled: false
     provider: ""
     model: ""
-    temperature: ""
-    topP: ""
-    topK: ""
+    effort: ""
     systemPrompt: ""
     tone: "professional"
+  # Settings shared by every AI feature. Leave a value empty to keep the one
+  # set in the dashboard; the migration sets the fresh-install default named
+  # in each comment. Provider API keys go in sensitive.ai*ApiKey.
+  ai:
+    # Provider API base URL, for a proxy or gateway. Must start with https://.
+    # Empty on a fresh install (the provider's public API).
+    anthropic:
+      baseUrl: ""
+    openai:
+      baseUrl: ""
+    gemini:
+      baseUrl: ""
+    deepseek:
+      baseUrl: ""
+    rateLimit:
+      # AI messages per user per minute, 1 to 1000 (fresh install: 10).
+      userPerMinute: ""
+      # Support AI drafts per site per minute (the support case's site),
+      # 1 to 100000 (fresh install: 60).
+      sitePerMinute: ""
+    budget:
+      # Tokens per user per day, 0 to 10000000000, 0 for no limit
+      # (fresh install: 2000000).
+      userDailyTokens: ""
+    # Tool calls the model may make in one reply, 1 to 100 (fresh install: 20).
+    maxToolCallsPerTurn: ""
+    # Days a conversation is kept after its last message, 1 to 3650
+    # (fresh install: 30).
+    conversationRetentionDays: ""
+    attachments:
+      # Largest attachment in bytes, 1 to 33554432 (fresh install: 10485760).
+      maxBytes: ""
+      # Attachments per message, 1 to 20 (fresh install: 5).
+      maxPerMessage: ""
   sso:
     enabled: false
     provider: ""
@@ -729,8 +903,12 @@ appSettings:
     marketingGtagPortal: ""
     marketingGtagCsms: ""
     ssoCert: ""
-    supportAiApiKey: ""
-    chatbotAiApiKey: ""
+    # AI provider API keys, shared by every AI feature (ai.<provider>.apiKeyEnc).
+    # supportAiApiKey and chatbotAiApiKey were removed: the chart refuses them.
+    aiAnthropicApiKey: ""
+    aiOpenaiApiKey: ""
+    aiGeminiApiKey: ""
+    aiDeepseekApiKey: ""
     sentryDsn: ""
 
 # --- Monitoring (Prometheus + Grafana) ---

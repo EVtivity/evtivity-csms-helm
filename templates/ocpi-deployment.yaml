@@ -41,7 +41,7 @@ spec:
             - secretRef:
                 name: {{ include "evtivity-csms.secretName" . }}
           env:
-            {{- include "evtivity-csms.redisUrlEnv" (dict "context" . "component" "ocpi") | nindent 12 }}
+            {{- include "evtivity-csms.credentialsEnv" (dict "context" . "component" "ocpi") | nindent 12 }}
           livenessProbe:
             tcpSocket:
               port: http

@@ -38,6 +38,16 @@ Initial admin user: {{ .Values.initialAdmin.email }}
 You will be required to change your password on first login.
 {{- end }}
 
+{{- $rotation := include "evtivity-csms.credentialRotation" . | fromYaml }}
+{{- if $rotation.enabled }}
+
+Credential rotation is on (schedule "{{ $rotation.schedule }}"{{ if $rotation.suspend }}, suspended{{ end }}).
+The services read their database and Redis URLs from the Secret {{ include "evtivity-csms.credentialsSecretName" . }}.
+Rotate now:
+
+  kubectl create job --from=cronjob/{{ include "evtivity-csms.fullname" . }}-credential-rotation rotate-now -n {{ .Release.Namespace }}
+{{- end }}
+
 Verify the deployment:
 
   kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/part-of=evtivity-csms

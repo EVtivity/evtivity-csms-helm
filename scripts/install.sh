@@ -22,6 +22,13 @@ POSTGRES_USER="${POSTGRES_USER:-evtivity}"
 REDIS_HOST="${REDIS_HOST:-${RELEASE}-redis-master}"
 REDIS_PORT="${REDIS_PORT:-6379}"
 
+# Bitnami chart versions of the bundled PostgreSQL and Redis, tested with this
+# chart. Redis chart 27 and later mount the ACL Secret with a subPath inside the
+# read-only configuration volume, and the Redis container fails to start
+# ("Are you trying to mount a directory onto a file") when auth.acl.users is set.
+POSTGRES_CHART_VERSION="${POSTGRES_CHART_VERSION:-18.12.4}"
+REDIS_CHART_VERSION="${REDIS_CHART_VERSION:-25.5.3}"
+
 DATABASE_URL="postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}"
 
 # Each service connects to Redis as its own ACL user. Users, keys, channels and
@@ -109,6 +116,16 @@ INSTALL_POSTGRES="${INSTALL_POSTGRES:-y}"
 
 read -r -p "Install bundled Redis? (y/n) [y]: " INSTALL_REDIS
 INSTALL_REDIS="${INSTALL_REDIS:-y}"
+
+# --- Credential rotation (opt in) ---
+# CREDENTIAL_ROTATION=true turns on the rotation CronJob (README, "Credential
+# Rotation") with the admin credentials of the bundled PostgreSQL and Redis.
+CREDENTIAL_ROTATION="${CREDENTIAL_ROTATION:-false}"
+if [ "$CREDENTIAL_ROTATION" = "true" ] && { [ "$INSTALL_POSTGRES" != "y" ] || [ "$INSTALL_REDIS" != "y" ]; }; then
+  echo "Error: CREDENTIAL_ROTATION=true needs the bundled PostgreSQL and Redis."
+  echo "For external servers, set the credentialRotation values yourself (README, Credential Rotation)."
+  exit 1
+fi
 
 # --- Redis TLS (opt in) ---
 # REDIS_TLS=true serves the bundled Redis over TLS. Its certificate comes from
@@ -450,6 +467,28 @@ kubectl create secret generic "$CSS_TLS_SECRET" \
 
 echo "OCPP mTLS and CSS client certificates ready."
 
+# --- Credential rotation values ---
+# Bitnami Redis rebuilds its ACL file at start from the Secret <release>-redis-acl
+# (chart 27 and later) or the ConfigMap <release>-redis-configuration (earlier
+# charts). The rotation job writes the new passwords there.
+ROTATION_ARGS=()
+if [ "$CREDENTIAL_ROTATION" = "true" ]; then
+  if kubectl get secret "${RELEASE}-redis-acl" --namespace "$NAMESPACE" > /dev/null 2>&1; then
+    REDIS_ACL_KIND=Secret
+    REDIS_ACL_NAME="${RELEASE}-redis-acl"
+  else
+    REDIS_ACL_KIND=ConfigMap
+    REDIS_ACL_NAME="${RELEASE}-redis-configuration"
+  fi
+  ROTATION_ARGS=(
+    --set credentialRotation.enabled=true
+    --set credentialRotation.database.admin.passwordSecret.name="${RELEASE}-postgresql"
+    --set credentialRotation.redis.admin.passwordSecret.name="${RELEASE}-redis"
+    --set credentialRotation.redis.aclFile.kind="$REDIS_ACL_KIND"
+    --set credentialRotation.redis.aclFile.name="$REDIS_ACL_NAME"
+  )
+fi
+
 # --- Install EVtivity CSMS ---
 echo "Installing EVtivity CSMS..."
 helm upgrade --install "$RELEASE" "$CHART_DIR" \
@@ -483,7 +522,8 @@ helm upgrade --install "$RELEASE" "$CHART_DIR" \
   --set ocpiSim.enabled=true \
   --set ocpiCpoSim.enabled=true \
   --set initialAdmin.password="$ADMIN_PASSWORD" \
-  --set api.env.cookieDomain=".evtivity.local"
+  --set api.env.cookieDomain=".evtivity.local" \
+  ${ROTATION_ARGS[@]+"${ROTATION_ARGS[@]}"}
 echo "EVtivity CSMS ready."
 echo "Admin email: admin@evtivity.local"
 echo "Admin password: $ADMIN_PASSWORD (must be changed on first login)"
