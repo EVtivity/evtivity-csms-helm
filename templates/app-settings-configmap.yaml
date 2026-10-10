@@ -51,6 +51,18 @@
 {{- if and (ne $creditReservationCents "") (not (and (regexMatch "^[0-9]+$" $creditReservationCents) (ge (atoi $creditReservationCents) 1) (le (atoi $creditReservationCents) 100000000))) }}
 {{- fail (printf "appSettings.fleet.creditReservationCents %q is not supported. Use a whole number of cents from 1 to 100000000." $creditReservationCents) }}
 {{- end }}
+{{- $pdf := .Values.appSettings.pdf | default dict }}
+{{- $pdfLogo := $pdf.logo | default "" | toString }}
+{{- if and (ne $pdfLogo "") (not (regexMatch "^data:image/(png;base64|svg\\+xml(;charset=[A-Za-z0-9-]+)?(;base64)?)," $pdfLogo)) }}
+{{- fail "appSettings.pdf.logo is not supported. Use a PNG or SVG data URI (data:image/png;base64,... or data:image/svg+xml;base64,...), or leave it empty." }}
+{{- end }}
+{{- if gt (len $pdfLogo) 700000 }}
+{{- fail "appSettings.pdf.logo is too large. Use a logo of at most 512 KB." }}
+{{- end }}
+{{- $pdfFooter := $pdf.footer | default "" | toString }}
+{{- if or (gt (len (regexFindAll "(?s)." $pdfFooter -1)) 500) (gt (len (splitList "\n" (trim $pdfFooter))) 5) }}
+{{- fail "appSettings.pdf.footer is not supported. Use plain text of at most 5 lines and 500 characters." }}
+{{- end }}
 {{- $platformFeePercent := "" }}
 {{- if or (kindIs "float64" $payments.platformFeePercent) (kindIs "int64" $payments.platformFeePercent) (kindIs "int" $payments.platformFeePercent) }}{{ $platformFeePercent = printf "%f" (float64 $payments.platformFeePercent) }}{{ else if not (kindIs "invalid" $payments.platformFeePercent) }}{{ $platformFeePercent = toString $payments.platformFeePercent }}{{ end }}
 {{- if and (ne $platformFeePercent "") (not (and (regexMatch "^[0-9]+(\\.[0-9]+)?$" $platformFeePercent) (le (float64 $platformFeePercent) 100.0))) }}
@@ -228,6 +240,8 @@ data:
       "idling.gracePeriodMinutes": {{ .Values.appSettings.idling.gracePeriodMinutes | toJson }},
       "prepaid.lowCreditThresholdCents": {{ atoi $lowCreditThresholdCents }},
       "invoice.paymentTermsDays": {{ if eq $paymentTermsDays "" }}""{{ else }}{{ atoi $paymentTermsDays }}{{ end }},
+      "pdf.logo": {{ $pdfLogo | toJson }},
+      "pdf.footer": {{ $pdfFooter | toJson }},
       "session.staleTimeoutHours": {{ .Values.appSettings.session.staleTimeoutHours | toJson }},
       "session.evConnectionTimeoutSeconds": {{ .Values.appSettings.session.evConnectionTimeoutSeconds | toJson }},
       "notifications.emailEnabled": {{ .Values.appSettings.notifications.emailEnabled | toJson }},
