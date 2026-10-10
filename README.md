@@ -65,6 +65,8 @@ To provide your own secrets:
 POSTGRES_PASSWORD=mypass REDIS_PASSWORD=mypass JWT_SECRET=mysecret SETTINGS_ENCRYPTION_KEY=mykey ./scripts/install.sh
 ```
 
+The bundled PostgreSQL and Redis use pinned Bitnami chart versions that were tested with this chart. `POSTGRES_CHART_VERSION` and `REDIS_CHART_VERSION` override them. Redis chart 27 and later do not start with the per-service ACL users.
+
 To use external databases instead of bundled ones:
 
 ```bash
