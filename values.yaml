@@ -638,9 +638,11 @@ appSettings:
     # ConfigMap limit. Leave empty to keep the value set in the dashboard (the
     # default EVtivity logo on a fresh install).
     logo: ""
-    # Plain text centered at the bottom of every PDF page, printed as written in
-    # every language (at most 5 lines and 500 characters). Leave empty to keep
-    # the value set in Settings > Company (no footer on a fresh install).
+    # Plain text shown centered at the bottom of every PDF page, exactly as
+    # entered and not translated (at most 5 lines and 500 characters). Leave
+    # empty to keep the value set in Settings > Company (www.evtivity.com on a
+    # fresh install). A value set here replaces the dashboard value on every
+    # upgrade.
     footer: ""
   session:
     staleTimeoutHours: 24
