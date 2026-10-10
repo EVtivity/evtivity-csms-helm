@@ -629,6 +629,19 @@ appSettings:
     # cost nears the reservation (1 to 100000000). Leave empty to keep the value
     # set in Settings > Integrations > Fleet (5000 on a fresh install).
     creditReservationCents: ""
+  pdf:
+    # Logo on every PDF the platform generates (invoices, credit notes, fleet
+    # invoices, reports): a PNG or SVG data URI (data:image/png;base64,... or
+    # data:image/svg+xml;base64,...) of at most 512 KB. Prefer uploading it in
+    # Settings > Company: an SVG uploaded there is cleaned of scripts and
+    # external references, and a large value here counts toward the 1 MiB
+    # ConfigMap limit. Leave empty to keep the value set in the dashboard (the
+    # default EVtivity logo on a fresh install).
+    logo: ""
+    # Plain text centered at the bottom of every PDF page, printed as written in
+    # every language (at most 5 lines and 500 characters). Leave empty to keep
+    # the value set in Settings > Company (no footer on a fresh install).
+    footer: ""
   session:
     staleTimeoutHours: 24
     # Connection timeout (seconds) assumed for a station that has not reported

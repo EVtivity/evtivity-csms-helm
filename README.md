@@ -205,6 +205,8 @@ Payment settings are app settings in the database, and credentials are stored en
 | `appSettings.invoice.paymentTermsDays` | Days from issue to the due date of a new invoice, 0 to 365 (30 on a fresh install) |
 | `appSettings.fleet.invoiceRunDay` | Day of the month, 1 to 28, from which the monthly run invoices fleets with automatic monthly invoice for the previous month (1 on a fresh install) |
 | `appSettings.fleet.creditReservationCents` | Fleet credit in cents an account session reserves at its start and adds each time its cost nears the reservation, for fleets with a credit limit, 1 to 100000000 (5000 on a fresh install) |
+| `appSettings.pdf.logo` | Logo on every generated PDF (invoices, credit notes, fleet invoices, reports): a PNG or SVG data URI of at most 512 KB. Empty keeps the dashboard value (the default EVtivity logo on a fresh install) |
+| `appSettings.pdf.footer` | Plain text centered at the bottom of every PDF page, at most 5 lines and 500 characters, printed as written in every language. Empty keeps the dashboard value (no footer on a fresh install) |
 | `appSettings.simulated.resultMode` | Test provider result mode: `sync` (results in the API response) or `async` (results confirmed later through the payment webhook pipeline after `asyncDelaySeconds`) |
 | `appSettings.simulated.asyncDelaySeconds` | Test provider delay of async results in seconds, 0 to 3600 |
 | `appSettings.simulated.randomFailureRate` | Test provider failure rate of cards without a scenario, 0 to 1 |
