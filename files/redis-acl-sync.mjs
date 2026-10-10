@@ -19,9 +19,10 @@
 // apply the rules by hand as the README describes. A failure stops the
 // upgrade before any Deployment changes.
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import { request } from 'node:https';
 import { createRequire } from 'node:module';
+import { pathToFileURL } from 'node:url';
 
 const require = createRequire(`${process.env.APP_ROOT || '/app'}/package.json`);
 
@@ -258,7 +259,10 @@ async function main() {
   }
 }
 
-if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href) {
+// Node resolves symlinks for the main module, and a ConfigMap volume serves the script
+// through a symlink (..data/), so compare against the resolved path. Comparing with
+// argv[1] as given skipped main() in the hook Job and it exited 0 without changes.
+if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   main().catch((err) => {
     console.error(`[redis-acl-sync] failed: ${err.message}`);
     process.exit(1);
