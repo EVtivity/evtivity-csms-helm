@@ -141,7 +141,11 @@
 {{- fail (printf "appSettings.%s.effort %q is not supported. Use low, medium, or high." $section $aiEffort) }}
 {{- end }}
 {{- end }}
-{{- $sensitiveSettings := .Values.appSettings.sensitive | default dict }}
+{{- $supportAiTone := (.Values.appSettings.supportAi | default dict).tone | default "" | toString }}
+{{- if and (ne $supportAiTone "") (not (has $supportAiTone (list "professional" "friendly" "formal"))) }}
+{{- fail (printf "appSettings.supportAi.tone %q is not supported. Use professional, friendly, or formal." $supportAiTone) }}
+{{- end }}
+{{- $sensitiveSettings :=.Values.appSettings.sensitive | default dict }}
 {{- range $key := list "chatbotAiApiKey" "supportAiApiKey" }}
 {{- if and (hasKey $sensitiveSettings $key) (not (kindIs "invalid" (get $sensitiveSettings $key))) (ne (toString (get $sensitiveSettings $key)) "") }}
 {{- fail (printf "appSettings.sensitive.%s was removed: every AI feature shares one API key per provider. Remove it from your values (with --reuse-values, add --set appSettings.sensitive.%s=null) and set appSettings.sensitive.aiAnthropicApiKey, aiOpenaiApiKey, aiGeminiApiKey, or aiDeepseekApiKey for your provider." $key $key) }}
@@ -159,16 +163,17 @@
 {{- $aiRateLimit := $ai.rateLimit | default dict }}
 {{- $aiBudget := $ai.budget | default dict }}
 {{- $aiAttachments := $ai.attachments | default dict }}
-{{- $aiNumberInputs := list (list "ai.rateLimit.userPerMinute" $aiRateLimit.userPerMinute 1) (list "ai.rateLimit.sitePerMinute" $aiRateLimit.sitePerMinute 1) (list "ai.budget.userDailyTokens" $aiBudget.userDailyTokens 0) (list "ai.maxToolCallsPerTurn" $ai.maxToolCallsPerTurn 1) (list "ai.conversationRetentionDays" $ai.conversationRetentionDays 1) (list "ai.attachments.maxBytes" $aiAttachments.maxBytes 1) (list "ai.attachments.maxPerMessage" $aiAttachments.maxPerMessage 1) }}
+{{- $aiNumberInputs := list (list "ai.rateLimit.userPerMinute" $aiRateLimit.userPerMinute 1 1000) (list "ai.rateLimit.sitePerMinute" $aiRateLimit.sitePerMinute 1 100000) (list "ai.budget.userDailyTokens" $aiBudget.userDailyTokens 0 10000000000) (list "ai.maxToolCallsPerTurn" $ai.maxToolCallsPerTurn 1 100) (list "ai.conversationRetentionDays" $ai.conversationRetentionDays 1 3650) (list "ai.attachments.maxBytes" $aiAttachments.maxBytes 1 33554432) (list "ai.attachments.maxPerMessage" $aiAttachments.maxPerMessage 1 20) }}
 {{- $aiNumbers := dict }}
 {{- range $input := $aiNumberInputs }}
 {{- $aiName := index $input 0 }}
 {{- $aiValue := index $input 1 }}
 {{- $aiMin := index $input 2 }}
+{{- $aiMax := index $input 3 }}
 {{- $aiText := "" }}
 {{- if kindIs "float64" $aiValue }}{{ $aiText = ternary (toString (int64 $aiValue)) (toString $aiValue) (eq $aiValue (floor $aiValue)) }}{{ else if not (kindIs "invalid" $aiValue) }}{{ $aiText = toString $aiValue }}{{ end }}
-{{- if and (ne $aiText "") (not (and (regexMatch "^[0-9]+$" $aiText) (ge (atoi $aiText) $aiMin))) }}
-{{- fail (printf "appSettings.%s %q is not supported. Use a whole number from %d." $aiName $aiText $aiMin) }}
+{{- if and (ne $aiText "") (not (and (regexMatch "^[0-9]{1,11}$" $aiText) (ge (atoi $aiText) $aiMin) (le (atoi $aiText) $aiMax))) }}
+{{- fail (printf "appSettings.%s %q is not supported. Use a whole number from %d to %d." $aiName $aiText $aiMin $aiMax) }}
 {{- end }}
 {{- $_ := set $aiNumbers $aiName $aiText }}
 {{- end }}

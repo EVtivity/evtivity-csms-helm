@@ -230,13 +230,14 @@ AI settings are app settings in the database, and provider API keys are stored e
 | `appSettings.chatbotAi.provider`, `appSettings.supportAi.provider` | `anthropic`, `openai`, `gemini`, or `deepseek` |
 | `appSettings.chatbotAi.effort`, `appSettings.supportAi.effort` | Reasoning effort: `low`, `medium`, or `high` (provider default) |
 | `appSettings.ai.<provider>.baseUrl` | API base URL of `anthropic`, `openai`, `gemini`, or `deepseek`, for a proxy or gateway. Must start with `https://` (the provider's public API) |
-| `appSettings.ai.rateLimit.userPerMinute` | AI messages per user per minute (10) |
-| `appSettings.ai.rateLimit.sitePerMinute` | AI messages per minute across the installation (60) |
-| `appSettings.ai.budget.userDailyTokens` | Tokens per user per day, 0 for no limit (2000000) |
-| `appSettings.ai.maxToolCallsPerTurn` | Tool calls the model may make in one reply (20) |
-| `appSettings.ai.conversationRetentionDays` | Days a conversation is kept after its last message (30) |
-| `appSettings.ai.attachments.maxBytes` | Largest attachment in bytes (10485760) |
-| `appSettings.ai.attachments.maxPerMessage` | Attachments per message (5) |
+| `appSettings.supportAi.tone` | Reply tone: `professional`, `friendly`, or `formal` |
+| `appSettings.ai.rateLimit.userPerMinute` | AI messages per user per minute, 1 to 1000 (10) |
+| `appSettings.ai.rateLimit.sitePerMinute` | AI messages per minute across the installation, 1 to 100000 (60) |
+| `appSettings.ai.budget.userDailyTokens` | Tokens per user per day, 0 to 10000000000, 0 for no limit (2000000) |
+| `appSettings.ai.maxToolCallsPerTurn` | Tool calls the model may make in one reply, 1 to 100 (20) |
+| `appSettings.ai.conversationRetentionDays` | Days a conversation is kept after its last message, 1 to 3650 (30) |
+| `appSettings.ai.attachments.maxBytes` | Largest attachment in bytes, 1 to 33554432 (10485760) |
+| `appSettings.ai.attachments.maxPerMessage` | Attachments per message, 1 to 20 (5) |
 | `appSettings.sensitive.aiAnthropicApiKey` | Anthropic API key |
 | `appSettings.sensitive.aiOpenaiApiKey` | OpenAI API key |
 | `appSettings.sensitive.aiGeminiApiKey` | Google Gemini API key |
