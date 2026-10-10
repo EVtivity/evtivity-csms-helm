@@ -655,13 +655,15 @@ appSettings:
   sentry:
     enabled: false
     environment: "production"
+  # Operator AI assistant. provider: anthropic, openai, gemini or deepseek.
+  # effort: reasoning effort, low, medium or high; leave empty to keep the
+  # value set in the dashboard (the provider default on a fresh install).
+  # temperature, topP and topK were removed: the chart refuses them.
   chatbotAi:
     enabled: false
     provider: "anthropic"
     model: ""
-    temperature: ""
-    topP: ""
-    topK: ""
+    effort: ""
     systemPrompt: ""
   features:
     roamingEnabled: false
@@ -716,15 +718,50 @@ appSettings:
     securityEventsRetentionDays: 365
     portStatusRetentionDays: 30
     workerJobRetentionDays: 30
+  # Support case AI. provider and effort take the same values as chatbotAi.
+  # tone: professional, friendly or formal.
+  # temperature, topP and topK were removed: the chart refuses them.
   supportAi:
     enabled: false
     provider: ""
     model: ""
-    temperature: ""
-    topP: ""
-    topK: ""
+    effort: ""
     systemPrompt: ""
     tone: "professional"
+  # Settings shared by every AI feature. Leave a value empty to keep the one
+  # set in the dashboard; the migration sets the fresh-install default named
+  # in each comment. Provider API keys go in sensitive.ai*ApiKey.
+  ai:
+    # Provider API base URL, for a proxy or gateway. Must start with https://.
+    # Empty on a fresh install (the provider's public API).
+    anthropic:
+      baseUrl: ""
+    openai:
+      baseUrl: ""
+    gemini:
+      baseUrl: ""
+    deepseek:
+      baseUrl: ""
+    rateLimit:
+      # AI messages per user per minute, 1 to 1000 (fresh install: 10).
+      userPerMinute: ""
+      # Support AI drafts per site per minute (the support case's site),
+      # 1 to 100000 (fresh install: 60).
+      sitePerMinute: ""
+    budget:
+      # Tokens per user per day, 0 to 10000000000, 0 for no limit
+      # (fresh install: 2000000).
+      userDailyTokens: ""
+    # Tool calls the model may make in one reply, 1 to 100 (fresh install: 20).
+    maxToolCallsPerTurn: ""
+    # Days a conversation is kept after its last message, 1 to 3650
+    # (fresh install: 30).
+    conversationRetentionDays: ""
+    attachments:
+      # Largest attachment in bytes, 1 to 33554432 (fresh install: 10485760).
+      maxBytes: ""
+      # Attachments per message, 1 to 20 (fresh install: 5).
+      maxPerMessage: ""
   sso:
     enabled: false
     provider: ""
@@ -838,8 +875,12 @@ appSettings:
     marketingGtagPortal: ""
     marketingGtagCsms: ""
     ssoCert: ""
-    supportAiApiKey: ""
-    chatbotAiApiKey: ""
+    # AI provider API keys, shared by every AI feature (ai.<provider>.apiKeyEnc).
+    # supportAiApiKey and chatbotAiApiKey were removed: the chart refuses them.
+    aiAnthropicApiKey: ""
+    aiOpenaiApiKey: ""
+    aiGeminiApiKey: ""
+    aiDeepseekApiKey: ""
     sentryDsn: ""
 
 # --- Monitoring (Prometheus + Grafana) ---
