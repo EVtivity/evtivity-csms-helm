@@ -22,6 +22,13 @@ POSTGRES_USER="${POSTGRES_USER:-evtivity}"
 REDIS_HOST="${REDIS_HOST:-${RELEASE}-redis-master}"
 REDIS_PORT="${REDIS_PORT:-6379}"
 
+# Bitnami chart versions of the bundled PostgreSQL and Redis, tested with this
+# chart. Redis chart 27 and later mount the ACL Secret with a subPath inside the
+# read-only configuration volume, and the Redis container fails to start
+# ("Are you trying to mount a directory onto a file") when auth.acl.users is set.
+POSTGRES_CHART_VERSION="${POSTGRES_CHART_VERSION:-18.12.4}"
+REDIS_CHART_VERSION="${REDIS_CHART_VERSION:-25.5.3}"
+
 DATABASE_URL="postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}"
 
 # Each service connects to Redis as its own ACL user. Users, keys, channels and
@@ -282,6 +289,7 @@ if [ "$INSTALL_POSTGRES" = "y" ]; then
   echo "Installing PostgreSQL..."
   helm repo add bitnami https://charts.bitnami.com/bitnami &>/dev/null || true
   helm upgrade --install "${RELEASE}-postgresql" bitnami/postgresql \
+    --version "$POSTGRES_CHART_VERSION" \
     --namespace "$NAMESPACE" \
     --create-namespace \
     --wait --timeout 5m \
@@ -382,6 +390,7 @@ if [ "$INSTALL_REDIS" = "y" ]; then
   # helm template or Argo CD.
   (umask 077 && redis_acl_values > "$WORK_DIR/redis-acl.yaml")
   helm upgrade --install "${RELEASE}-redis" bitnami/redis \
+    --version "$REDIS_CHART_VERSION" \
     --namespace "$NAMESPACE" \
     --create-namespace \
     --wait --timeout 5m \
@@ -453,7 +462,7 @@ echo "OCPP mTLS and CSS client certificates ready."
 
 # --- Credential rotation values ---
 # Bitnami Redis rebuilds its ACL file at start from the Secret <release>-redis-acl
-# (chart 25 and later) or the ConfigMap <release>-redis-configuration (earlier
+# (chart 27 and later) or the ConfigMap <release>-redis-configuration (earlier
 # charts). The rotation job writes the new passwords there.
 ROTATION_ARGS=()
 if [ "$CREDENTIAL_ROTATION" = "true" ]; then

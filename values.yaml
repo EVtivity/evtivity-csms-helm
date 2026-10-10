@@ -528,7 +528,7 @@ credentialRotation:
     # Secret or ConfigMap holding the ACL file that Redis loads at start. The
     # job writes the rotated passwords into it, so a Redis restart keeps them.
     # Required for the bundled Bitnami Redis, which rebuilds its ACL file from
-    # it on every restart: chart 25 and later, Secret <release>-redis-acl;
+    # it on every restart: chart 27 and later, Secret <release>-redis-acl;
     # earlier charts, ConfigMap <release>-redis-configuration (key users.acl in
     # both). Leave name empty for a Redis that loads a writable aclfile: the job
     # runs ACL SAVE instead.

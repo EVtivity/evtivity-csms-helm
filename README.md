@@ -65,6 +65,8 @@ To provide your own secrets:
 POSTGRES_PASSWORD=mypass REDIS_PASSWORD=mypass JWT_SECRET=mysecret SETTINGS_ENCRYPTION_KEY=mykey ./scripts/install.sh
 ```
 
+The bundled PostgreSQL and Redis use pinned Bitnami chart versions that were tested with this chart. `POSTGRES_CHART_VERSION` and `REDIS_CHART_VERSION` override them. Redis chart 27 and later do not start with the per-service ACL users.
+
 To use external databases instead of bundled ones:
 
 ```bash
@@ -273,7 +275,7 @@ A run that fails before step 4 leaves the old credentials valid, and the pods ke
 | `credentialRotation.redis.aclFile.key` | `users.acl` | Its key |
 | `credentialRotation.resources`, `nodeSelector`, `tolerations`, `affinity` | | Pod settings of the jobs |
 
-**Bundled PostgreSQL and Redis.** `CREDENTIAL_ROTATION=true ./scripts/install.sh` turns rotation on and sets the admin Secrets (`<release>-postgresql`, `<release>-redis`) and the Redis ACL file. Bitnami Redis rebuilds its ACL file at every start from `<release>-redis-acl` (Secret, chart 25 and later) or `<release>-redis-configuration` (ConfigMap, earlier charts). The job writes the rotated passwords into that object as SHA-256 hashes, so a Redis restart keeps them. It writes both passwords before the switch and only the new one after it, so a restart at any point accepts the credential the pods use. Re-running `bitnami/redis` with the install-time passwords (`helm upgrade` of the Redis release) puts the old passwords back: take the current ones from `<fullname>-credentials` first.
+**Bundled PostgreSQL and Redis.** `CREDENTIAL_ROTATION=true ./scripts/install.sh` turns rotation on and sets the admin Secrets (`<release>-postgresql`, `<release>-redis`) and the Redis ACL file. Bitnami Redis rebuilds its ACL file at every start from `<release>-redis-acl` (Secret, chart 27 and later) or `<release>-redis-configuration` (ConfigMap, earlier charts). The job writes the rotated passwords into that object as SHA-256 hashes, so a Redis restart keeps them. It writes both passwords before the switch and only the new one after it, so a restart at any point accepts the credential the pods use. Re-running `bitnami/redis` with the install-time passwords (`helm upgrade` of the Redis release) puts the old passwords back: take the current ones from `<fullname>-credentials` first.
 
 **External PostgreSQL.** Give the job a user that can create roles and grant `groupRole`: a superuser, or a role with `CREATEROLE` that has `ADMIN` on `groupRole` and owns or is granted the owner role (on Amazon RDS, the master user). Store its password in a Secret and set `credentialRotation.database.admin.*`. The admin password itself is not rotated.
 

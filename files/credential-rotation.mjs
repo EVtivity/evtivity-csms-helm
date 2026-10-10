@@ -527,7 +527,7 @@ function setAclPasswords(text, user, passwords) {
 }
 
 // The Kubernetes object Redis loads its ACL file from at start (REDIS_ACL_NAME):
-// a Secret (Bitnami Redis chart 25 and later) or a ConfigMap (earlier charts).
+// a Secret (Bitnami Redis chart 27 and later) or a ConfigMap (earlier charts).
 const aclSource = () => ({
   kind: process.env.REDIS_ACL_KIND || 'Secret',
   name: process.env.REDIS_ACL_NAME,

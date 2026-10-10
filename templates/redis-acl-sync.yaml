@@ -28,7 +28,7 @@ a release without redisAcl still runs it with the defaults.
 {{- if not (has $aclKind (list "Secret" "ConfigMap")) }}
 {{- fail "redisAcl.aclFile.kind must be Secret or ConfigMap." }}
 {{- end }}
-{{- /* Bundled Bitnami Redis: Secret <release>-redis-acl (chart 25 and later) or ConfigMap <release>-redis-configuration. */}}
+{{- /* Bundled Bitnami Redis: Secret <release>-redis-acl (chart 27 and later) or ConfigMap <release>-redis-configuration. */}}
 {{- $secrets := list (printf "%s-redis-acl" .Release.Name) }}
 {{- $configMaps := list (printf "%s-redis-configuration" .Release.Name) }}
 {{- if $aclName }}
