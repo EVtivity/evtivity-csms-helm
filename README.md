@@ -290,7 +290,7 @@ Support case and AI chat attachments upload straight from the browser to the buc
 
 Without it the browser blocks the upload and the attachment fails.
 
-`scripts/test-app-settings.sh` (`npm test`) renders the app settings with `helm template` and checks that every AI setting maps to its key and that out-of-range values fail the render.
+`scripts/test-app-settings.sh` (`npm test`) renders the app settings with `helm template` and checks that every AI setting maps to its key, that out-of-range values and the removed AI keys fail the render, and that each provider API key maps to its encrypted setting in the sensitive settings Secret.
 
 ### Database Connections
 

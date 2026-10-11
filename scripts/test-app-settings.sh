@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
-# Render tests for templates/app-settings-configmap.yaml: every AI app setting
-# the chart maps renders into settings.json with the value set in values, an
-# empty value keeps the dashboard value (renders ""), a values file without the
-# blocks (helm upgrade --reuse-values from an older release) still renders, and
-# out-of-range or unknown values fail the render.
+# Render tests for the AI app settings: every AI app setting the chart maps
+# renders into settings.json with the value set in values, an empty value keeps
+# the dashboard value (renders ""), a values file without the blocks (helm
+# upgrade --reuse-values from an older release) still renders, and
+# out-of-range or unknown values fail the render (TC-AI-C-09). The removed
+# per-surface API keys and sampling values fail the render, and the
+# per-provider API keys map to their encrypted settings in the sensitive
+# settings Secret (TC-AI-C-03).
 #
 # Usage: scripts/test-app-settings.sh   (from anywhere; needs helm 3 and node)
 # Exit: 0 when every check passes, 1 otherwise. Prints one line per failure and
@@ -180,6 +183,56 @@ done
 expect_fail "origins not a list" 'appSettings.ai.mcp.allowedOrigins must be a list' --set appSettings.ai.mcp.allowedOrigins=https://agent.example.com
 MANY=$(node -e 'console.log(JSON.stringify(Array.from({ length: 51 }, (_, i) => "https://a" + i + ".example.com")))')
 expect_fail "51 origins" 'more than 50 entries' --set-json "appSettings.ai.mcp.allowedOrigins=$MANY"
+
+# 6. TC-AI-C-03: the removed keys fail the render, the per-provider keys map
+# to their encrypted settings in the sensitive settings Secret.
+for k in chatbotAiApiKey supportAiApiKey; do
+  expect_fail "sensitive.$k" "appSettings.sensitive.$k was removed" --set "appSettings.sensitive.$k=sk-old"
+done
+for v in chatbotAi.temperature=0.2 chatbotAi.topP=0.9 supportAi.topK=40; do
+  expect_fail "$v" "appSettings.${v%%=*} was removed" --set "appSettings.$v"
+done
+# --reuse-values from an older release with the removed keys nulled renders.
+if render "$TMP/nulled.json" --set appSettings.sensitive.chatbotAiApiKey=null \
+  --set appSettings.sensitive.supportAiApiKey=null --set appSettings.chatbotAi.temperature=null; then
+  ok
+else
+  bad "removed keys set to null: render failed: $(head -1 "$TMP/render.err")"
+fi
+
+# render_secret <out file> <helm args...>: writes sensitive-settings.json of the Secret.
+render_secret() {
+  local out="$1"
+  shift
+  helm template t "$CHART" "${S[@]}" --show-only templates/app-settings-secret.yaml "$@" > "$TMP/secret.yaml" 2> "$TMP/render.err" || return 1
+  node -e '
+    const fs = require("fs");
+    const doc = fs.readFileSync(process.argv[1], "utf8");
+    const body = doc.split("sensitive-settings.json: |\n")[1];
+    fs.writeFileSync(process.argv[2], JSON.stringify(JSON.parse(body.trim())));
+  ' "$TMP/secret.yaml" "$out"
+}
+if render_secret "$TMP/secret.json" --set appSettings.sensitive.aiAnthropicApiKey=sk-ant-test \
+  --set appSettings.sensitive.aiOpenaiApiKey=sk-openai-test --set appSettings.sensitive.aiGeminiApiKey=gemini-test \
+  --set appSettings.sensitive.aiDeepseekApiKey=sk-deepseek-test; then
+  if r=$(expect_json "$TMP/secret.json" '{"ai.anthropic.apiKeyEnc":"sk-ant-test","ai.openai.apiKeyEnc":"sk-openai-test",
+"ai.gemini.apiKeyEnc":"gemini-test","ai.deepseek.apiKeyEnc":"sk-deepseek-test"}'); then ok; else bad "provider keys: $r"; fi
+  if node -e '
+    const got = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+    process.exit(Object.keys(got).some((k) => /^(chatbotAi|supportAi)\./.test(k)) ? 1 : 0);
+  ' "$TMP/secret.json"; then ok; else bad "provider keys: a per-surface key is rendered"; fi
+else
+  bad "provider keys: render failed: $(head -1 "$TMP/render.err")"
+fi
+# No provider key set: the Secret holds no AI key.
+if render_secret "$TMP/secret-empty.json"; then
+  if node -e '
+    const got = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+    process.exit(Object.keys(got).some((k) => k.startsWith("ai.")) ? 1 : 0);
+  ' "$TMP/secret-empty.json"; then ok; else bad "no provider key: an AI key is rendered"; fi
+else
+  bad "no provider key: render failed: $(head -1 "$TMP/render.err")"
+fi
 
 echo "app settings render tests: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
