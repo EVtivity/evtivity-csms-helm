@@ -250,7 +250,16 @@ AI settings are app settings in the database, and provider API keys are stored e
 | `appSettings.opsAi.model` | Model name (empty: the provider's router model) |
 | `appSettings.opsAi.effort` | Reasoning effort: `low`, `medium`, or `high` (`low`) |
 | `appSettings.opsAi.systemPrompt` | System prompt (empty: the built-in prompt) |
-| `appSettings.aiInsights.station.enabled`, `session.enabled`, `authorization.enabled` | Automatic insights per subject: `true` or `false` (`true`) |
+| `appSettings.driverAi.enabled` | Driver support AI, an automatic first answer when the driver allows it: `true` or `false` (`false`) |
+| `appSettings.driverAi.provider` | `anthropic`, `openai`, `gemini`, or `deepseek` (`anthropic`) |
+| `appSettings.driverAi.model` | Model name (empty: the provider's router model) |
+| `appSettings.driverAi.effort` | Reasoning effort: `low`, `medium`, or `high` (`low`) |
+| `appSettings.driverAi.systemPrompt` | System prompt (empty: the built-in prompt) |
+| `appSettings.driverAi.maxCasesPerDriverPerDay` | AI-analyzed requests per driver per day, 1 to 100 (3) |
+| `appSettings.driverAi.feedbackTimeoutHours` | Hours an answer waits for the driver's feedback before the request goes to the support team, 1 to 168 (24) |
+| `appSettings.ai.rateLimit.driverPerMinute` | Driver support AI requests per driver per minute, 1 to 1000 (2) |
+| `appSettings.ai.budget.driverDailyTokens` | Driver support tokens per driver per day, 0 to 10000000000, 0 for no limit (40000) |
+| `appSettings.aiInsights.station.enabled`, `session.enabled`, `authorization.enabled`, `reservation.enabled` | Automatic insights per subject: `true` or `false` (`true`) |
 | `appSettings.aiInsights.debounceSeconds` | Seconds a station insight waits before it re-reads the station state, 0 to 3600 (120) |
 | `appSettings.aiInsights.cooldownMinutes` | Minutes before the same subject gets a new insight, 1 to 10080 (60) |
 | `appSettings.aiInsights.siteIncidentThreshold` | Stations of one site going offline or faulted inside the debounce window that make one site incident insight, 2 to 1000 (3) |

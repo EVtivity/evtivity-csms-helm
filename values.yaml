@@ -776,6 +776,9 @@ appSettings:
       # Support AI drafts per site per minute (the support case's site),
       # 1 to 100000 (fresh install: 60).
       sitePerMinute: ""
+      # Driver support AI requests per driver per minute, 1 to 1000
+      # (fresh install: 2).
+      driverPerMinute: ""
     budget:
       # Tokens per user per day, 0 to 10000000000, 0 for no limit
       # (fresh install: 2000000).
@@ -792,6 +795,9 @@ appSettings:
       # Percent of a budget at which operators are warned, 1 to 100
       # (fresh install: 80).
       warnPercent: ""
+      # Driver support tokens per driver per day, 0 to 10000000000, 0 for
+      # no limit (fresh install: 40000).
+      driverDailyTokens: ""
     # MCP server for external AI agents (API keys with AI scopes).
     mcp:
       # true or false (fresh install: false).
@@ -832,7 +838,27 @@ appSettings:
     effort: ""
     # Fresh install: empty, the built-in prompt.
     systemPrompt: ""
-  # Automatic AI insights on stations, sessions and authorizations.
+  # Driver support AI: an automatic first answer to a driver's support
+  # request, only when the driver allows it. Leave a value empty to keep the
+  # one set in the dashboard (fresh install default in each comment).
+  driverAi:
+    # true or false (fresh install: false).
+    enabled: ""
+    # anthropic, openai, gemini or deepseek (fresh install: anthropic).
+    provider: ""
+    # Model name (fresh install: empty, the provider's router model).
+    model: ""
+    # Reasoning effort: low, medium or high (fresh install: low).
+    effort: ""
+    # Fresh install: empty, the built-in prompt.
+    systemPrompt: ""
+    # AI-analyzed requests per driver per day, 1 to 100 (fresh install: 3).
+    maxCasesPerDriverPerDay: ""
+    # Hours an answer waits for the driver's feedback before the request
+    # goes to the support team, 1 to 168 (fresh install: 24).
+    feedbackTimeoutHours: ""
+  # Automatic AI insights on stations, sessions, authorizations and
+  # reservations.
   aiInsights:
     # true or false for each subject (fresh install: true).
     station:
@@ -840,6 +866,8 @@ appSettings:
     session:
       enabled: ""
     authorization:
+      enabled: ""
+    reservation:
       enabled: ""
     # Seconds a station insight waits before it re-reads the station state,
     # 0 to 3600 (fresh install: 120).
