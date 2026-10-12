@@ -273,7 +273,7 @@ AI settings are app settings in the database, and provider API keys are stored e
 | `appSettings.ai.mcp.enabled` | MCP server for external AI agents: `true` or `false` (`false`) |
 | `appSettings.ai.mcp.rateLimitPerMinute` | MCP calls per API key per minute, 1 to 10000 (60) |
 | `appSettings.ai.mcp.dailyCallsPerKey` | MCP calls per API key per day, 1 to 10000000 (5000) |
-| `appSettings.ai.mcp.proposalTtlMinutes` | Minutes an MCP write proposal waits for confirmation, 5 to 1440 (30) |
+| `appSettings.ai.mcp.allowWrites` | MCP write tools (station commands) run directly under the API key's own permissions and sites: `true` or `false` (`false`, read only) |
 | `appSettings.ai.mcp.allowedOrigins` | Browser origins allowed to call the MCP endpoint, a list of at most 50 `scheme://host[:port]` origins with `http` or `https` and no path, for example `[https://agent.example.com]`. Requests without an `Origin` header are allowed (none) |
 | `appSettings.sensitive.aiAnthropicApiKey` | Anthropic API key |
 | `appSettings.sensitive.aiOpenaiApiKey` | OpenAI API key |

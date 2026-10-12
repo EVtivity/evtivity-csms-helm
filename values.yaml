@@ -806,9 +806,10 @@ appSettings:
       rateLimitPerMinute: ""
       # MCP calls per API key per day, 1 to 10000000 (fresh install: 5000).
       dailyCallsPerKey: ""
-      # Minutes an MCP write proposal waits for confirmation, 5 to 1440
-      # (fresh install: 30).
-      proposalTtlMinutes: ""
+      # MCP write tools (station commands) run directly under the API key's
+      # own permissions and sites: true or false (fresh install: false, read
+      # only).
+      allowWrites: ""
       # Browser origins allowed to call the MCP endpoint, at most 50, each
       # scheme://host[:port] with http or https and no path, for example
       # [https://agent.example.com]. Empty keeps the dashboard value

@@ -78,7 +78,7 @@ NEW_KEYS='["opsAi.enabled","opsAi.provider","opsAi.model","opsAi.effort","opsAi.
 "aiInsights.maxPerSitePerDay","aiInsights.primaryLanguage","aiInsights.retentionDays",
 "aiWorkers.networkSummary.enabled","aiWorkers.stuckSessions.enabled","aiWorkers.stuckSessions.idleMinutes",
 "aiWorkers.stuckSessions.useModel","aiWorkers.tariffAnomalies.enabled","aiWorkers.proposalTtlHours",
-"ai.mcp.enabled","ai.mcp.rateLimitPerMinute","ai.mcp.dailyCallsPerKey","ai.mcp.proposalTtlMinutes",
+"ai.mcp.enabled","ai.mcp.rateLimitPerMinute","ai.mcp.dailyCallsPerKey","ai.mcp.allowWrites",
 "ai.mcp.allowedOrigins","ai.budget.companyMonthlyTokens","ai.budget.siteMonthlyTokens",
 "ai.budget.siteDailyTokens","ai.budget.warnPercent",
 "driverAi.enabled","driverAi.provider","driverAi.model","driverAi.effort","driverAi.systemPrompt",
@@ -133,7 +133,7 @@ appSettings:
       enabled: true
       rateLimitPerMinute: 10000
       dailyCallsPerKey: 10000000
-      proposalTtlMinutes: 5
+      allowWrites: true
       allowedOrigins: ["https://agent.example.com", "http://localhost:3000", "https://[::1]:8443"]
     budget:
       companyMonthlyTokens: 1000000000000
@@ -149,7 +149,7 @@ WANT='{"opsAi.enabled":true,"opsAi.provider":"openai","opsAi.model":"gpt-test","
 "aiInsights.retentionDays":3650,"aiWorkers.networkSummary.enabled":true,"aiWorkers.stuckSessions.enabled":true,
 "aiWorkers.stuckSessions.idleMinutes":15,"aiWorkers.stuckSessions.useModel":true,
 "aiWorkers.tariffAnomalies.enabled":false,"aiWorkers.proposalTtlHours":168,"ai.mcp.enabled":true,
-"ai.mcp.rateLimitPerMinute":10000,"ai.mcp.dailyCallsPerKey":10000000,"ai.mcp.proposalTtlMinutes":5,
+"ai.mcp.rateLimitPerMinute":10000,"ai.mcp.dailyCallsPerKey":10000000,"ai.mcp.allowWrites":true,
 "ai.mcp.allowedOrigins":["https://agent.example.com","http://localhost:3000","https://[::1]:8443"],
 "ai.budget.companyMonthlyTokens":1000000000000,"ai.budget.siteMonthlyTokens":0,
 "ai.budget.siteDailyTokens":10000000000,"ai.budget.warnPercent":100,
@@ -187,6 +187,9 @@ expect_fail "aiInsights.station.enabled" 'appSettings.aiInsights.station.enabled
 expect_fail "aiInsights.primaryLanguage" 'appSettings.aiInsights.primaryLanguage "fr" is not supported' --set appSettings.aiInsights.primaryLanguage=fr
 expect_fail "aiWorkers.stuckSessions.useModel" 'appSettings.aiWorkers.stuckSessions.useModel "on" is not supported' --set appSettings.aiWorkers.stuckSessions.useModel=on
 expect_fail "ai.mcp.enabled" 'appSettings.ai.mcp.enabled "maybe" is not supported' --set appSettings.ai.mcp.enabled=maybe
+# v0.1.45: MCP writes are a switch; the proposal TTL is gone.
+expect_fail "ai.mcp.allowWrites" 'appSettings.ai.mcp.allowWrites "yes" is not supported' --set-string appSettings.ai.mcp.allowWrites=yes
+expect_fail "ai.mcp.proposalTtlMinutes" 'appSettings.ai.mcp.proposalTtlMinutes was removed' --set appSettings.ai.mcp.proposalTtlMinutes=30
 # v0.1.45: driver support and reservation insights (TC-CFG-05).
 expect_fail "driverAi.provider" 'appSettings.driverAi.provider "azure" is not supported' --set appSettings.driverAi.provider=azure
 expect_fail "driverAi.effort" 'appSettings.driverAi.effort "max" is not supported' --set appSettings.driverAi.effort=max
@@ -200,7 +203,7 @@ done
 for v in aiInsights.debounceSeconds=3601 aiInsights.cooldownMinutes=0 aiInsights.siteIncidentThreshold=1 \
   aiInsights.maxPerSitePerDay=10001 aiInsights.retentionDays=0 aiWorkers.stuckSessions.idleMinutes=14 \
   aiWorkers.proposalTtlHours=169 ai.mcp.rateLimitPerMinute=0 ai.mcp.dailyCallsPerKey=10000001 \
-  ai.mcp.proposalTtlMinutes=4 ai.budget.companyMonthlyTokens=1000000000001 ai.budget.siteMonthlyTokens=-1 \
+  ai.budget.companyMonthlyTokens=1000000000001 ai.budget.siteMonthlyTokens=-1 \
   ai.budget.siteDailyTokens=10000000001 ai.budget.warnPercent=0 ai.budget.warnPercent=1.5; do
   expect_fail "$v" "appSettings.${v%%=*} \"${v#*=}\" is not supported" --set "appSettings.$v"
 done
