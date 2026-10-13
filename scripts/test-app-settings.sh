@@ -78,12 +78,9 @@ NEW_KEYS='["opsAi.enabled","opsAi.provider","opsAi.model","opsAi.effort","opsAi.
 "aiInsights.maxPerSitePerDay","aiInsights.primaryLanguage","aiInsights.retentionDays",
 "aiWorkers.networkSummary.enabled","aiWorkers.stuckSessions.enabled","aiWorkers.stuckSessions.idleMinutes",
 "aiWorkers.stuckSessions.useModel","aiWorkers.tariffAnomalies.enabled","aiWorkers.proposalTtlHours",
-"ai.mcp.enabled","ai.mcp.rateLimitPerMinute","ai.mcp.dailyCallsPerKey","ai.mcp.allowWrites",
+"ai.mcp.enabled","ai.mcp.rateLimitPerMinute","ai.mcp.dailyCallsPerKey","ai.mcp.proposalTtlMinutes",
 "ai.mcp.allowedOrigins","ai.budget.companyMonthlyTokens","ai.budget.siteMonthlyTokens",
-"ai.budget.siteDailyTokens","ai.budget.warnPercent",
-"driverAi.enabled","driverAi.provider","driverAi.model","driverAi.effort","driverAi.systemPrompt",
-"driverAi.maxCasesPerDriverPerDay","driverAi.feedbackTimeoutHours","ai.budget.driverDailyTokens",
-"ai.rateLimit.driverPerMinute","aiInsights.reservation.enabled"]'
+"ai.budget.siteDailyTokens","ai.budget.warnPercent"]'
 EMPTY=$(node -e 'const k = JSON.parse(process.argv[1]); console.log(JSON.stringify(Object.fromEntries(k.map((x) => [x, ""]))))' "$NEW_KEYS")
 
 # 1. Defaults: every new key renders empty (keep the dashboard value).
@@ -106,7 +103,6 @@ appSettings:
     station: { enabled: false }
     session: { enabled: true }
     authorization: { enabled: false }
-    reservation: { enabled: false }
     debounceSeconds: 0
     cooldownMinutes: 10080
     siteIncidentThreshold: 2
@@ -118,29 +114,18 @@ appSettings:
     stuckSessions: { enabled: true, idleMinutes: 15, useModel: true }
     tariffAnomalies: { enabled: false }
     proposalTtlHours: 168
-  driverAi:
-    enabled: true
-    provider: deepseek
-    model: deepseek-test
-    effort: high
-    systemPrompt: "Answer briefly."
-    maxCasesPerDriverPerDay: 100
-    feedbackTimeoutHours: 1
   ai:
-    rateLimit:
-      driverPerMinute: 1000
     mcp:
       enabled: true
       rateLimitPerMinute: 10000
       dailyCallsPerKey: 10000000
-      allowWrites: true
+      proposalTtlMinutes: 5
       allowedOrigins: ["https://agent.example.com", "http://localhost:3000", "https://[::1]:8443"]
     budget:
       companyMonthlyTokens: 1000000000000
       siteMonthlyTokens: 0
       siteDailyTokens: 10000000000
       warnPercent: 100
-      driverDailyTokens: 0
 EOF
 WANT='{"opsAi.enabled":true,"opsAi.provider":"openai","opsAi.model":"gpt-test","opsAi.effort":"medium",
 "opsAi.systemPrompt":"Be brief.","aiInsights.station.enabled":false,"aiInsights.session.enabled":true,
@@ -149,13 +134,10 @@ WANT='{"opsAi.enabled":true,"opsAi.provider":"openai","opsAi.model":"gpt-test","
 "aiInsights.retentionDays":3650,"aiWorkers.networkSummary.enabled":true,"aiWorkers.stuckSessions.enabled":true,
 "aiWorkers.stuckSessions.idleMinutes":15,"aiWorkers.stuckSessions.useModel":true,
 "aiWorkers.tariffAnomalies.enabled":false,"aiWorkers.proposalTtlHours":168,"ai.mcp.enabled":true,
-"ai.mcp.rateLimitPerMinute":10000,"ai.mcp.dailyCallsPerKey":10000000,"ai.mcp.allowWrites":true,
+"ai.mcp.rateLimitPerMinute":10000,"ai.mcp.dailyCallsPerKey":10000000,"ai.mcp.proposalTtlMinutes":5,
 "ai.mcp.allowedOrigins":["https://agent.example.com","http://localhost:3000","https://[::1]:8443"],
 "ai.budget.companyMonthlyTokens":1000000000000,"ai.budget.siteMonthlyTokens":0,
-"ai.budget.siteDailyTokens":10000000000,"ai.budget.warnPercent":100,
-"driverAi.enabled":true,"driverAi.provider":"deepseek","driverAi.model":"deepseek-test","driverAi.effort":"high",
-"driverAi.systemPrompt":"Answer briefly.","driverAi.maxCasesPerDriverPerDay":100,"driverAi.feedbackTimeoutHours":1,
-"ai.budget.driverDailyTokens":0,"ai.rateLimit.driverPerMinute":1000,"aiInsights.reservation.enabled":false}'
+"ai.budget.siteDailyTokens":10000000000,"ai.budget.warnPercent":100}'
 if node -e 'const a = Object.keys(JSON.parse(process.argv[1])).sort(), b = JSON.parse(process.argv[2]).sort(); process.exit(JSON.stringify(a) === JSON.stringify(b) ? 0 : 1)' "$WANT" "$NEW_KEYS"; then ok; else bad "test data: WANT does not cover every new key"; fi
 if render "$TMP/set.json" -f "$TMP/set.yaml"; then
   if r=$(expect_json "$TMP/set.json" "$WANT"); then ok; else bad "set values: $r"; fi
@@ -173,7 +155,7 @@ fi
 
 # 4. Values without the new blocks (--reuse-values from an older release).
 if render "$TMP/old.json" --set appSettings.opsAi=null --set appSettings.aiInsights=null \
-  --set appSettings.aiWorkers=null --set appSettings.ai.mcp=null --set appSettings.driverAi=null; then
+  --set appSettings.aiWorkers=null --set appSettings.ai.mcp=null; then
   if r=$(expect_json "$TMP/old.json" "$EMPTY"); then ok; else bad "missing blocks: $r"; fi
 else
   bad "missing blocks: render failed: $(head -1 "$TMP/render.err")"
@@ -187,23 +169,10 @@ expect_fail "aiInsights.station.enabled" 'appSettings.aiInsights.station.enabled
 expect_fail "aiInsights.primaryLanguage" 'appSettings.aiInsights.primaryLanguage "fr" is not supported' --set appSettings.aiInsights.primaryLanguage=fr
 expect_fail "aiWorkers.stuckSessions.useModel" 'appSettings.aiWorkers.stuckSessions.useModel "on" is not supported' --set appSettings.aiWorkers.stuckSessions.useModel=on
 expect_fail "ai.mcp.enabled" 'appSettings.ai.mcp.enabled "maybe" is not supported' --set appSettings.ai.mcp.enabled=maybe
-# v0.1.45: MCP writes are a switch; the proposal TTL is gone.
-expect_fail "ai.mcp.allowWrites" 'appSettings.ai.mcp.allowWrites "yes" is not supported' --set-string appSettings.ai.mcp.allowWrites=yes
-expect_fail "ai.mcp.proposalTtlMinutes" 'appSettings.ai.mcp.proposalTtlMinutes was removed' --set appSettings.ai.mcp.proposalTtlMinutes=30
-# v0.1.45: driver support and reservation insights (TC-CFG-05).
-expect_fail "driverAi.provider" 'appSettings.driverAi.provider "azure" is not supported' --set appSettings.driverAi.provider=azure
-expect_fail "driverAi.effort" 'appSettings.driverAi.effort "max" is not supported' --set appSettings.driverAi.effort=max
-expect_fail "driverAi.enabled" 'appSettings.driverAi.enabled "yes" is not supported' --set-string appSettings.driverAi.enabled=yes
-expect_fail "aiInsights.reservation.enabled" 'appSettings.aiInsights.reservation.enabled "1" is not supported' --set appSettings.aiInsights.reservation.enabled=1
-for v in driverAi.maxCasesPerDriverPerDay=0 driverAi.maxCasesPerDriverPerDay=101 driverAi.feedbackTimeoutHours=0 \
-  driverAi.feedbackTimeoutHours=169 ai.budget.driverDailyTokens=-1 ai.budget.driverDailyTokens=10000000001 \
-  ai.rateLimit.driverPerMinute=0 ai.rateLimit.driverPerMinute=1001; do
-  expect_fail "$v" "appSettings.${v%%=*} \"${v#*=}\" is not supported" --set "appSettings.$v"
-done
 for v in aiInsights.debounceSeconds=3601 aiInsights.cooldownMinutes=0 aiInsights.siteIncidentThreshold=1 \
   aiInsights.maxPerSitePerDay=10001 aiInsights.retentionDays=0 aiWorkers.stuckSessions.idleMinutes=14 \
   aiWorkers.proposalTtlHours=169 ai.mcp.rateLimitPerMinute=0 ai.mcp.dailyCallsPerKey=10000001 \
-  ai.budget.companyMonthlyTokens=1000000000001 ai.budget.siteMonthlyTokens=-1 \
+  ai.mcp.proposalTtlMinutes=4 ai.budget.companyMonthlyTokens=1000000000001 ai.budget.siteMonthlyTokens=-1 \
   ai.budget.siteDailyTokens=10000000001 ai.budget.warnPercent=0 ai.budget.warnPercent=1.5; do
   expect_fail "$v" "appSettings.${v%%=*} \"${v#*=}\" is not supported" --set "appSettings.$v"
 done

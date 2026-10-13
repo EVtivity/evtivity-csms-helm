@@ -188,20 +188,15 @@
 {{- $aiBudget := $ai.budget | default dict }}
 {{- $aiAttachments := $ai.attachments | default dict }}
 {{- $aiMcp := $ai.mcp | default dict }}
-{{- if and (hasKey $aiMcp "proposalTtlMinutes") (not (kindIs "invalid" $aiMcp.proposalTtlMinutes)) (ne (toString $aiMcp.proposalTtlMinutes) "") }}
-{{- fail "appSettings.ai.mcp.proposalTtlMinutes was removed: MCP writes no longer become proposals. Remove it from your values (with --reuse-values, add --set appSettings.ai.mcp.proposalTtlMinutes=null) and set appSettings.ai.mcp.allowWrites (true or false) if needed." }}
-{{- end }}
 {{- $opsAi := .Values.appSettings.opsAi | default dict }}
-{{- $driverAi := .Values.appSettings.driverAi | default dict }}
 {{- $aiInsights := .Values.appSettings.aiInsights | default dict }}
 {{- $aiWorkers := .Values.appSettings.aiWorkers | default dict }}
 {{- $aiStuckSessions := $aiWorkers.stuckSessions | default dict }}
 {{- $aiNumberInputs := list (list "ai.rateLimit.userPerMinute" $aiRateLimit.userPerMinute 1 1000) (list "ai.rateLimit.sitePerMinute" $aiRateLimit.sitePerMinute 1 100000) (list "ai.budget.userDailyTokens" $aiBudget.userDailyTokens 0 10000000000) (list "ai.maxToolCallsPerTurn" $ai.maxToolCallsPerTurn 1 100) (list "ai.conversationRetentionDays" $ai.conversationRetentionDays 1 3650) (list "ai.attachments.maxBytes" $aiAttachments.maxBytes 1 33554432) (list "ai.attachments.maxPerMessage" $aiAttachments.maxPerMessage 1 20) }}
 {{- $aiNumberInputs = concat $aiNumberInputs (list (list "ai.budget.companyMonthlyTokens" $aiBudget.companyMonthlyTokens 0 1000000000000) (list "ai.budget.siteMonthlyTokens" $aiBudget.siteMonthlyTokens 0 1000000000000) (list "ai.budget.siteDailyTokens" $aiBudget.siteDailyTokens 0 10000000000) (list "ai.budget.warnPercent" $aiBudget.warnPercent 1 100)) }}
-{{- $aiNumberInputs = concat $aiNumberInputs (list (list "ai.mcp.rateLimitPerMinute" $aiMcp.rateLimitPerMinute 1 10000) (list "ai.mcp.dailyCallsPerKey" $aiMcp.dailyCallsPerKey 1 10000000)) }}
+{{- $aiNumberInputs = concat $aiNumberInputs (list (list "ai.mcp.rateLimitPerMinute" $aiMcp.rateLimitPerMinute 1 10000) (list "ai.mcp.dailyCallsPerKey" $aiMcp.dailyCallsPerKey 1 10000000) (list "ai.mcp.proposalTtlMinutes" $aiMcp.proposalTtlMinutes 5 1440)) }}
 {{- $aiNumberInputs = concat $aiNumberInputs (list (list "aiInsights.debounceSeconds" $aiInsights.debounceSeconds 0 3600) (list "aiInsights.cooldownMinutes" $aiInsights.cooldownMinutes 1 10080) (list "aiInsights.siteIncidentThreshold" $aiInsights.siteIncidentThreshold 2 1000) (list "aiInsights.maxPerSitePerDay" $aiInsights.maxPerSitePerDay 1 10000) (list "aiInsights.retentionDays" $aiInsights.retentionDays 1 3650)) }}
 {{- $aiNumberInputs = concat $aiNumberInputs (list (list "aiWorkers.stuckSessions.idleMinutes" $aiStuckSessions.idleMinutes 15 1440) (list "aiWorkers.proposalTtlHours" $aiWorkers.proposalTtlHours 1 168)) }}
-{{- $aiNumberInputs = concat $aiNumberInputs (list (list "driverAi.maxCasesPerDriverPerDay" $driverAi.maxCasesPerDriverPerDay 1 100) (list "driverAi.feedbackTimeoutHours" $driverAi.feedbackTimeoutHours 1 168) (list "ai.budget.driverDailyTokens" $aiBudget.driverDailyTokens 0 10000000000) (list "ai.rateLimit.driverPerMinute" $aiRateLimit.driverPerMinute 1 1000)) }}
 {{- $aiNumbers := dict }}
 {{- range $input := $aiNumberInputs }}
 {{- $aiName := index $input 0 }}
@@ -216,8 +211,7 @@
 {{- $_ := set $aiNumbers $aiName $aiText }}
 {{- end }}
 {{- $aiBoolInputs := list (list "opsAi.enabled" $opsAi.enabled) (list "aiInsights.station.enabled" ($aiInsights.station | default dict).enabled) (list "aiInsights.session.enabled" ($aiInsights.session | default dict).enabled) (list "aiInsights.authorization.enabled" ($aiInsights.authorization | default dict).enabled) }}
-{{- $aiBoolInputs = concat $aiBoolInputs (list (list "aiWorkers.networkSummary.enabled" ($aiWorkers.networkSummary | default dict).enabled) (list "aiWorkers.stuckSessions.enabled" $aiStuckSessions.enabled) (list "aiWorkers.stuckSessions.useModel" $aiStuckSessions.useModel) (list "aiWorkers.tariffAnomalies.enabled" ($aiWorkers.tariffAnomalies | default dict).enabled) (list "ai.mcp.enabled" $aiMcp.enabled) (list "ai.mcp.allowWrites" $aiMcp.allowWrites)) }}
-{{- $aiBoolInputs = concat $aiBoolInputs (list (list "driverAi.enabled" $driverAi.enabled) (list "aiInsights.reservation.enabled" ($aiInsights.reservation | default dict).enabled)) }}
+{{- $aiBoolInputs = concat $aiBoolInputs (list (list "aiWorkers.networkSummary.enabled" ($aiWorkers.networkSummary | default dict).enabled) (list "aiWorkers.stuckSessions.enabled" $aiStuckSessions.enabled) (list "aiWorkers.stuckSessions.useModel" $aiStuckSessions.useModel) (list "aiWorkers.tariffAnomalies.enabled" ($aiWorkers.tariffAnomalies | default dict).enabled) (list "ai.mcp.enabled" $aiMcp.enabled)) }}
 {{- $aiBools := dict }}
 {{- range $input := $aiBoolInputs }}
 {{- $aiName := index $input 0 }}
@@ -230,7 +224,7 @@
 {{- $_ := set $aiBools $aiName $aiText }}
 {{- end }}
 {{- $aiLanguages := list "en" "de" "es" "ko" "zh" "zh-TW" }}
-{{- $aiEnumInputs := list (list "opsAi.provider" $opsAi.provider $aiProviders) (list "opsAi.effort" $opsAi.effort (list "low" "medium" "high")) (list "aiInsights.primaryLanguage" $aiInsights.primaryLanguage $aiLanguages) (list "driverAi.provider" $driverAi.provider $aiProviders) (list "driverAi.effort" $driverAi.effort (list "low" "medium" "high")) }}
+{{- $aiEnumInputs := list (list "opsAi.provider" $opsAi.provider $aiProviders) (list "opsAi.effort" $opsAi.effort (list "low" "medium" "high")) (list "aiInsights.primaryLanguage" $aiInsights.primaryLanguage $aiLanguages) }}
 {{- $aiEnums := dict }}
 {{- range $input := $aiEnumInputs }}
 {{- $aiName := index $input 0 }}
@@ -414,8 +408,6 @@ data:
       "chatbotAi.systemPrompt": {{ .Values.appSettings.chatbotAi.systemPrompt | toJson }},
       "opsAi.model": {{ $opsAi.model | default "" | toString | toJson }},
       "opsAi.systemPrompt": {{ $opsAi.systemPrompt | default "" | toString | toJson }},
-      "driverAi.model": {{ $driverAi.model | default "" | toString | toJson }},
-      "driverAi.systemPrompt": {{ $driverAi.systemPrompt | default "" | toString | toJson }},
       "ai.mcp.allowedOrigins": {{ if kindIs "slice" $aiMcpOrigins }}{{ $aiMcpOrigins | toJson }}{{ else }}""{{ end }},
       {{- range $key, $value := $aiEnums }}
       {{ $key | toJson }}: {{ $value | toJson }},
