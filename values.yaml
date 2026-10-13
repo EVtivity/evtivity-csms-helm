@@ -746,6 +746,7 @@ appSettings:
     securityEventsRetentionDays: 365
     portStatusRetentionDays: 30
     workerJobRetentionDays: 30
+    loadAllocationRetentionDays: 90
   # Support case AI. provider and effort take the same values as chatbotAi.
   # tone: professional, friendly or formal.
   # temperature, topP and topK were removed: the chart refuses them.
