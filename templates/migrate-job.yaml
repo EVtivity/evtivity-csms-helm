@@ -1,3 +1,31 @@
+{{- /*
+The migration runs before the Deployments on install and on upgrade
+(pre-install, pre-upgrade). On install the chart's ConfigMap and Secret do not
+exist yet, so the job reads DATABASE_URL from a hook Secret rendered from
+secrets.databaseUrl (removed after the hooks succeed), from
+secrets.existingSecret, or, with credential rotation, from the credentials
+Secret that credentials-init (weight -10) creates. PostgreSQL is a separate
+release or external, so it is reachable before this chart's resources exist.
+*/}}
+{{- $rotation := (.Values.credentialRotation | default dict).enabled }}
+{{- $dbSecret := include "evtivity-csms.secretName" . }}
+{{- if and .Values.secrets.create (not $rotation) }}
+{{- $dbSecret = printf "%s-migrate-env" (include "evtivity-csms.fullname" .) }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $dbSecret }}
+  labels:
+    {{- include "evtivity-csms.componentLabels" (dict "context" . "component" "migrate") | nindent 4 }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+type: Opaque
+data:
+  DATABASE_URL: {{ .Values.secrets.databaseUrl | b64enc | quote }}
+---
+{{- end }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -5,11 +33,12 @@ metadata:
   labels:
     {{- include "evtivity-csms.componentLabels" (dict "context" . "component" "migrate") | nindent 4 }}
   annotations:
-    # Upgrade: runs before Helm updates the Deployments, so new pods never start
-    # against the old schema. It reads the ConfigMap and Secret of the installed
-    # release (it needs only DATABASE_URL). Install: runs after the Secret exists.
-    # seed-settings (weight 1) and the post-install seed jobs run after it.
-    "helm.sh/hook": pre-upgrade,post-install
+    # Runs before Helm creates or updates the Deployments, so pods never start
+    # against an old or empty schema, and helm install --wait does not wait on
+    # pods that need the migration. A failed migration fails the release with
+    # the old pods running. seed-settings and the post-install seed jobs run
+    # after it.
+    "helm.sh/hook": pre-install,pre-upgrade
     "helm.sh/hook-weight": "0"
     "helm.sh/hook-delete-policy": before-hook-creation
 spec:
@@ -32,17 +61,24 @@ spec:
         - name: migrate
           image: {{ include "evtivity-csms.image" (dict "context" . "component" "migrate" "values" .Values.migrate) }}
           imagePullPolicy: {{ include "evtivity-csms.imagePullPolicy" . }}
-          envFrom:
-            - configMapRef:
-                name: {{ include "evtivity-csms.configMapName" . }}
-            - secretRef:
-                name: {{ include "evtivity-csms.secretName" . }}
-          {{- if (.Values.credentialRotation | default dict).enabled }}
-          # The owner credential from the credentials Secret wins over the
-          # chart Secret's DATABASE_URL.
+          # Only what the migration reads: the chart ConfigMap and Secret do not
+          # exist yet on install.
           env:
+            - name: NODE_ENV
+              value: {{ .Values.api.env.nodeEnv | quote }}
+            - name: LOG_LEVEL
+              value: {{ .Values.api.env.logLevel | quote }}
+            - name: DB_POOL_MAX
+              value: {{ .Values.dependencies.postgresPoolMax | default 10 | quote }}
+            {{- if $rotation }}
             {{- include "evtivity-csms.ownerDatabaseUrlEnv" . | nindent 12 }}
-          {{- end }}
+            {{- else }}
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $dbSecret }}
+                  key: DATABASE_URL
+            {{- end }}
           {{- with .Values.migrate.resources }}
           resources:
             {{- toYaml . | nindent 12 }}

@@ -23,9 +23,11 @@ REDIS_HOST="${REDIS_HOST:-${RELEASE}-redis-master}"
 REDIS_PORT="${REDIS_PORT:-6379}"
 
 # Bitnami chart versions of the bundled PostgreSQL and Redis, tested with this
-# chart. Redis chart 27 and later mount the ACL Secret with a subPath inside the
-# read-only configuration volume, and the Redis container fails to start
-# ("Are you trying to mount a directory onto a file") when auth.acl.users is set.
+# chart. Redis 25.5.3 is the newest chart before 27 (no 26 was published). From
+# 27.0.0 through 28.3.1 the chart mounts the ACL Secret <release>-redis-acl as a
+# subPath file (mounted-etc/users.acl) inside the read-only ConfigMap volume
+# mounted at mounted-etc, and the Redis container fails to start ("not a
+# directory") when auth.acl.users is set.
 POSTGRES_CHART_VERSION="${POSTGRES_CHART_VERSION:-18.12.4}"
 REDIS_CHART_VERSION="${REDIS_CHART_VERSION:-25.5.3}"
 
@@ -284,13 +286,6 @@ if ! kubectl get crd gateways.gateway.networking.k8s.io >/dev/null 2>&1; then
   echo "Gateway API CRDs ready."
 fi
 
-# Bitnami chart versions of the bundled PostgreSQL and Redis, tested with this
-# chart. Redis chart 27 and later mount the ACL Secret with a subPath inside the
-# read-only configuration volume, and the Redis container fails to start
-# ("Are you trying to mount a directory onto a file") when auth.acl.users is set.
-POSTGRES_CHART_VERSION="${POSTGRES_CHART_VERSION:-18.12.4}"
-REDIS_CHART_VERSION="${REDIS_CHART_VERSION:-25.5.3}"
-
 # --- Install PostgreSQL ---
 if [ "$INSTALL_POSTGRES" = "y" ]; then
   echo "Installing PostgreSQL..."
@@ -491,8 +486,17 @@ fi
 
 # --- Install EVtivity CSMS ---
 echo "Installing EVtivity CSMS..."
+# --wait: the migration is a pre-install hook, so the pods start on a migrated
+# schema. It also waits for the ocpp-tls LoadBalancer address: a cluster without
+# a load balancer provider (kind, minikube without metallb or tunnel) needs one,
+# or CSMS_WAIT=false.
+CSMS_WAIT_ARGS=(--wait --timeout "${CSMS_WAIT_TIMEOUT:-15m}")
+if [ "${CSMS_WAIT:-true}" = "false" ]; then
+  CSMS_WAIT_ARGS=()
+fi
 helm upgrade --install "$RELEASE" "$CHART_DIR" \
   --namespace "$NAMESPACE" \
+  ${CSMS_WAIT_ARGS[@]+"${CSMS_WAIT_ARGS[@]}"} \
   --set fullnameOverride="$RELEASE" \
   --set 'image.pullSecrets[0].name=ghcr-secret' \
   --set gatewayAPI.gateway.gatewayClassName="$GATEWAY_CLASS" \

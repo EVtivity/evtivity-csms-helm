@@ -65,7 +65,9 @@ To provide your own secrets:
 POSTGRES_PASSWORD=mypass REDIS_PASSWORD=mypass JWT_SECRET=mysecret SETTINGS_ENCRYPTION_KEY=mykey ./scripts/install.sh
 ```
 
-The bundled PostgreSQL and Redis use pinned Bitnami chart versions that were tested with this chart. `POSTGRES_CHART_VERSION` and `REDIS_CHART_VERSION` override them. Redis chart 27 and later do not start with the per-service ACL users.
+The bundled PostgreSQL and Redis use pinned Bitnami chart versions that were tested with this chart (PostgreSQL 18.12.4, Redis 25.5.3). `POSTGRES_CHART_VERSION` and `REDIS_CHART_VERSION` override them. Redis chart 27 and later do not start with the per-service ACL users: they mount the ACL file into a read-only configuration volume.
+
+The script installs the CSMS chart with `helm upgrade --install --wait` (timeout `CSMS_WAIT_TIMEOUT`, default `15m`). Helm then also waits for the OCPP TLS LoadBalancer to get an address. On a cluster without a load balancer provider (kind, or minikube without `minikube tunnel` or the metallb addon), set `CSMS_WAIT=false`.
 
 To use external databases instead of bundled ones:
 
@@ -89,7 +91,7 @@ To upgrade to a new version:
 helm upgrade evtivity . --namespace evtivity --reuse-values --set image.tag=0.2.0
 ```
 
-Database migrations run in a `pre-upgrade` hook job (`post-install` on a fresh install). On upgrade Helm runs the job before it updates the Deployments, so new pods never start against the old schema, and a failed migration stops the upgrade with the old pods still running. The job reads `DATABASE_URL` from the Secret of the installed release. To change the database URL, upgrade with the new `secrets.databaseUrl` first, then upgrade the image. The settings seed job (`post-upgrade`) runs after the migration and the new app settings.
+Database migrations run in a `pre-install`/`pre-upgrade` hook job. Helm runs it before it creates or updates the Deployments, so pods never start against an old or empty schema, `helm install --wait` and `helm upgrade --wait` work, and a failed migration stops the release with the old pods still running. PostgreSQL must be reachable before the chart installs (the bundled PostgreSQL is its own release, installed first). Because the chart's Secret does not exist yet when the hook runs, the job reads `DATABASE_URL` from a short-lived hook Secret rendered from `secrets.databaseUrl` (deleted when the hooks succeed), from `secrets.existingSecret`, or with credential rotation from `<fullname>-credentials`. The settings seed job (`post-install`/`post-upgrade`) runs after the migration and the new app settings.
 
 **Upgrading to per-service Redis users (0.1.38).** `secrets.redisUrl` and the Secret key `REDIS_URL` were replaced by one URL per service (see [Redis Access Control](#redis-access-control)). The chart refuses to render while `secrets.redisUrl` is set or a URL of an enabled service is missing.
 
