@@ -43,6 +43,11 @@ spec:
             - name: OCPI_SIM_BASE_URL
               value: "http://{{ include "evtivity-csms.fullname" . }}-ocpi-cpo-sim:{{ .Values.ocpiCpoSim.port }}"
             {{- end }}
+            {{- /* The simulator calls only its configured target: the OCPI URL the CSMS advertises. */}}
+            {{- if .Values.ocpi.env.baseUrl }}
+            - name: OCPI_TARGET_URL
+              value: {{ .Values.ocpi.env.baseUrl | quote }}
+            {{- end }}
             - name: OCPI_SIM_COUNTRY_CODE
               value: {{ .Values.ocpiCpoSim.env.countryCode | quote }}
             - name: OCPI_SIM_PARTY_ID
