@@ -703,6 +703,11 @@ appSettings:
     fleetEnabled: true
     supportEnabled: true
     guestEnabled: true
+    # Autocharge (charge by plugging in): a vehicle's VIN or EVCCID starts a
+    # session for its driver. A dashboard choice (Settings > Integrations >
+    # Autocharge, and per site): "" keeps the dashboard value, true or false
+    # sets it on every install and upgrade. Off on a fresh install.
+    autochargeEnabled: ""
   security:
     autoDisableOnCritical: true
     recaptchaEnabled: false
