@@ -747,6 +747,9 @@ appSettings:
     portStatusRetentionDays: 30
     workerJobRetentionDays: 30
     loadAllocationRetentionDays: 90
+    # Login rows (login_succeeded, login_failed) of the user and driver audit
+    # logs. 0 keeps them; their other rows follow audit.retentionDays.
+    loginAuditRetentionDays: 90
   # Support case AI. provider and effort take the same values as chatbotAi.
   # tone: professional, friendly or formal.
   # temperature, topP and topK were removed: the chart refuses them.

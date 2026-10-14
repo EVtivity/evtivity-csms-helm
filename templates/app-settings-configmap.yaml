@@ -362,6 +362,7 @@ data:
       "logs.portStatus.retentionDays": {{ .Values.appSettings.logs.portStatusRetentionDays | toJson }},
       "logs.workerJob.retentionDays": {{ .Values.appSettings.logs.workerJobRetentionDays | toJson }},
       "logs.loadAllocation.retentionDays": {{ .Values.appSettings.logs.loadAllocationRetentionDays | toJson }},
+      "logs.loginAudit.retentionDays": {{ .Values.appSettings.logs.loginAuditRetentionDays | toJson }},
       "pnc.provider": {{ .Values.appSettings.pnc.provider | toJson }},
       "pnc.expirationWarningDays": {{ .Values.appSettings.pnc.expirationWarningDays | toJson }},
       "pnc.expirationCriticalDays": {{ .Values.appSettings.pnc.expirationCriticalDays | toJson }},
