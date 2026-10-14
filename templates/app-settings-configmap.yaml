@@ -46,6 +46,10 @@
 {{- if and (ne $invoiceRunDay "") (not (and (regexMatch "^[0-9]+$" $invoiceRunDay) (ge (atoi $invoiceRunDay) 1) (le (atoi $invoiceRunDay) 28))) }}
 {{- fail (printf "appSettings.fleet.invoiceRunDay %q is not supported. Use a whole day of the month from 1 to 28." $invoiceRunDay) }}
 {{- end }}
+{{- $autocharge := .Values.appSettings.features.autochargeEnabled }}
+{{- if not (or (kindIs "bool" $autocharge) (kindIs "invalid" $autocharge) (eq (toString $autocharge) "")) }}
+{{- fail (printf "appSettings.features.autochargeEnabled %q is not supported. Use true, false, or \"\" to keep the value set in the dashboard." (toString $autocharge)) }}
+{{- end }}
 {{- $creditReservationCents := "" }}
 {{- if kindIs "float64" $fleet.creditReservationCents }}{{ $creditReservationCents = ternary (toString (int64 $fleet.creditReservationCents)) (toString $fleet.creditReservationCents) (eq $fleet.creditReservationCents (floor $fleet.creditReservationCents)) }}{{ else if not (kindIs "invalid" $fleet.creditReservationCents) }}{{ $creditReservationCents = toString $fleet.creditReservationCents }}{{ end }}
 {{- if and (ne $creditReservationCents "") (not (and (regexMatch "^[0-9]+$" $creditReservationCents) (ge (atoi $creditReservationCents) 1) (le (atoi $creditReservationCents) 100000000))) }}
@@ -334,6 +338,7 @@ data:
       "fleet.invoiceRunDay": {{ if eq $invoiceRunDay "" }}""{{ else }}{{ atoi $invoiceRunDay }}{{ end }},
       "support.enabled": {{ .Values.appSettings.features.supportEnabled | toJson }},
       "guest.enabled": {{ .Values.appSettings.features.guestEnabled | toJson }},
+      "autocharge.enabled": {{ if kindIs "bool" $autocharge }}{{ $autocharge | toJson }}{{ else }}""{{ end }},
       "security.autoDisableOnCritical": {{ .Values.appSettings.security.autoDisableOnCritical | toJson }},
       "security.recaptcha.enabled": {{ .Values.appSettings.security.recaptchaEnabled | toJson }},
       "security.recaptcha.threshold": {{ .Values.appSettings.security.recaptchaThreshold | toJson }},
