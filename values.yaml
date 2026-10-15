@@ -911,6 +911,10 @@ appSettings:
     primaryLanguage: ""
     # Days an insight is kept, 1 to 3650 (fresh install: 90).
     retentionDays: ""
+    # Days after which a one-off event insight still open (a failed session,
+    # a reservation problem, a tariff anomaly, some authorization refusals)
+    # is closed expired, 1 to 365 (fresh install: 7).
+    expireAfterDays: ""
   # AI workers: scheduled jobs that report on the network and propose
   # actions an operator approves.
   aiWorkers:

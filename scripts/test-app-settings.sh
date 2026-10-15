@@ -76,6 +76,7 @@ NEW_KEYS='["opsAi.enabled","opsAi.provider","opsAi.model","opsAi.effort","opsAi.
 "aiInsights.station.enabled","aiInsights.session.enabled","aiInsights.authorization.enabled",
 "aiInsights.debounceSeconds","aiInsights.cooldownMinutes","aiInsights.siteIncidentThreshold",
 "aiInsights.maxPerSitePerDay","aiInsights.primaryLanguage","aiInsights.retentionDays",
+"aiInsights.expireAfterDays",
 "aiWorkers.networkSummary.enabled","aiWorkers.stuckSessions.enabled","aiWorkers.stuckSessions.idleMinutes",
 "aiWorkers.stuckSessions.useModel","aiWorkers.stuckSessions.offlineEndAfterHours",
 "aiWorkers.tariffAnomalies.enabled","aiWorkers.proposalTtlHours",
@@ -114,6 +115,7 @@ appSettings:
     maxPerSitePerDay: 10000
     primaryLanguage: zh-TW
     retentionDays: 3650
+    expireAfterDays: 365
   aiWorkers:
     networkSummary: { enabled: true }
     stuckSessions: { enabled: true, idleMinutes: 15, useModel: true, offlineEndAfterHours: 720 }
@@ -147,7 +149,7 @@ WANT='{"opsAi.enabled":true,"opsAi.provider":"openai","opsAi.model":"gpt-test","
 "opsAi.systemPrompt":"Be brief.","aiInsights.station.enabled":false,"aiInsights.session.enabled":true,
 "aiInsights.authorization.enabled":false,"aiInsights.debounceSeconds":0,"aiInsights.cooldownMinutes":10080,
 "aiInsights.siteIncidentThreshold":2,"aiInsights.maxPerSitePerDay":10000,"aiInsights.primaryLanguage":"zh-TW",
-"aiInsights.retentionDays":3650,"aiWorkers.networkSummary.enabled":true,"aiWorkers.stuckSessions.enabled":true,
+"aiInsights.retentionDays":3650,"aiInsights.expireAfterDays":365,"aiWorkers.networkSummary.enabled":true,"aiWorkers.stuckSessions.enabled":true,
 "aiWorkers.stuckSessions.idleMinutes":15,"aiWorkers.stuckSessions.useModel":true,
 "aiWorkers.stuckSessions.offlineEndAfterHours":720,
 "aiWorkers.tariffAnomalies.enabled":false,"aiWorkers.proposalTtlHours":168,"ai.mcp.enabled":true,
@@ -204,6 +206,7 @@ for v in driverAi.maxCasesPerDriverPerDay=0 driverAi.maxCasesPerDriverPerDay=101
 done
 for v in aiInsights.debounceSeconds=3601 aiInsights.cooldownMinutes=0 aiInsights.siteIncidentThreshold=1 \
   aiInsights.maxPerSitePerDay=10001 aiInsights.retentionDays=0 aiWorkers.stuckSessions.idleMinutes=14 \
+  aiInsights.expireAfterDays=0 aiInsights.expireAfterDays=366 \
   aiWorkers.stuckSessions.offlineEndAfterHours=0 aiWorkers.stuckSessions.offlineEndAfterHours=721 \
   aiWorkers.stuckSessions.offlineEndAfterHours=1.5 \
   aiWorkers.proposalTtlHours=169 ai.mcp.rateLimitPerMinute=0 ai.mcp.dailyCallsPerKey=10000001 \
