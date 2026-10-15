@@ -69,6 +69,11 @@ data:
   {{- if .Values.api.env.cookieDomain }}
   COOKIE_DOMAIN: {{ .Values.api.env.cookieDomain | quote }}
   {{- end }}
+  {{- $trustProxy := .Values.api.env.trustProxy | default "" | toString | trim }}
+  {{- if regexMatch "^(?i:true|[0-9]+)$" $trustProxy }}
+  {{- fail (printf "api.env.trustProxy must list proxy IPs or CIDRs, got %q (a hop count or true is refused)" $trustProxy) }}
+  {{- end }}
+  TRUST_PROXY: {{ $trustProxy | quote }}
   API_PORT: {{ .Values.api.port | quote }}
   METRICS_PORT: {{ .Values.api.env.metricsPort | quote }}
   RATE_LIMIT_MAX: {{ .Values.api.env.rateLimitMax | quote }}

@@ -28,6 +28,13 @@ api:
     authRateLimitWindow: "1 minute"
     metricsPort: "9091"
     cookieDomain: ""
+    # Comma-separated IPs or CIDRs of the proxies in front of the API and the OCPI
+    # server (TRUST_PROXY, e.g. the ingress gateway pod range, like
+    # ocpp.env.trustedProxyCidrs). Their X-Forwarded-For and X-Forwarded-Proto then
+    # give the client address (rate limits, audit and access logs) and the scheme
+    # (OCPI Link headers). Empty trusts no proxy: every client shares the gateway
+    # address. A hop count and "true" are refused.
+    trustProxy: ""
     # Public wss:// address stations use for security profiles 2 and 3, without the
     # station ID. Used to move a connected OCPP 2.1 station from ws:// to TLS. Empty:
     # wss://<ocpp route host> when the gateway serves HTTPS, otherwise unset (the
