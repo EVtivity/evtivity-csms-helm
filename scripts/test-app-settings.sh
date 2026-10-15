@@ -265,5 +265,20 @@ else
   bad "no provider key: render failed: $(head -1 "$TMP/render.err")"
 fi
 
+# Guest start limits per client IP: empty keeps the dashboard value, a whole
+# number from 0 to 10000 is written, anything else fails.
+if render "$TMP/guest-default.json"; then
+  if r=$(expect_json "$TMP/guest-default.json" '{"guest.startsPerIpPerHour":"","guest.declinesPerIpPerHour":""}'); then ok; else bad "guest limits default: $r"; fi
+else
+  bad "guest limits default: render failed: $(head -1 "$TMP/render.err")"
+fi
+if render "$TMP/guest-set.json" --set appSettings.guest.startsPerIpPerHour=0 --set appSettings.guest.declinesPerIpPerHour=10000; then
+  if r=$(expect_json "$TMP/guest-set.json" '{"guest.startsPerIpPerHour":0,"guest.declinesPerIpPerHour":10000}'); then ok; else bad "guest limits set: $r"; fi
+else
+  bad "guest limits set: render failed: $(head -1 "$TMP/render.err")"
+fi
+expect_fail "guest.startsPerIpPerHour" 'appSettings.guest.startsPerIpPerHour "10001" is not supported' --set appSettings.guest.startsPerIpPerHour=10001
+expect_fail "guest.declinesPerIpPerHour" 'appSettings.guest.declinesPerIpPerHour "-1" is not supported' --set appSettings.guest.declinesPerIpPerHour=-1
+
 echo "app settings render tests: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

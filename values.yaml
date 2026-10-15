@@ -631,6 +631,14 @@ appSettings:
     defaultMessageTemplate: "This site is temporarily unavailable for maintenance. {{reason}}"
   idling:
     gracePeriodMinutes: 30
+  guest:
+    # Card testing limits on guest starts per client IP and hour (0 to 10000,
+    # 0 means no limit). They apply only when the API knows the real client IP:
+    # set api.env.trustProxy behind an ingress or load balancer. Leave empty to
+    # keep the value set in Settings > Integrations > Guest Charging (30 starts
+    # and 5 declined cards on a fresh install).
+    startsPerIpPerHour: ""
+    declinesPerIpPerHour: ""
   prepaid:
     # Prepaid card balance, in cents of the company currency, below which a
     # debit sends the driver the low credit notice. 0 turns the notice off.

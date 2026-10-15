@@ -34,6 +34,17 @@
 {{- if not (and (regexMatch "^[0-9]+$" $lowCreditThresholdCents) (le (atoi $lowCreditThresholdCents) 100000000)) }}
 {{- fail (printf "appSettings.prepaid.lowCreditThresholdCents %q is not supported. Use a whole number of cents from 0 to 100000000 (0 turns the low credit notice off)." $lowCreditThresholdCents) }}
 {{- end }}
+{{- $guest := .Values.appSettings.guest | default dict }}
+{{- $guestStartsPerIpPerHour := "" }}
+{{- if kindIs "float64" $guest.startsPerIpPerHour }}{{ $guestStartsPerIpPerHour = ternary (toString (int64 $guest.startsPerIpPerHour)) (toString $guest.startsPerIpPerHour) (eq $guest.startsPerIpPerHour (floor $guest.startsPerIpPerHour)) }}{{ else if not (kindIs "invalid" $guest.startsPerIpPerHour) }}{{ $guestStartsPerIpPerHour = toString $guest.startsPerIpPerHour }}{{ end }}
+{{- if and (ne $guestStartsPerIpPerHour "") (not (and (regexMatch "^[0-9]+$" $guestStartsPerIpPerHour) (le (atoi $guestStartsPerIpPerHour) 10000))) }}
+{{- fail (printf "appSettings.guest.startsPerIpPerHour %q is not supported. Use a whole number from 0 to 10000 (0 means no limit)." $guestStartsPerIpPerHour) }}
+{{- end }}
+{{- $guestDeclinesPerIpPerHour := "" }}
+{{- if kindIs "float64" $guest.declinesPerIpPerHour }}{{ $guestDeclinesPerIpPerHour = ternary (toString (int64 $guest.declinesPerIpPerHour)) (toString $guest.declinesPerIpPerHour) (eq $guest.declinesPerIpPerHour (floor $guest.declinesPerIpPerHour)) }}{{ else if not (kindIs "invalid" $guest.declinesPerIpPerHour) }}{{ $guestDeclinesPerIpPerHour = toString $guest.declinesPerIpPerHour }}{{ end }}
+{{- if and (ne $guestDeclinesPerIpPerHour "") (not (and (regexMatch "^[0-9]+$" $guestDeclinesPerIpPerHour) (le (atoi $guestDeclinesPerIpPerHour) 10000))) }}
+{{- fail (printf "appSettings.guest.declinesPerIpPerHour %q is not supported. Use a whole number from 0 to 10000 (0 means no limit)." $guestDeclinesPerIpPerHour) }}
+{{- end }}
 {{- $invoice := .Values.appSettings.invoice | default dict }}
 {{- $paymentTermsDays := "" }}
 {{- if kindIs "float64" $invoice.paymentTermsDays }}{{ $paymentTermsDays = ternary (toString (int64 $invoice.paymentTermsDays)) (toString $invoice.paymentTermsDays) (eq $invoice.paymentTermsDays (floor $invoice.paymentTermsDays)) }}{{ else if not (kindIs "invalid" $invoice.paymentTermsDays) }}{{ $paymentTermsDays = toString $invoice.paymentTermsDays }}{{ end }}
@@ -338,6 +349,8 @@ data:
       "fleet.invoiceRunDay": {{ if eq $invoiceRunDay "" }}""{{ else }}{{ atoi $invoiceRunDay }}{{ end }},
       "support.enabled": {{ .Values.appSettings.features.supportEnabled | toJson }},
       "guest.enabled": {{ .Values.appSettings.features.guestEnabled | toJson }},
+      "guest.startsPerIpPerHour": {{ if eq $guestStartsPerIpPerHour "" }}""{{ else }}{{ atoi $guestStartsPerIpPerHour }}{{ end }},
+      "guest.declinesPerIpPerHour": {{ if eq $guestDeclinesPerIpPerHour "" }}""{{ else }}{{ atoi $guestDeclinesPerIpPerHour }}{{ end }},
       "autocharge.enabled": {{ if kindIs "bool" $autocharge }}{{ $autocharge | toJson }}{{ else }}""{{ end }},
       "security.autoDisableOnCritical": {{ .Values.appSettings.security.autoDisableOnCritical | toJson }},
       "security.recaptcha.enabled": {{ .Values.appSettings.security.recaptchaEnabled | toJson }},
