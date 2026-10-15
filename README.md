@@ -272,6 +272,7 @@ AI settings are app settings in the database, and provider API keys are stored e
 | `appSettings.aiInsights.retentionDays` | Days an insight is kept, 1 to 3650 (90) |
 | `appSettings.aiWorkers.networkSummary.enabled`, `stuckSessions.enabled`, `tariffAnomalies.enabled` | AI worker jobs: `true` or `false` (`false`) |
 | `appSettings.aiWorkers.stuckSessions.idleMinutes` | Minutes without a meter value or transaction event before an active session counts as stuck, 15 to 1440, below the stale session timeout (90) |
+| `appSettings.aiWorkers.stuckSessions.offlineEndAfterHours` | Hours a station stays offline before its stuck session gets the end-in-the-CSMS proposal (before that, advice to restore the connection), 1 to 720 (24) |
 | `appSettings.aiWorkers.stuckSessions.useModel` | Add a one-line model rationale to each stuck session proposal: `true` or `false` (`false`) |
 | `appSettings.aiWorkers.proposalTtlHours` | Hours a worker proposal waits for a decision, 1 to 168 (24) |
 | `appSettings.ai.mcp.enabled` | MCP server for external AI agents: `true` or `false` (`false`) |

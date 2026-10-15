@@ -927,6 +927,10 @@ appSettings:
       # true or false: add a one-line model rationale to each proposal
       # (fresh install: false).
       useModel: ""
+      # Hours a station stays offline before its stuck session gets the
+      # CSMS end proposal; before that the insight advises restoring the
+      # connection. 1 to 720 (fresh install: 24).
+      offlineEndAfterHours: ""
     tariffAnomalies:
       # true or false (fresh install: false).
       enabled: ""

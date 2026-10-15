@@ -77,7 +77,8 @@ NEW_KEYS='["opsAi.enabled","opsAi.provider","opsAi.model","opsAi.effort","opsAi.
 "aiInsights.debounceSeconds","aiInsights.cooldownMinutes","aiInsights.siteIncidentThreshold",
 "aiInsights.maxPerSitePerDay","aiInsights.primaryLanguage","aiInsights.retentionDays",
 "aiWorkers.networkSummary.enabled","aiWorkers.stuckSessions.enabled","aiWorkers.stuckSessions.idleMinutes",
-"aiWorkers.stuckSessions.useModel","aiWorkers.tariffAnomalies.enabled","aiWorkers.proposalTtlHours",
+"aiWorkers.stuckSessions.useModel","aiWorkers.stuckSessions.offlineEndAfterHours",
+"aiWorkers.tariffAnomalies.enabled","aiWorkers.proposalTtlHours",
 "ai.mcp.enabled","ai.mcp.rateLimitPerMinute","ai.mcp.dailyCallsPerKey","ai.mcp.allowWrites",
 "ai.mcp.allowedOrigins","ai.budget.companyMonthlyTokens","ai.budget.siteMonthlyTokens",
 "ai.budget.siteDailyTokens","ai.budget.warnPercent",
@@ -115,7 +116,7 @@ appSettings:
     retentionDays: 3650
   aiWorkers:
     networkSummary: { enabled: true }
-    stuckSessions: { enabled: true, idleMinutes: 15, useModel: true }
+    stuckSessions: { enabled: true, idleMinutes: 15, useModel: true, offlineEndAfterHours: 720 }
     tariffAnomalies: { enabled: false }
     proposalTtlHours: 168
   driverAi:
@@ -148,6 +149,7 @@ WANT='{"opsAi.enabled":true,"opsAi.provider":"openai","opsAi.model":"gpt-test","
 "aiInsights.siteIncidentThreshold":2,"aiInsights.maxPerSitePerDay":10000,"aiInsights.primaryLanguage":"zh-TW",
 "aiInsights.retentionDays":3650,"aiWorkers.networkSummary.enabled":true,"aiWorkers.stuckSessions.enabled":true,
 "aiWorkers.stuckSessions.idleMinutes":15,"aiWorkers.stuckSessions.useModel":true,
+"aiWorkers.stuckSessions.offlineEndAfterHours":720,
 "aiWorkers.tariffAnomalies.enabled":false,"aiWorkers.proposalTtlHours":168,"ai.mcp.enabled":true,
 "ai.mcp.rateLimitPerMinute":10000,"ai.mcp.dailyCallsPerKey":10000000,"ai.mcp.allowWrites":true,
 "ai.mcp.allowedOrigins":["https://agent.example.com","http://localhost:3000","https://[::1]:8443"],
@@ -202,6 +204,8 @@ for v in driverAi.maxCasesPerDriverPerDay=0 driverAi.maxCasesPerDriverPerDay=101
 done
 for v in aiInsights.debounceSeconds=3601 aiInsights.cooldownMinutes=0 aiInsights.siteIncidentThreshold=1 \
   aiInsights.maxPerSitePerDay=10001 aiInsights.retentionDays=0 aiWorkers.stuckSessions.idleMinutes=14 \
+  aiWorkers.stuckSessions.offlineEndAfterHours=0 aiWorkers.stuckSessions.offlineEndAfterHours=721 \
+  aiWorkers.stuckSessions.offlineEndAfterHours=1.5 \
   aiWorkers.proposalTtlHours=169 ai.mcp.rateLimitPerMinute=0 ai.mcp.dailyCallsPerKey=10000001 \
   ai.budget.companyMonthlyTokens=1000000000001 ai.budget.siteMonthlyTokens=-1 \
   ai.budget.siteDailyTokens=10000000001 ai.budget.warnPercent=0 ai.budget.warnPercent=1.5; do
