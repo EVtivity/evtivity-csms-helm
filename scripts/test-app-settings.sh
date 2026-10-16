@@ -287,5 +287,29 @@ fi
 expect_fail "guest.startsPerIpPerHour" 'appSettings.guest.startsPerIpPerHour "10001" is not supported' --set appSettings.guest.startsPerIpPerHour=10001
 expect_fail "guest.declinesPerIpPerHour" 'appSettings.guest.declinesPerIpPerHour "-1" is not supported' --set appSettings.guest.declinesPerIpPerHour=-1
 
+# Invoice payment information: empty keeps the dashboard value, the IBAN and
+# BIC render normalized, an IBAN with a bad checksum, a BIC of another length,
+# a holder over 70 characters and a non-boolean QR switch fail.
+if render "$TMP/bank-default.json"; then
+  if r=$(expect_json "$TMP/bank-default.json" '{"company.bankAccountHolder":"","company.iban":"","company.bic":"","company.bankName":"","invoice.epcQrEnabled":""}'); then ok; else bad "bank details default: $r"; fi
+else
+  bad "bank details default: render failed: $(head -1 "$TMP/render.err")"
+fi
+if render "$TMP/bank-set.json" --set-string 'appSettings.company.iban=de89 3704 0044 0532 0130 00' --set appSettings.company.bic=cobadeffxxx --set-string 'appSettings.company.bankAccountHolder=Acme GmbH' --set appSettings.company.bankName=Commerzbank --set appSettings.invoice.epcQrEnabled=false; then
+  if r=$(expect_json "$TMP/bank-set.json" '{"company.bankAccountHolder":"Acme GmbH","company.iban":"DE89370400440532013000","company.bic":"COBADEFFXXX","company.bankName":"Commerzbank","invoice.epcQrEnabled":false}'); then ok; else bad "bank details set: $r"; fi
+else
+  bad "bank details set: render failed: $(head -1 "$TMP/render.err")"
+fi
+if render "$TMP/bank-gb.json" --set appSettings.company.iban=GB82WEST12345698765432 --set appSettings.invoice.epcQrEnabled=true; then
+  if r=$(expect_json "$TMP/bank-gb.json" '{"company.iban":"GB82WEST12345698765432","invoice.epcQrEnabled":true}'); then ok; else bad "bank details GB: $r"; fi
+else
+  bad "bank details GB: render failed: $(head -1 "$TMP/render.err")"
+fi
+expect_fail "company.iban checksum" 'appSettings.company.iban "DE89370400440532013001" is not supported' --set appSettings.company.iban=DE89370400440532013001
+expect_fail "company.iban format" 'appSettings.company.iban "DE89-3704" is not supported' --set appSettings.company.iban=DE89-3704
+expect_fail "company.bic" 'appSettings.company.bic "COBADEF" is not supported' --set appSettings.company.bic=COBADEF
+expect_fail "company.bankAccountHolder" 'appSettings.company.bankAccountHolder is not supported' --set "appSettings.company.bankAccountHolder=$(printf 'x%.0s' $(seq 71))"
+expect_fail "invoice.epcQrEnabled" 'appSettings.invoice.epcQrEnabled "yes" is not supported' --set-string appSettings.invoice.epcQrEnabled=yes
+
 echo "app settings render tests: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
