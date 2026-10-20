@@ -309,6 +309,22 @@ Without it the browser blocks the upload and the attachment fails.
 
 `scripts/test-app-settings.sh` (`npm test`) renders the app settings with `helm template` and checks that every AI setting maps to its key, that out-of-range values and the removed AI keys fail the render, and that each provider API key maps to its encrypted setting in the sensitive settings Secret.
 
+### Password and Session Settings
+
+The password rules and sign-in lifetimes for operators and drivers are app settings, also set in Settings > Security > Passwords and Sessions. An empty value keeps the dashboard value and the key is not written. A value out of range, or of the wrong type, fails the render.
+
+| Parameter | Setting |
+|-----------|---------|
+| `appSettings.security.password.minLength` | Minimum password length, 8 to 64 (12 on a fresh install). New passwords are at most 128 characters |
+| `appSettings.security.password.requireUppercase`, `requireLowercase`, `requireNumber` | Require an uppercase letter, a lowercase letter, a number: `true` or `false` (on for a fresh install) |
+| `appSettings.security.password.requireSymbol` | Require a special character (a keyboard character that is not a letter, digit or space): `true` or `false` (off for a fresh install) |
+| `appSettings.security.session.operatorAccessMinutes` | Minutes between background checks of an operator sign-in, 5 to 1440 (60 on a fresh install) |
+| `appSettings.security.session.operatorRefreshDays` | Days an unused operator session stays signed in, 1 to 90 (30 on a fresh install) |
+| `appSettings.security.session.driverAccessMinutes` | Minutes between background checks of a driver sign-in, 5 to 1440 (60 on a fresh install) |
+| `appSettings.security.session.driverRefreshDays` | Days an unused driver session stays signed in, 1 to 365 (30 on a fresh install) |
+
+Password rules apply the next time someone sets a password, and current passwords keep working. Lifetimes apply at sign-in and at each background renewal.
+
 ### Database Connections
 
 Each api, ocpp, ocpi, worker and css pod pools `dependencies.postgresPoolMax` connections (default 10, env `DB_POOL_MAX`). Keep the sum over all pods, with HPA at `maxReplicas` plus one migrate or seed job, below the PostgreSQL `max_connections` minus its reserved connections (stock PostgreSQL: 100 minus 3).

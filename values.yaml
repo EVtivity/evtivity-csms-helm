@@ -746,6 +746,33 @@ appSettings:
     mfaEmailEnabled: true
     mfaTotpEnabled: true
     mfaSmsEnabled: false
+    # Password rules for operators and drivers (Settings > Security > Passwords
+    # and Sessions). They apply the next time someone sets a password; current
+    # passwords keep working. Leave empty to keep the dashboard value. A fresh
+    # install starts at 12 characters with an uppercase letter, a lowercase
+    # letter and a number, no special character.
+    password:
+      # Whole number from 8 to 64. New passwords are at most 128 characters.
+      minLength: ""
+      # true, false, or "" to keep the dashboard value.
+      requireUppercase: ""
+      requireLowercase: ""
+      requireNumber: ""
+      requireSymbol: ""
+    # Sign-in lifetimes. The access minutes set how often the apps check the
+    # sign-in again in the background, the refresh days how long an unused
+    # session stays signed in. They apply at sign-in and at each background
+    # renewal. Leave empty to keep the dashboard value (60 minutes and 30 days
+    # on a fresh install).
+    session:
+      # Whole number from 5 to 1440.
+      operatorAccessMinutes: ""
+      # Whole number from 1 to 90.
+      operatorRefreshDays: ""
+      # Whole number from 5 to 1440.
+      driverAccessMinutes: ""
+      # Whole number from 1 to 365.
+      driverRefreshDays: ""
   portal:
     registrationEnabled: true
   mobile:

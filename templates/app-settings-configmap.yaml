@@ -45,6 +45,35 @@
 {{- if and (ne $guestDeclinesPerIpPerHour "") (not (and (regexMatch "^[0-9]+$" $guestDeclinesPerIpPerHour) (le (atoi $guestDeclinesPerIpPerHour) 10000))) }}
 {{- fail (printf "appSettings.guest.declinesPerIpPerHour %q is not supported. Use a whole number from 0 to 10000 (0 means no limit)." $guestDeclinesPerIpPerHour) }}
 {{- end }}
+{{- /* Password policy and session lifetimes (Settings > Security > Passwords and Sessions).
+  Empty keeps the dashboard value and the key is not rendered. A set value renders as a JSON
+  number or boolean: the API falls back to the default for a stored row of the wrong type. */}}
+{{- $securityValues := .Values.appSettings.security | default dict }}
+{{- $securityGroups := dict "password" ($securityValues.password | default dict) "session" ($securityValues.session | default dict) }}
+{{- $securitySettings := dict }}
+{{- range $spec := list (list "password" "minLength" 8 64) (list "session" "operatorAccessMinutes" 5 1440) (list "session" "operatorRefreshDays" 1 90) (list "session" "driverAccessMinutes" 5 1440) (list "session" "driverRefreshDays" 1 365) }}
+{{- $group := index $spec 0 }}
+{{- $name := index $spec 1 }}
+{{- $min := index $spec 2 }}
+{{- $max := index $spec 3 }}
+{{- $raw := index (index $securityGroups $group) $name }}
+{{- $text := "" }}
+{{- if kindIs "float64" $raw }}{{ $text = ternary (toString (int64 $raw)) (toString $raw) (eq $raw (floor $raw)) }}{{ else if not (kindIs "invalid" $raw) }}{{ $text = toString $raw }}{{ end }}
+{{- if and (ne $text "") (not (and (regexMatch "^[0-9]+$" $text) (ge (atoi $text) $min) (le (atoi $text) $max))) }}
+{{- fail (printf "appSettings.security.%s.%s %q is not supported. Use a whole number from %d to %d, or \"\" to keep the value set in the dashboard." $group $name $text $min $max) }}
+{{- end }}
+{{- if ne $text "" }}
+{{- $_ := set $securitySettings (printf "security.%s.%s" $group $name) (atoi $text) }}
+{{- end }}
+{{- end }}
+{{- range $name := list "requireUppercase" "requireLowercase" "requireNumber" "requireSymbol" }}
+{{- $raw := index (index $securityGroups "password") $name }}
+{{- if kindIs "bool" $raw }}
+{{- $_ := set $securitySettings (printf "security.password.%s" $name) $raw }}
+{{- else if not (or (kindIs "invalid" $raw) (eq (toString $raw) "")) }}
+{{- fail (printf "appSettings.security.password.%s %q is not supported. Use true, false, or \"\" to keep the value set in the dashboard." $name (toString $raw)) }}
+{{- end }}
+{{- end }}
 {{- $invoice := .Values.appSettings.invoice | default dict }}
 {{- $paymentTermsDays := "" }}
 {{- if kindIs "float64" $invoice.paymentTermsDays }}{{ $paymentTermsDays = ternary (toString (int64 $invoice.paymentTermsDays)) (toString $invoice.paymentTermsDays) (eq $invoice.paymentTermsDays (floor $invoice.paymentTermsDays)) }}{{ else if not (kindIs "invalid" $invoice.paymentTermsDays) }}{{ $paymentTermsDays = toString $invoice.paymentTermsDays }}{{ end }}
@@ -392,6 +421,9 @@ data:
       "security.mfa.emailEnabled": {{ .Values.appSettings.security.mfaEmailEnabled | toJson }},
       "security.mfa.totpEnabled": {{ .Values.appSettings.security.mfaTotpEnabled | toJson }},
       "security.mfa.smsEnabled": {{ .Values.appSettings.security.mfaSmsEnabled | toJson }},
+      {{- range $key, $value := $securitySettings }}
+      {{ $key | toJson }}: {{ $value | toJson }},
+      {{- end }}
       "portal.registrationEnabled": {{ .Values.appSettings.portal.registrationEnabled | toJson }},
       "mobile.attestation.enabled": {{ .Values.appSettings.mobile.attestation.enabled | toJson }},
       "mobile.attestation.ios.teamId": {{ .Values.appSettings.mobile.attestation.iosTeamId | toJson }},

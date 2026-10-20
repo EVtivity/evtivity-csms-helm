@@ -311,5 +311,51 @@ expect_fail "company.bic" 'appSettings.company.bic "COBADEF" is not supported' -
 expect_fail "company.bankAccountHolder" 'appSettings.company.bankAccountHolder is not supported' --set "appSettings.company.bankAccountHolder=$(printf 'x%.0s' $(seq 71))"
 expect_fail "invoice.epcQrEnabled" 'appSettings.invoice.epcQrEnabled "yes" is not supported' --set-string appSettings.invoice.epcQrEnabled=yes
 
+# Password policy and session lifetimes: empty keeps the dashboard value and
+# the key is not rendered, a set value renders as a JSON number or boolean,
+# a value out of range or of the wrong type fails.
+SECURITY_KEYS='["security.password.minLength","security.password.requireUppercase","security.password.requireLowercase",
+"security.password.requireNumber","security.password.requireSymbol","security.session.operatorAccessMinutes",
+"security.session.operatorRefreshDays","security.session.driverAccessMinutes","security.session.driverRefreshDays"]'
+if render "$TMP/security-default.json"; then
+  if node -e '
+    const got = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+    const present = JSON.parse(process.argv[2]).filter((k) => k in got);
+    if (present.length) { console.log("rendered " + present.join(", ")); process.exit(1); }
+  ' "$TMP/security-default.json" "$SECURITY_KEYS"; then ok; else bad "password and session default: keys rendered"; fi
+else
+  bad "password and session default: render failed: $(head -1 "$TMP/render.err")"
+fi
+if render "$TMP/security-old.json" --set appSettings.security.password=null --set appSettings.security.session=null; then ok; else
+  bad "password and session without the blocks: render failed: $(head -1 "$TMP/render.err")"
+fi
+if render "$TMP/security-set.json" --set appSettings.security.password.minLength=14 \
+  --set appSettings.security.password.requireUppercase=false --set appSettings.security.password.requireLowercase=true \
+  --set appSettings.security.password.requireNumber=true --set appSettings.security.password.requireSymbol=true \
+  --set appSettings.security.session.operatorAccessMinutes=15 --set appSettings.security.session.operatorRefreshDays=90 \
+  --set appSettings.security.session.driverAccessMinutes=1440 --set appSettings.security.session.driverRefreshDays=365; then
+  if r=$(expect_json "$TMP/security-set.json" '{"security.password.minLength":14,"security.password.requireUppercase":false,"security.password.requireLowercase":true,"security.password.requireNumber":true,"security.password.requireSymbol":true,"security.session.operatorAccessMinutes":15,"security.session.operatorRefreshDays":90,"security.session.driverAccessMinutes":1440,"security.session.driverRefreshDays":365}'); then ok; else bad "password and session set: $r"; fi
+else
+  bad "password and session set: render failed: $(head -1 "$TMP/render.err")"
+fi
+# A values file number (float64) and a quoted whole number both render as numbers.
+printf 'appSettings:\n  security:\n    password:\n      minLength: 8\n    session:\n      operatorRefreshDays: "1"\n' > "$TMP/security-values.yaml"
+if render "$TMP/security-file.json" -f "$TMP/security-values.yaml"; then
+  if r=$(expect_json "$TMP/security-file.json" '{"security.password.minLength":8,"security.session.operatorRefreshDays":1}'); then ok; else bad "password and session values file: $r"; fi
+else
+  bad "password and session values file: render failed: $(head -1 "$TMP/render.err")"
+fi
+expect_fail "security.password.minLength low" 'appSettings.security.password.minLength "7" is not supported' --set appSettings.security.password.minLength=7
+expect_fail "security.password.minLength high" 'appSettings.security.password.minLength "65" is not supported' --set appSettings.security.password.minLength=65
+expect_fail "security.password.minLength fraction" 'appSettings.security.password.minLength "12.5" is not supported' --set appSettings.security.password.minLength=12.5
+expect_fail "security.password.minLength boolean" 'appSettings.security.password.minLength "true" is not supported' --set appSettings.security.password.minLength=true
+expect_fail "security.password.requireSymbol string" 'appSettings.security.password.requireSymbol "yes" is not supported' --set-string appSettings.security.password.requireSymbol=yes
+expect_fail "security.password.requireNumber quoted" 'appSettings.security.password.requireNumber "true" is not supported' --set-string appSettings.security.password.requireNumber=true
+expect_fail "security.session.operatorAccessMinutes" 'appSettings.security.session.operatorAccessMinutes "4" is not supported' --set appSettings.security.session.operatorAccessMinutes=4
+expect_fail "security.session.operatorRefreshDays" 'appSettings.security.session.operatorRefreshDays "91" is not supported' --set appSettings.security.session.operatorRefreshDays=91
+expect_fail "security.session.driverAccessMinutes" 'appSettings.security.session.driverAccessMinutes "1441" is not supported' --set appSettings.security.session.driverAccessMinutes=1441
+expect_fail "security.session.driverRefreshDays" 'appSettings.security.session.driverRefreshDays "0" is not supported' --set appSettings.security.session.driverRefreshDays=0
+expect_fail "security.session.driverRefreshDays word" 'appSettings.security.session.driverRefreshDays "month" is not supported' --set appSettings.security.session.driverRefreshDays=month
+
 echo "app settings render tests: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
