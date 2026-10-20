@@ -118,7 +118,7 @@ kubectl rollout restart deployment -n evtivity
 | Service | Default Port | Description |
 |---------|-------------|-------------|
 | API | 3001 | REST API (Fastify) |
-| OCPP | 8080 (ws), 8443 (wss) | OCPP 1.6/2.1 WebSocket server |
+| OCPP | 8080 (ws), 8443 (wss) | OCPP 1.6/2.0.1/2.1 WebSocket server |
 | OCPI | 3002 | OCPI 2.2.1/2.3.0 roaming server |
 | CSMS | 80 | Operator dashboard (React + Nginx) |
 | Portal | 80 | Driver portal (React + Nginx) |
