@@ -327,11 +327,11 @@ Password rules apply the next time someone sets a password, and current password
 
 ### Required MFA Settings
 
-Who must use MFA at operator sign-in is an app setting, also set in Settings > Security > MFA. An empty value keeps the dashboard value and the key is not written. An unsupported value fails the render.
+Who must use MFA at operator sign-in is an app setting, also set in Settings > Security > MFA. An empty value keeps the dashboard value and the key is not written. An unsupported value fails the render. Quote `mfaRequired` in a values file (`mfaRequired: "off"`): YAML reads an unquoted `off` as the boolean false, which fails the render. `all` and `roles` fail the render when `mfaEmailEnabled` and `mfaTotpEnabled` are both `false`, since no operator without a phone could set up MFA.
 
 | Parameter | Setting |
 |-----------|---------|
-| `appSettings.security.mfaRequired` | `off`, `all` or `roles` (off on a fresh install) |
+| `appSettings.security.mfaRequired` | `"off"`, `"all"` or `"roles"`, quoted (off on a fresh install) |
 | `appSettings.security.mfaRequiredRoles` | Role names that must use MFA when `mfaRequired` is `roles`, each a non-empty name listed once, for example `[Admin]`. Required with `roles` |
 
 ### Database Connections

@@ -392,6 +392,26 @@ fi
 expect_fail "security.mfaRequired unknown" 'appSettings.security.mfaRequired "some" is not supported' --set appSettings.security.mfaRequired=some
 expect_fail "security.mfaRequired boolean" 'appSettings.security.mfaRequired "true" is not supported' --set appSettings.security.mfaRequired=true
 expect_fail "security.mfaRequired roles without roles" 'appSettings.security.mfaRequired "roles" needs appSettings.security.mfaRequiredRoles' --set appSettings.security.mfaRequired=roles
+printf 'appSettings:\n  security:\n    mfaRequired: off\n' > "$TMP/mfa-unquoted.yaml"
+expect_fail "security.mfaRequired unquoted off" 'Quote the value, for example mfaRequired: "off"' -f "$TMP/mfa-unquoted.yaml"
+printf 'appSettings:\n  security:\n    mfaRequired: "off"\n' > "$TMP/mfa-quoted.yaml"
+if render "$TMP/mfa-quoted.json" -f "$TMP/mfa-quoted.yaml"; then
+  if r=$(expect_json "$TMP/mfa-quoted.json" '{"security.mfa.required":"off"}'); then ok; else bad "required MFA quoted off: $r"; fi
+else
+  bad "required MFA quoted off: render failed: $(head -1 "$TMP/render.err")"
+fi
+# Required MFA without email and TOTP: refused only when both are set to false.
+expect_fail "security.mfaRequired all without email and TOTP" 'appSettings.security.mfaRequired "all" needs appSettings.security.mfaEmailEnabled or mfaTotpEnabled' --set appSettings.security.mfaRequired=all --set appSettings.security.mfaEmailEnabled=false --set appSettings.security.mfaTotpEnabled=false
+expect_fail "security.mfaRequired roles without email and TOTP" 'appSettings.security.mfaRequired "roles" needs appSettings.security.mfaEmailEnabled or mfaTotpEnabled' --set appSettings.security.mfaRequired=roles --set 'appSettings.security.mfaRequiredRoles={Admin}' --set appSettings.security.mfaEmailEnabled=false --set appSettings.security.mfaTotpEnabled=false
+if render "$TMP/mfa-totp-only.json" --set appSettings.security.mfaRequired=all --set appSettings.security.mfaEmailEnabled=false; then ok; else
+  bad "required MFA with TOTP only: render failed: $(head -1 "$TMP/render.err")"
+fi
+if render "$TMP/mfa-email-empty.json" --set appSettings.security.mfaRequired=all --set appSettings.security.mfaEmailEnabled= --set appSettings.security.mfaTotpEnabled=false; then ok; else
+  bad "required MFA with email left to the dashboard: render failed: $(head -1 "$TMP/render.err")"
+fi
+if render "$TMP/mfa-off-no-methods.json" --set appSettings.security.mfaRequired=off --set appSettings.security.mfaEmailEnabled=false --set appSettings.security.mfaTotpEnabled=false; then ok; else
+  bad "required MFA off without methods: render failed: $(head -1 "$TMP/render.err")"
+fi
 expect_fail "security.mfaRequiredRoles not a list" 'appSettings.security.mfaRequiredRoles must be a list of role names' --set appSettings.security.mfaRequiredRoles=Admin
 expect_fail "security.mfaRequiredRoles empty entry" 'appSettings.security.mfaRequiredRoles entry "" is not a role name' --set 'appSettings.security.mfaRequiredRoles[0]='
 expect_fail "security.mfaRequiredRoles number entry" 'appSettings.security.mfaRequiredRoles entry "7" is not a role name' --set 'appSettings.security.mfaRequiredRoles={Admin,7}'

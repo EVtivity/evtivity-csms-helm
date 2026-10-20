@@ -78,8 +78,16 @@
   value and the key is not rendered. */}}
 {{- $mfaRequired := "" }}
 {{- if not (kindIs "invalid" $securityValues.mfaRequired) }}{{ $mfaRequired = toString $securityValues.mfaRequired }}{{ end }}
+{{- if kindIs "bool" $securityValues.mfaRequired }}
+{{- fail (printf "appSettings.security.mfaRequired %q is not supported: YAML reads an unquoted off, on, yes or no as a boolean. Quote the value, for example mfaRequired: \"off\"." $mfaRequired) }}
+{{- end }}
 {{- if and (ne $mfaRequired "") (not (has $mfaRequired (list "off" "all" "roles"))) }}
-{{- fail (printf "appSettings.security.mfaRequired %q is not supported. Use off, all, roles, or \"\" to keep the value set in the dashboard." $mfaRequired) }}
+{{- fail (printf "appSettings.security.mfaRequired %q is not supported. Use \"off\", \"all\", \"roles\" (quoted), or \"\" to keep the value set in the dashboard." $mfaRequired) }}
+{{- end }}
+{{- /* Required MFA needs a method an operator can set up without a phone. Only values set to
+  false count: an empty value keeps the dashboard value, which may be on. */}}
+{{- if and (has $mfaRequired (list "all" "roles")) (eq (toString $securityValues.mfaEmailEnabled) "false") (eq (toString $securityValues.mfaTotpEnabled) "false") }}
+{{- fail (printf "appSettings.security.mfaRequired %q needs appSettings.security.mfaEmailEnabled or mfaTotpEnabled: with both false no operator without a phone can set up MFA." $mfaRequired) }}
 {{- end }}
 {{- if ne $mfaRequired "" }}
 {{- $_ := set $securitySettings "security.mfa.required" $mfaRequired }}
