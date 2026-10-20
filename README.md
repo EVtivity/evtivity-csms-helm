@@ -325,6 +325,15 @@ The password rules and sign-in lifetimes for operators and drivers are app setti
 
 Password rules apply the next time someone sets a password, and current passwords keep working. Lifetimes apply at sign-in and at each background renewal.
 
+### Required MFA Settings
+
+Who must use MFA at operator sign-in is an app setting, also set in Settings > Security > MFA. An empty value keeps the dashboard value and the key is not written. An unsupported value fails the render.
+
+| Parameter | Setting |
+|-----------|---------|
+| `appSettings.security.mfaRequired` | `off`, `all` or `roles` (off on a fresh install) |
+| `appSettings.security.mfaRequiredRoles` | Role names that must use MFA when `mfaRequired` is `roles`, each a non-empty name listed once, for example `[Admin]`. Required with `roles` |
+
 ### Database Connections
 
 Each api, ocpp, ocpi, worker and css pod pools `dependencies.postgresPoolMax` connections (default 10, env `DB_POOL_MAX`). Keep the sum over all pods, with HPA at `maxReplicas` plus one migrate or seed job, below the PostgreSQL `max_connections` minus its reserved connections (stock PostgreSQL: 100 minus 3).

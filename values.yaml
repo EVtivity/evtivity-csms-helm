@@ -746,6 +746,14 @@ appSettings:
     mfaEmailEnabled: true
     mfaTotpEnabled: true
     mfaSmsEnabled: false
+    # Who must use MFA at operator sign-in (Settings > Security > MFA): off,
+    # all, or roles (the roles in mfaRequiredRoles). Leave empty to keep the
+    # dashboard value (off on a fresh install).
+    mfaRequired: ""
+    # Role names that must use MFA when mfaRequired is roles, each named once,
+    # for example [Admin]. Required with roles. Leave empty to keep the
+    # dashboard value.
+    mfaRequiredRoles: []
     # Password rules for operators and drivers (Settings > Security > Passwords
     # and Sessions). They apply the next time someone sets a password; current
     # passwords keep working. Leave empty to keep the dashboard value. A fresh

@@ -74,6 +74,35 @@
 {{- fail (printf "appSettings.security.password.%s %q is not supported. Use true, false, or \"\" to keep the value set in the dashboard." $name (toString $raw)) }}
 {{- end }}
 {{- end }}
+{{- /* Required MFA at operator sign-in (Settings > Security > MFA). Empty keeps the dashboard
+  value and the key is not rendered. */}}
+{{- $mfaRequired := "" }}
+{{- if not (kindIs "invalid" $securityValues.mfaRequired) }}{{ $mfaRequired = toString $securityValues.mfaRequired }}{{ end }}
+{{- if and (ne $mfaRequired "") (not (has $mfaRequired (list "off" "all" "roles"))) }}
+{{- fail (printf "appSettings.security.mfaRequired %q is not supported. Use off, all, roles, or \"\" to keep the value set in the dashboard." $mfaRequired) }}
+{{- end }}
+{{- if ne $mfaRequired "" }}
+{{- $_ := set $securitySettings "security.mfa.required" $mfaRequired }}
+{{- end }}
+{{- $mfaRequiredRoles := $securityValues.mfaRequiredRoles }}
+{{- if kindIs "slice" $mfaRequiredRoles }}
+{{- range $role := $mfaRequiredRoles }}
+{{- if not (and (kindIs "string" $role) (ne (trim $role) "")) }}
+{{- fail (printf "appSettings.security.mfaRequiredRoles entry %q is not a role name. Use a list of role names, for example [Admin]." (toString $role)) }}
+{{- end }}
+{{- end }}
+{{- if ne (len $mfaRequiredRoles) (len (uniq $mfaRequiredRoles)) }}
+{{- fail "appSettings.security.mfaRequiredRoles lists a role more than once. Name each role once." }}
+{{- end }}
+{{- if gt (len $mfaRequiredRoles) 0 }}
+{{- $_ := set $securitySettings "security.mfa.requiredRoles" $mfaRequiredRoles }}
+{{- end }}
+{{- else if not (or (kindIs "invalid" $mfaRequiredRoles) (eq (toString $mfaRequiredRoles) "")) }}
+{{- fail "appSettings.security.mfaRequiredRoles must be a list of role names, for example [Admin], or [] to keep the value set in the dashboard." }}
+{{- end }}
+{{- if and (eq $mfaRequired "roles") (not (and (kindIs "slice" $mfaRequiredRoles) (gt (len $mfaRequiredRoles) 0))) }}
+{{- fail "appSettings.security.mfaRequired \"roles\" needs appSettings.security.mfaRequiredRoles, a list of at least one role name." }}
+{{- end }}
 {{- $invoice := .Values.appSettings.invoice | default dict }}
 {{- $paymentTermsDays := "" }}
 {{- if kindIs "float64" $invoice.paymentTermsDays }}{{ $paymentTermsDays = ternary (toString (int64 $invoice.paymentTermsDays)) (toString $invoice.paymentTermsDays) (eq $invoice.paymentTermsDays (floor $invoice.paymentTermsDays)) }}{{ else if not (kindIs "invalid" $invoice.paymentTermsDays) }}{{ $paymentTermsDays = toString $invoice.paymentTermsDays }}{{ end }}

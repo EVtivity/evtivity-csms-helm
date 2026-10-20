@@ -357,5 +357,45 @@ expect_fail "security.session.driverAccessMinutes" 'appSettings.security.session
 expect_fail "security.session.driverRefreshDays" 'appSettings.security.session.driverRefreshDays "0" is not supported' --set appSettings.security.session.driverRefreshDays=0
 expect_fail "security.session.driverRefreshDays word" 'appSettings.security.session.driverRefreshDays "month" is not supported' --set appSettings.security.session.driverRefreshDays=month
 
+# Required MFA: empty keeps the dashboard value and the key is not rendered, a
+# set value renders as a JSON string or array, an unsupported value fails.
+if render "$TMP/mfa-default.json"; then
+  if node -e '
+    const got = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+    const present = ["security.mfa.required", "security.mfa.requiredRoles"].filter((k) => k in got);
+    if (present.length) { console.log("rendered " + present.join(", ")); process.exit(1); }
+  ' "$TMP/mfa-default.json"; then ok; else bad "required MFA default: keys rendered"; fi
+else
+  bad "required MFA default: render failed: $(head -1 "$TMP/render.err")"
+fi
+if render "$TMP/mfa-old.json" --set appSettings.security.mfaRequired=null --set appSettings.security.mfaRequiredRoles=null; then ok; else
+  bad "required MFA without the values: render failed: $(head -1 "$TMP/render.err")"
+fi
+for mode in off all; do
+  if render "$TMP/mfa-$mode.json" --set appSettings.security.mfaRequired=$mode; then
+    if r=$(expect_json "$TMP/mfa-$mode.json" "{\"security.mfa.required\":\"$mode\"}"); then ok; else bad "required MFA $mode: $r"; fi
+  else
+    bad "required MFA $mode: render failed: $(head -1 "$TMP/render.err")"
+  fi
+done
+if render "$TMP/mfa-roles.json" --set appSettings.security.mfaRequired=roles --set 'appSettings.security.mfaRequiredRoles={Admin,Site Manager}'; then
+  if r=$(expect_json "$TMP/mfa-roles.json" '{"security.mfa.required":"roles","security.mfa.requiredRoles":["Admin","Site Manager"]}'); then ok; else bad "required MFA roles: $r"; fi
+else
+  bad "required MFA roles: render failed: $(head -1 "$TMP/render.err")"
+fi
+printf 'appSettings:\n  security:\n    mfaRequired: roles\n    mfaRequiredRoles:\n      - Admin\n' > "$TMP/mfa-values.yaml"
+if render "$TMP/mfa-file.json" -f "$TMP/mfa-values.yaml"; then
+  if r=$(expect_json "$TMP/mfa-file.json" '{"security.mfa.required":"roles","security.mfa.requiredRoles":["Admin"]}'); then ok; else bad "required MFA values file: $r"; fi
+else
+  bad "required MFA values file: render failed: $(head -1 "$TMP/render.err")"
+fi
+expect_fail "security.mfaRequired unknown" 'appSettings.security.mfaRequired "some" is not supported' --set appSettings.security.mfaRequired=some
+expect_fail "security.mfaRequired boolean" 'appSettings.security.mfaRequired "true" is not supported' --set appSettings.security.mfaRequired=true
+expect_fail "security.mfaRequired roles without roles" 'appSettings.security.mfaRequired "roles" needs appSettings.security.mfaRequiredRoles' --set appSettings.security.mfaRequired=roles
+expect_fail "security.mfaRequiredRoles not a list" 'appSettings.security.mfaRequiredRoles must be a list of role names' --set appSettings.security.mfaRequiredRoles=Admin
+expect_fail "security.mfaRequiredRoles empty entry" 'appSettings.security.mfaRequiredRoles entry "" is not a role name' --set 'appSettings.security.mfaRequiredRoles[0]='
+expect_fail "security.mfaRequiredRoles number entry" 'appSettings.security.mfaRequiredRoles entry "7" is not a role name' --set 'appSettings.security.mfaRequiredRoles={Admin,7}'
+expect_fail "security.mfaRequiredRoles duplicate" 'appSettings.security.mfaRequiredRoles lists a role more than once' --set 'appSettings.security.mfaRequiredRoles={Admin,Admin}'
+
 echo "app settings render tests: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
