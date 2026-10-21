@@ -38,7 +38,9 @@ api:
     # WebAuthn relying party ID for passkeys and security keys (WEBAUTHN_RP_ID):
     # a domain, no scheme or port. Empty uses the CSMS host. A parent domain of
     # the CSMS host (example.com for csms.example.com) lets the CSMS and the
-    # portal share passkeys. Changing it later makes registered passkeys unusable.
+    # portal share passkeys. An IP address, a single label other than localhost,
+    # or a CSMS host that is an IP address fails the render (browsers refuse them).
+    # Changing it later makes registered passkeys unusable.
     webauthnRpId: ""
     # Public wss:// address stations use for security profiles 2 and 3, without the
     # station ID. Used to move a connected OCPP 2.1 station from ws:// to TLS. Empty:

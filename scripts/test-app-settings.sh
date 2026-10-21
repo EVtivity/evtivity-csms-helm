@@ -462,7 +462,7 @@ for rp in evtivity.local csms.evtivity.local; do
     bad "webauthnRpId $rp: render failed: $(head -1 "$TMP/rp.err")"
   fi
 done
-for spec in 'other.example|must be the CSMS host' 'https://evtivity.local|must be a domain name' 'evtivity.local:443|must be a domain name' 'vtivity.local|must be the CSMS host'; do
+for spec in 'other.example|must be the CSMS host' 'https://evtivity.local|must be a domain name' 'evtivity.local:443|must be a domain name' 'vtivity.local|must be the CSMS host' 'local|at least two labels' '10.0.0.5|not an IP address'; do
   rp="${spec%%|*}"
   want="${spec#*|}"
   if rp_render --set "api.env.webauthnRpId=$rp"; then
@@ -471,6 +471,14 @@ for spec in 'other.example|must be the CSMS host' 'https://evtivity.local|must b
     bad "webauthnRpId $rp: wrong error: $(head -1 "$TMP/rp.err")"
   fi
 done
+
+# Browsers refuse passkeys on an IP address, so an RP ID with an IP CSMS host fails too.
+if rp_render --set "gatewayAPI.routes[0].host=192.168.1.10" --set "gatewayAPI.routes[0].rules[0].path=/" \
+  --set "gatewayAPI.routes[0].rules[0].service=csms" --set api.env.webauthnRpId=evtivity.local; then
+  bad "webauthnRpId with an IP CSMS host: render passed"
+elif grep -q 'is an IP address' "$TMP/rp.err"; then ok; else
+  bad "webauthnRpId with an IP CSMS host: wrong error: $(head -1 "$TMP/rp.err")"
+fi
 
 echo "app settings render tests: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

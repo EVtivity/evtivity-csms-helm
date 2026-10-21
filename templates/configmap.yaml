@@ -79,6 +79,15 @@ data:
   {{- if not (regexMatch "^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$" $webauthnRpId) }}
   {{- fail (printf "api.env.webauthnRpId must be a domain name without a scheme, port or path, got %q" $webauthnRpId) }}
   {{- end }}
+  {{- if regexMatch "(^|\\.)[0-9]+$" $webauthnRpId }}
+  {{- fail (printf "api.env.webauthnRpId must be a domain name, not an IP address, got %q" $webauthnRpId) }}
+  {{- end }}
+  {{- if and (not (contains "." $webauthnRpId)) (ne $webauthnRpId "localhost") }}
+  {{- fail (printf "api.env.webauthnRpId must have at least two labels (example.com), or be localhost, got %q" $webauthnRpId) }}
+  {{- end }}
+  {{- if and $csmsHost (or (regexMatch "^[0-9.]+$" $csmsHost) (contains ":" $csmsHost)) }}
+  {{- fail (printf "api.env.webauthnRpId cannot be set while the CSMS host %q is an IP address: passkeys need a domain name" $csmsHost) }}
+  {{- end }}
   {{- if and $csmsHost (ne (lower $csmsHost) $webauthnRpId) (not (hasSuffix (printf ".%s" $webauthnRpId) (lower $csmsHost))) }}
   {{- fail (printf "api.env.webauthnRpId %q must be the CSMS host %q or a parent domain of it" $webauthnRpId $csmsHost) }}
   {{- end }}

@@ -342,7 +342,7 @@ Passkeys and security keys (WebAuthn) need HTTPS on a domain. The two switches a
 |-----------|---------|
 | `appSettings.security.mfaWebauthnEnabled` | Passkeys and security keys as a second factor (on on a fresh install) |
 | `appSettings.security.mfaPasskeyLoginEnabled` | Passwordless operator sign-in with a passkey (off on a fresh install) |
-| `api.env.webauthnRpId` | Relying party ID (`WEBAUTHN_RP_ID`): empty uses the CSMS host; a parent domain of the CSMS host lets the CSMS and the portal share passkeys. Any other value fails the render. Changing it later makes registered passkeys unusable |
+| `api.env.webauthnRpId` | Relying party ID (`WEBAUTHN_RP_ID`): empty uses the CSMS host; a parent domain of the CSMS host lets the CSMS and the portal share passkeys. Any other value fails the render, and so do an IP address, a single label other than `localhost`, and any value while the CSMS host is an IP address (browsers refuse passkeys there). Changing it later makes registered passkeys unusable |
 
 ### Database Connections
 
