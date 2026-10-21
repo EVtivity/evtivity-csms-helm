@@ -48,16 +48,10 @@ Rotate now:
   kubectl create job --from=cronjob/{{ include "evtivity-csms.fullname" . }}-credential-rotation rotate-now -n {{ .Release.Namespace }}
 {{- end }}
 
-{{- $webauthnRpId := .Values.api.env.webauthnRpId | default "" | toString | trim | lower }}
-{{- if ne $webauthnRpId "" }}
-{{- $portalHost := "" }}
-{{- range $route := .Values.gatewayAPI.routes }}
-{{- range $route.rules }}{{ if eq .service "portal" }}{{ $portalHost = lower $route.host }}{{ end }}{{ end }}
-{{- end }}
-{{- if and $portalHost (ne $portalHost $webauthnRpId) (not (hasSuffix (printf ".%s" $webauthnRpId) $portalHost)) }}
+{{- $passkeyNote := include "evtivity-csms.passkeyPortalNote" . }}
+{{- if $passkeyNote }}
 
-Passkeys: api.env.webauthnRpId {{ $webauthnRpId }} is not the portal host {{ $portalHost }} or a parent domain of it, so the portal uses {{ $portalHost }} as its passkey relying party. Drivers and operators keep separate passkeys.
-{{- end }}
+Passkeys: {{ $passkeyNote }}
 {{- end }}
 
 Verify the deployment:

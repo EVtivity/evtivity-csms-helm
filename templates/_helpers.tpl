@@ -262,3 +262,23 @@ readOnlyRootFilesystem: true
 capabilities:
   drop: ["ALL"]
 {{- end }}
+
+{{/*
+The NOTES.txt line about the portal passkey relying party, or empty. It reads the
+host of PORTAL_URL as the ConfigMap renders it, the URL the API builds the portal
+relying party from. Only while api.env.webauthnRpId is set.
+*/}}
+{{- define "evtivity-csms.passkeyPortalNote" -}}
+{{- $webauthnRpId := .Values.api.env.webauthnRpId | default "" | toString | trim | lower }}
+{{- if ne $webauthnRpId "" }}
+{{- $config := include (print $.Template.BasePath "/configmap.yaml") . | fromYaml }}
+{{- $portalUrl := get ($config.data | default dict) "PORTAL_URL" | default "" | toString }}
+{{- $portalHost := "" }}
+{{- if $portalUrl }}{{ $portalHost = (urlParse $portalUrl).hostname | lower }}{{ end }}
+{{- if and $portalHost (or (contains ":" $portalHost) (regexMatch "(^|\\.)[0-9]+$" $portalHost)) }}
+{{- printf "the portal is served from the IP address %s, where browsers refuse passkeys, so drivers cannot use them. Serve the portal on a domain name to offer them." $portalHost }}
+{{- else if and $portalHost (ne $portalHost $webauthnRpId) (not (hasSuffix (printf ".%s" $webauthnRpId) $portalHost)) }}
+{{- printf "api.env.webauthnRpId %s is not the portal host %s or a parent domain of it, so the portal uses %s as its passkey relying party. Drivers and operators keep separate passkeys." $webauthnRpId $portalHost $portalHost }}
+{{- end }}
+{{- end }}
+{{- end }}

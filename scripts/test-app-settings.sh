@@ -503,5 +503,58 @@ elif grep -q 'is an IP address' "$TMP/rp.err"; then ok; else
   bad "webauthnRpId with an IP CSMS host: wrong error: $(head -1 "$TMP/rp.err")"
 fi
 
+# The passkey note of NOTES.txt (helper evtivity-csms.passkeyPortalNote) reads the
+# portal host from the rendered PORTAL_URL. helm template does not render NOTES.txt,
+# so a copy of the chart gets a ConfigMap that shows the helper.
+NOTE_CHART="$TMP/note-chart"
+cp -R "$CHART" "$NOTE_CHART"
+cat > "$NOTE_CHART/templates/zz-passkey-note.yaml" <<'YAML'
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: passkey-note
+data:
+  note: {{ include "evtivity-csms.passkeyPortalNote" . | quote }}
+YAML
+cat > "$TMP/ip-portal.yaml" <<'YAML'
+gatewayAPI:
+  routes:
+    - host: csms.evtivity.local
+      rules:
+        - path: /
+          service: csms
+    - host: 192.168.1.20
+      rules:
+        - path: /
+          service: portal
+YAML
+note() {
+  helm template t "$NOTE_CHART" "${S[@]}" --show-only templates/zz-passkey-note.yaml "$@" > "$TMP/note.yaml" 2> "$TMP/note.err"
+}
+if note --set api.env.webauthnRpId=evtivity.local; then
+  if grep -q 'note: ""' "$TMP/note.yaml"; then ok; else bad "passkey note: parent domain of the portal: note shown"; fi
+else
+  bad "passkey note: parent domain: render failed: $(head -1 "$TMP/note.err")"
+fi
+if note --set api.env.webauthnRpId=csms.evtivity.local; then
+  if grep -q 'is not the portal host portal.evtivity.local or a parent domain of it' "$TMP/note.yaml"; then ok; else
+    bad "passkey note: CSMS-only RP ID: portal note missing"
+  fi
+else
+  bad "passkey note: CSMS-only RP ID: render failed: $(head -1 "$TMP/note.err")"
+fi
+if note --set api.env.webauthnRpId=csms.evtivity.local -f "$TMP/ip-portal.yaml"; then
+  if grep -q 'the portal is served from the IP address 192.168.1.20' "$TMP/note.yaml"; then ok; else
+    bad "passkey note: IP portal: note missing"
+  fi
+else
+  bad "passkey note: IP portal: render failed: $(head -1 "$TMP/note.err")"
+fi
+if note; then
+  if grep -q 'note: ""' "$TMP/note.yaml"; then ok; else bad "passkey note: no RP ID: note shown"; fi
+else
+  bad "passkey note: no RP ID: render failed: $(head -1 "$TMP/note.err")"
+fi
+
 echo "app settings render tests: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
