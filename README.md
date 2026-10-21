@@ -332,7 +332,7 @@ Who must use MFA at operator sign-in is an app setting, also set in Settings > S
 | Parameter | Setting |
 |-----------|---------|
 | `appSettings.security.mfaRequired` | `"off"`, `"all"` or `"roles"`, quoted (off on a fresh install) |
-| `appSettings.security.mfaRequiredRoles` | Role names that must use MFA when `mfaRequired` is `roles`, each a non-empty name listed once, for example `[Admin]`. Required with `roles` |
+| `appSettings.security.mfaRequiredRoles` | Role names that must use MFA when `mfaRequired` is `roles`, each a non-empty name of at most 100 characters listed once, at most 50 roles, for example `[Admin]`. Required with `roles` |
 | `appSettings.security.mfaRequireDrivers` | `true` or `false`: every driver must use MFA at portal sign-in (off on a fresh install). `true` fails the render when `mfaEmailEnabled` and `mfaTotpEnabled` are both `false` |
 
 ### Passkey Settings
@@ -343,7 +343,7 @@ Passkeys and security keys (WebAuthn) need HTTPS on a domain. The two switches a
 |-----------|---------|
 | `appSettings.security.mfaWebauthnEnabled` | Passkeys and security keys as a second factor (on on a fresh install) |
 | `appSettings.security.mfaPasskeyLoginEnabled` | Passwordless operator sign-in with a passkey (off on a fresh install) |
-| `api.env.webauthnRpId` | Relying party ID (`WEBAUTHN_RP_ID`): empty uses the CSMS host for operators and the portal host for drivers. It must be the CSMS host or a parent domain of it. The portal shares it only when it is also a parent of the portal host; otherwise the portal uses its own host, and the install notes say so. Any other value fails the render, and so do an IP address, a single label other than `localhost`, and any value while the CSMS host is an IP address (browsers refuse passkeys there). Changing it later makes registered passkeys unusable |
+| `api.env.webauthnRpId` | Relying party ID (`WEBAUTHN_RP_ID`): empty uses the CSMS host for operators and the portal host for drivers. Case does not matter: it renders lowercased. It must be the CSMS host or a parent domain of it. The portal shares it only when it is also a parent of the portal host; otherwise the portal uses its own host, and the install notes say so. Any other value fails the render, and so do an IP address, a single label other than `localhost`, and any value while the CSMS host is an IP address (browsers refuse passkeys there). Changing it later makes registered passkeys unusable |
 
 ### Database Connections
 

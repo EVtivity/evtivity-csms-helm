@@ -98,6 +98,12 @@
 {{- if not (and (kindIs "string" $role) (ne (trim $role) "")) }}
 {{- fail (printf "appSettings.security.mfaRequiredRoles entry %q is not a role name. Use a list of role names, for example [Admin]." (toString $role)) }}
 {{- end }}
+{{- if not (regexMatch "(?s)^.{1,100}$" $role) }}
+{{- fail (printf "appSettings.security.mfaRequiredRoles entry %q is longer than 100 characters, the longest role name the dashboard accepts." $role) }}
+{{- end }}
+{{- end }}
+{{- if gt (len $mfaRequiredRoles) 50 }}
+{{- fail (printf "appSettings.security.mfaRequiredRoles lists %d roles; the dashboard accepts at most 50." (len $mfaRequiredRoles)) }}
 {{- end }}
 {{- if ne (len $mfaRequiredRoles) (len (uniq $mfaRequiredRoles)) }}
 {{- fail "appSettings.security.mfaRequiredRoles lists a role more than once. Name each role once." }}

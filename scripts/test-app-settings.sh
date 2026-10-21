@@ -416,6 +416,18 @@ expect_fail "security.mfaRequiredRoles not a list" 'appSettings.security.mfaRequ
 expect_fail "security.mfaRequiredRoles empty entry" 'appSettings.security.mfaRequiredRoles entry "" is not a role name' --set 'appSettings.security.mfaRequiredRoles[0]='
 expect_fail "security.mfaRequiredRoles number entry" 'appSettings.security.mfaRequiredRoles entry "7" is not a role name' --set 'appSettings.security.mfaRequiredRoles={Admin,7}'
 expect_fail "security.mfaRequiredRoles duplicate" 'appSettings.security.mfaRequiredRoles lists a role more than once' --set 'appSettings.security.mfaRequiredRoles={Admin,Admin}'
+# The dashboard caps: at most 50 roles, each at most 100 characters.
+LONG_ROLE=$(printf 'r%.0s' $(seq 1 101))
+expect_fail "security.mfaRequiredRoles entry over 100 characters" 'is longer than 100 characters' --set "appSettings.security.mfaRequiredRoles={Admin,$LONG_ROLE}"
+if render "$TMP/mfa-role-100.json" --set "appSettings.security.mfaRequiredRoles={${LONG_ROLE:1}}"; then ok; else
+  bad "security.mfaRequiredRoles entry of 100 characters: render failed: $(head -1 "$TMP/render.err")"
+fi
+ROLES_51=$(seq -f 'Role%g' 1 51 | paste -sd, -)
+ROLES_50=$(seq -f 'Role%g' 1 50 | paste -sd, -)
+expect_fail "security.mfaRequiredRoles over 50 roles" 'lists 51 roles; the dashboard accepts at most 50' --set "appSettings.security.mfaRequiredRoles={$ROLES_51}"
+if render "$TMP/mfa-roles-50.json" --set "appSettings.security.mfaRequiredRoles={$ROLES_50}"; then ok; else
+  bad "security.mfaRequiredRoles of 50 roles: render failed: $(head -1 "$TMP/render.err")"
+fi
 
 # Passkeys: empty keeps the dashboard value and the key is not rendered, true
 # or false renders, anything else fails, and passkey sign-in needs passkeys.
@@ -485,6 +497,12 @@ for rp in evtivity.local csms.evtivity.local; do
     bad "webauthnRpId $rp: render failed: $(head -1 "$TMP/rp.err")"
   fi
 done
+# Case does not matter, as for the API and the CDK config: it renders lowercased.
+if rp_render --set api.env.webauthnRpId=EVtivity.Local; then
+  if grep -q 'WEBAUTHN_RP_ID: "evtivity.local"' "$TMP/rp.yaml"; then ok; else bad "webauthnRpId EVtivity.Local: not lowercased"; fi
+else
+  bad "webauthnRpId EVtivity.Local: render failed: $(head -1 "$TMP/rp.err")"
+fi
 for spec in 'other.example|must be the CSMS host' 'https://evtivity.local|must be a domain name' 'evtivity.local:443|must be a domain name' 'vtivity.local|must be the CSMS host' 'local|at least two labels' '10.0.0.5|not an IP address'; do
   rp="${spec%%|*}"
   want="${spec#*|}"

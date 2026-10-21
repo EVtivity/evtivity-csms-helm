@@ -762,8 +762,8 @@ appSettings:
     # (off on a fresh install).
     mfaRequired: ""
     # Role names that must use MFA when mfaRequired is roles, each named once,
-    # for example [Admin]. Required with roles. Leave empty to keep the
-    # dashboard value.
+    # for example [Admin]: at most 50, each at most 100 characters. Required
+    # with roles. Leave empty to keep the dashboard value.
     mfaRequiredRoles: []
     # Passkeys and security keys (WebAuthn) as a second factor (Settings >
     # Security > MFA): true or false sets it on every install and upgrade, ""
