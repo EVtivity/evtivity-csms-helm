@@ -74,6 +74,16 @@ data:
   {{- fail (printf "api.env.trustProxy must list proxy IPs or CIDRs, got %q (a hop count or true is refused)" $trustProxy) }}
   {{- end }}
   TRUST_PROXY: {{ $trustProxy | quote }}
+  {{- $webauthnRpId := .Values.api.env.webauthnRpId | default "" | toString | trim | lower }}
+  {{- if ne $webauthnRpId "" }}
+  {{- if not (regexMatch "^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$" $webauthnRpId) }}
+  {{- fail (printf "api.env.webauthnRpId must be a domain name without a scheme, port or path, got %q" $webauthnRpId) }}
+  {{- end }}
+  {{- if and $csmsHost (ne (lower $csmsHost) $webauthnRpId) (not (hasSuffix (printf ".%s" $webauthnRpId) (lower $csmsHost))) }}
+  {{- fail (printf "api.env.webauthnRpId %q must be the CSMS host %q or a parent domain of it" $webauthnRpId $csmsHost) }}
+  {{- end }}
+  WEBAUTHN_RP_ID: {{ $webauthnRpId | quote }}
+  {{- end }}
   API_PORT: {{ .Values.api.port | quote }}
   METRICS_PORT: {{ .Values.api.env.metricsPort | quote }}
   RATE_LIMIT_MAX: {{ .Values.api.env.rateLimitMax | quote }}

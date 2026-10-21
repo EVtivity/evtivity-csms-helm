@@ -35,6 +35,11 @@ api:
     # (OCPI Link headers). Empty trusts no proxy: every client shares the gateway
     # address. A hop count and "true" are refused.
     trustProxy: ""
+    # WebAuthn relying party ID for passkeys and security keys (WEBAUTHN_RP_ID):
+    # a domain, no scheme or port. Empty uses the CSMS host. A parent domain of
+    # the CSMS host (example.com for csms.example.com) lets the CSMS and the
+    # portal share passkeys. Changing it later makes registered passkeys unusable.
+    webauthnRpId: ""
     # Public wss:// address stations use for security profiles 2 and 3, without the
     # station ID. Used to move a connected OCPP 2.1 station from ws:// to TLS. Empty:
     # wss://<ocpp route host> when the gateway serves HTTPS, otherwise unset (the
@@ -756,6 +761,13 @@ appSettings:
     # for example [Admin]. Required with roles. Leave empty to keep the
     # dashboard value.
     mfaRequiredRoles: []
+    # Passkeys and security keys (WebAuthn) as a second factor (Settings >
+    # Security > MFA): true or false sets it on every install and upgrade, ""
+    # keeps the dashboard value (on on a fresh install). Passkeys need HTTPS.
+    mfaWebauthnEnabled: ""
+    # Passwordless operator sign-in with a passkey: true or false, or "" to keep
+    # the dashboard value (off on a fresh install). Needs mfaWebauthnEnabled.
+    mfaPasskeyLoginEnabled: ""
     # Password rules for operators and drivers (Settings > Security > Passwords
     # and Sessions). They apply the next time someone sets a password; current
     # passwords keep working. Leave empty to keep the dashboard value. A fresh

@@ -111,6 +111,23 @@
 {{- if and (eq $mfaRequired "roles") (not (and (kindIs "slice" $mfaRequiredRoles) (gt (len $mfaRequiredRoles) 0))) }}
 {{- fail "appSettings.security.mfaRequired \"roles\" needs appSettings.security.mfaRequiredRoles, a list of at least one role name." }}
 {{- end }}
+{{- /* Passkeys and passkey sign-in (Settings > Security > MFA). Empty keeps the dashboard
+  value and the key is not rendered. */}}
+{{- range $name := list "mfaWebauthnEnabled" "mfaPasskeyLoginEnabled" }}
+{{- $raw := index $securityValues $name }}
+{{- if not (or (kindIs "bool" $raw) (kindIs "invalid" $raw) (eq (toString $raw) "")) }}
+{{- fail (printf "appSettings.security.%s %q is not supported. Use true, false, or \"\" to keep the value set in the dashboard." $name (toString $raw)) }}
+{{- end }}
+{{- end }}
+{{- if and (eq (toString $securityValues.mfaPasskeyLoginEnabled) "true") (eq (toString $securityValues.mfaWebauthnEnabled) "false") }}
+{{- fail "appSettings.security.mfaPasskeyLoginEnabled true needs appSettings.security.mfaWebauthnEnabled: passkey sign-in uses passkeys." }}
+{{- end }}
+{{- if kindIs "bool" $securityValues.mfaWebauthnEnabled }}
+{{- $_ := set $securitySettings "security.mfa.webauthnEnabled" $securityValues.mfaWebauthnEnabled }}
+{{- end }}
+{{- if kindIs "bool" $securityValues.mfaPasskeyLoginEnabled }}
+{{- $_ := set $securitySettings "security.mfa.passkeyLoginEnabled" $securityValues.mfaPasskeyLoginEnabled }}
+{{- end }}
 {{- $invoice := .Values.appSettings.invoice | default dict }}
 {{- $paymentTermsDays := "" }}
 {{- if kindIs "float64" $invoice.paymentTermsDays }}{{ $paymentTermsDays = ternary (toString (int64 $invoice.paymentTermsDays)) (toString $invoice.paymentTermsDays) (eq $invoice.paymentTermsDays (floor $invoice.paymentTermsDays)) }}{{ else if not (kindIs "invalid" $invoice.paymentTermsDays) }}{{ $paymentTermsDays = toString $invoice.paymentTermsDays }}{{ end }}

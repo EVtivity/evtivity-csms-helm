@@ -417,5 +417,60 @@ expect_fail "security.mfaRequiredRoles empty entry" 'appSettings.security.mfaReq
 expect_fail "security.mfaRequiredRoles number entry" 'appSettings.security.mfaRequiredRoles entry "7" is not a role name' --set 'appSettings.security.mfaRequiredRoles={Admin,7}'
 expect_fail "security.mfaRequiredRoles duplicate" 'appSettings.security.mfaRequiredRoles lists a role more than once' --set 'appSettings.security.mfaRequiredRoles={Admin,Admin}'
 
+# Passkeys: empty keeps the dashboard value and the key is not rendered, true
+# or false renders, anything else fails, and passkey sign-in needs passkeys.
+if render "$TMP/passkey-default.json"; then
+  if node -e '
+    const got = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+    const present = ["security.mfa.webauthnEnabled", "security.mfa.passkeyLoginEnabled"].filter((k) => k in got);
+    if (present.length) { console.log("rendered " + present.join(", ")); process.exit(1); }
+  ' "$TMP/passkey-default.json"; then ok; else bad "passkey default: keys rendered"; fi
+else
+  bad "passkey default: render failed: $(head -1 "$TMP/render.err")"
+fi
+if render "$TMP/passkey-old.json" --set appSettings.security.mfaWebauthnEnabled=null --set appSettings.security.mfaPasskeyLoginEnabled=null; then ok; else
+  bad "passkeys without the values: render failed: $(head -1 "$TMP/render.err")"
+fi
+if render "$TMP/passkey-on.json" --set appSettings.security.mfaWebauthnEnabled=true --set appSettings.security.mfaPasskeyLoginEnabled=true; then
+  if r=$(expect_json "$TMP/passkey-on.json" '{"security.mfa.webauthnEnabled":true,"security.mfa.passkeyLoginEnabled":true}'); then ok; else bad "passkeys on: $r"; fi
+else
+  bad "passkeys on: render failed: $(head -1 "$TMP/render.err")"
+fi
+if render "$TMP/passkey-off.json" --set appSettings.security.mfaWebauthnEnabled=false --set appSettings.security.mfaPasskeyLoginEnabled=false; then
+  if r=$(expect_json "$TMP/passkey-off.json" '{"security.mfa.webauthnEnabled":false,"security.mfa.passkeyLoginEnabled":false}'); then ok; else bad "passkeys off: $r"; fi
+else
+  bad "passkeys off: render failed: $(head -1 "$TMP/render.err")"
+fi
+expect_fail "security.mfaWebauthnEnabled string" 'appSettings.security.mfaWebauthnEnabled "yes" is not supported' --set-string appSettings.security.mfaWebauthnEnabled=yes
+expect_fail "security.mfaPasskeyLoginEnabled quoted" 'appSettings.security.mfaPasskeyLoginEnabled "true" is not supported' --set-string appSettings.security.mfaPasskeyLoginEnabled=true
+expect_fail "security.mfaPasskeyLoginEnabled without passkeys" 'appSettings.security.mfaPasskeyLoginEnabled true needs appSettings.security.mfaWebauthnEnabled' --set appSettings.security.mfaPasskeyLoginEnabled=true --set appSettings.security.mfaWebauthnEnabled=false
+
+# WEBAUTHN_RP_ID (api.env.webauthnRpId): unset by default, the CSMS host or a
+# parent domain renders, anything else fails the render.
+rp_render() {
+  helm template t "$CHART" "${S[@]}" --show-only templates/configmap.yaml "$@" > "$TMP/rp.yaml" 2> "$TMP/rp.err"
+}
+if rp_render; then
+  if grep -q 'WEBAUTHN_RP_ID' "$TMP/rp.yaml"; then bad "webauthnRpId default: rendered"; else ok; fi
+else
+  bad "webauthnRpId default: render failed: $(head -1 "$TMP/rp.err")"
+fi
+for rp in evtivity.local csms.evtivity.local; do
+  if rp_render --set api.env.webauthnRpId=$rp; then
+    if grep -q "WEBAUTHN_RP_ID: \"$rp\"" "$TMP/rp.yaml"; then ok; else bad "webauthnRpId $rp: not rendered"; fi
+  else
+    bad "webauthnRpId $rp: render failed: $(head -1 "$TMP/rp.err")"
+  fi
+done
+for spec in 'other.example|must be the CSMS host' 'https://evtivity.local|must be a domain name' 'evtivity.local:443|must be a domain name' 'vtivity.local|must be the CSMS host'; do
+  rp="${spec%%|*}"
+  want="${spec#*|}"
+  if rp_render --set "api.env.webauthnRpId=$rp"; then
+    bad "webauthnRpId $rp: render passed"
+  elif grep -q "$want" "$TMP/rp.err"; then ok; else
+    bad "webauthnRpId $rp: wrong error: $(head -1 "$TMP/rp.err")"
+  fi
+done
+
 echo "app settings render tests: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

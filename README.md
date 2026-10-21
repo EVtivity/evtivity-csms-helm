@@ -334,6 +334,16 @@ Who must use MFA at operator sign-in is an app setting, also set in Settings > S
 | `appSettings.security.mfaRequired` | `"off"`, `"all"` or `"roles"`, quoted (off on a fresh install) |
 | `appSettings.security.mfaRequiredRoles` | Role names that must use MFA when `mfaRequired` is `roles`, each a non-empty name listed once, for example `[Admin]`. Required with `roles` |
 
+### Passkey Settings
+
+Passkeys and security keys (WebAuthn) need HTTPS on a domain. The two switches are app settings, also set in Settings > Security > MFA. An empty value keeps the dashboard value and the key is not written. Anything but `true`, `false` or `""` fails the render, and passkey sign-in fails the render while passkeys are set to `false`.
+
+| Parameter | Setting |
+|-----------|---------|
+| `appSettings.security.mfaWebauthnEnabled` | Passkeys and security keys as a second factor (on on a fresh install) |
+| `appSettings.security.mfaPasskeyLoginEnabled` | Passwordless operator sign-in with a passkey (off on a fresh install) |
+| `api.env.webauthnRpId` | Relying party ID (`WEBAUTHN_RP_ID`): empty uses the CSMS host; a parent domain of the CSMS host lets the CSMS and the portal share passkeys. Any other value fails the render. Changing it later makes registered passkeys unusable |
+
 ### Database Connections
 
 Each api, ocpp, ocpi, worker and css pod pools `dependencies.postgresPoolMax` connections (default 10, env `DB_POOL_MAX`). Keep the sum over all pods, with HPA at `maxReplicas` plus one migrate or seed job, below the PostgreSQL `max_connections` minus its reserved connections (stock PostgreSQL: 100 minus 3).
