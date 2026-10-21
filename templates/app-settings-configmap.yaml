@@ -128,6 +128,17 @@
 {{- if kindIs "bool" $securityValues.mfaPasskeyLoginEnabled }}
 {{- $_ := set $securitySettings "security.mfa.passkeyLoginEnabled" $securityValues.mfaPasskeyLoginEnabled }}
 {{- end }}
+{{- /* Required MFA for drivers (Settings > Security > MFA). Empty keeps the dashboard value. */}}
+{{- $requireDrivers := $securityValues.mfaRequireDrivers }}
+{{- if not (or (kindIs "bool" $requireDrivers) (kindIs "invalid" $requireDrivers) (eq (toString $requireDrivers) "")) }}
+{{- fail (printf "appSettings.security.mfaRequireDrivers %q is not supported. Use true, false, or \"\" to keep the value set in the dashboard." (toString $requireDrivers)) }}
+{{- end }}
+{{- if and (eq (toString $requireDrivers) "true") (eq (toString $securityValues.mfaEmailEnabled) "false") (eq (toString $securityValues.mfaTotpEnabled) "false") }}
+{{- fail "appSettings.security.mfaRequireDrivers true needs appSettings.security.mfaEmailEnabled or mfaTotpEnabled: with both false no driver without a phone can set up MFA." }}
+{{- end }}
+{{- if kindIs "bool" $requireDrivers }}
+{{- $_ := set $securitySettings "security.mfa.requireDrivers" $requireDrivers }}
+{{- end }}
 {{- $invoice := .Values.appSettings.invoice | default dict }}
 {{- $paymentTermsDays := "" }}
 {{- if kindIs "float64" $invoice.paymentTermsDays }}{{ $paymentTermsDays = ternary (toString (int64 $invoice.paymentTermsDays)) (toString $invoice.paymentTermsDays) (eq $invoice.paymentTermsDays (floor $invoice.paymentTermsDays)) }}{{ else if not (kindIs "invalid" $invoice.paymentTermsDays) }}{{ $paymentTermsDays = toString $invoice.paymentTermsDays }}{{ end }}

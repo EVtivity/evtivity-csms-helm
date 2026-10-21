@@ -36,9 +36,11 @@ api:
     # address. A hop count and "true" are refused.
     trustProxy: ""
     # WebAuthn relying party ID for passkeys and security keys (WEBAUTHN_RP_ID):
-    # a domain, no scheme or port. Empty uses the CSMS host. A parent domain of
-    # the CSMS host (example.com for csms.example.com) lets the CSMS and the
-    # portal share passkeys. An IP address, a single label other than localhost,
+    # a domain, no scheme or port. Empty uses the CSMS host for operators and the
+    # portal host for drivers. It must be the CSMS host or a parent domain of it;
+    # the portal shares it only when it is also a parent of the portal host
+    # (example.com for csms.example.com and portal.example.com), else the portal
+    # uses its own host. An IP address, a single label other than localhost,
     # or a CSMS host that is an IP address fails the render (browsers refuse them).
     # Changing it later makes registered passkeys unusable.
     webauthnRpId: ""
@@ -770,6 +772,10 @@ appSettings:
     # Passwordless operator sign-in with a passkey: true or false, or "" to keep
     # the dashboard value (off on a fresh install). Needs mfaWebauthnEnabled.
     mfaPasskeyLoginEnabled: ""
+    # Every driver must use MFA at portal sign-in (Settings > Security > MFA):
+    # true or false, or "" to keep the dashboard value (off on a fresh install).
+    # true needs mfaEmailEnabled or mfaTotpEnabled.
+    mfaRequireDrivers: ""
     # Password rules for operators and drivers (Settings > Security > Passwords
     # and Sessions). They apply the next time someone sets a password; current
     # passwords keep working. Leave empty to keep the dashboard value. A fresh

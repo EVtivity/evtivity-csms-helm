@@ -445,6 +445,29 @@ expect_fail "security.mfaWebauthnEnabled string" 'appSettings.security.mfaWebaut
 expect_fail "security.mfaPasskeyLoginEnabled quoted" 'appSettings.security.mfaPasskeyLoginEnabled "true" is not supported' --set-string appSettings.security.mfaPasskeyLoginEnabled=true
 expect_fail "security.mfaPasskeyLoginEnabled without passkeys" 'appSettings.security.mfaPasskeyLoginEnabled true needs appSettings.security.mfaWebauthnEnabled' --set appSettings.security.mfaPasskeyLoginEnabled=true --set appSettings.security.mfaWebauthnEnabled=false
 
+# Required MFA for drivers: empty keeps the dashboard value, true or false renders,
+# anything else fails, and true needs email or TOTP.
+if render "$TMP/drivers-default.json"; then
+  if node -e '
+    const got = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+    if ("security.mfa.requireDrivers" in got) process.exit(1);
+  ' "$TMP/drivers-default.json"; then ok; else bad "mfaRequireDrivers default: rendered"; fi
+else
+  bad "mfaRequireDrivers default: render failed: $(head -1 "$TMP/render.err")"
+fi
+for v in true false; do
+  if render "$TMP/drivers-$v.json" --set appSettings.security.mfaRequireDrivers=$v; then
+    if r=$(expect_json "$TMP/drivers-$v.json" "{\"security.mfa.requireDrivers\":$v}"); then ok; else bad "mfaRequireDrivers $v: $r"; fi
+  else
+    bad "mfaRequireDrivers $v: render failed: $(head -1 "$TMP/render.err")"
+  fi
+done
+expect_fail "security.mfaRequireDrivers string" 'appSettings.security.mfaRequireDrivers "yes" is not supported' --set-string appSettings.security.mfaRequireDrivers=yes
+expect_fail "security.mfaRequireDrivers without email and TOTP" 'appSettings.security.mfaRequireDrivers true needs appSettings.security.mfaEmailEnabled or mfaTotpEnabled' --set appSettings.security.mfaRequireDrivers=true --set appSettings.security.mfaEmailEnabled=false --set appSettings.security.mfaTotpEnabled=false
+if render "$TMP/drivers-totp.json" --set appSettings.security.mfaRequireDrivers=true --set appSettings.security.mfaEmailEnabled=false; then ok; else
+  bad "mfaRequireDrivers with TOTP only: render failed: $(head -1 "$TMP/render.err")"
+fi
+
 # WEBAUTHN_RP_ID (api.env.webauthnRpId): unset by default, the CSMS host or a
 # parent domain renders, anything else fails the render.
 rp_render() {
