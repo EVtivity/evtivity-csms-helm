@@ -30,6 +30,17 @@ data:
   {{- end }}
   {{- end }}
   NOTIFICATIONS_ALLOW_TEST_SINK: "false"
+  {{- /* The SIM provider mock (SIM_PROVIDER_TEST_BASE_URL points the SIM provider
+         adapters at a local mock server) is for the local Compose stack only. */}}
+  {{- if hasKey (.Values.simProviders | default dict) "testBaseUrl" }}
+  {{- fail "simProviders.testBaseUrl is not supported: the SIM provider mock is for the local development stack only. Remove it from your values." }}
+  {{- end }}
+  {{- range $component := list "api" "ocpp" "worker" "ocpi" }}
+  {{- $env := (get $.Values $component | default dict).env | default dict }}
+  {{- if hasKey $env "simProviderTestBaseUrl" }}
+  {{- fail (printf "%s.env.simProviderTestBaseUrl is not supported: the SIM provider mock is for the local development stack only. Remove it from your values." $component) }}
+  {{- end }}
+  {{- end }}
   {{- $proto := "http" }}
   {{- range .Values.gatewayAPI.gateway.listeners }}
     {{- if or (eq .protocol "HTTPS") (eq .protocol "TLS") }}{{ $proto = "https" }}{{ end }}

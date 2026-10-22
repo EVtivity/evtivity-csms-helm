@@ -154,7 +154,7 @@ Each service connects to Redis as its own ACL user. `redis/acl-rules.conf` lists
 
 | User | Keys | Channels |
 |------|------|----------|
-| `api` | response cache (`rc:*`), attestation nonces, the payment process watch key (read only) | core channels, simulator channels |
+| `api` | response cache (`rc:*`), attestation nonces, SIM provider locks and limits (`sim:*`), the payment process watch key (read only) | core channels, simulator channels |
 | `ocpp` | station connection registry (`ocpp:conn:*`) | core channels |
 | `worker` | BullMQ queues (`bull:*`), maintenance (`mfl:*`), station message (`sml:*`) and job (`wkl:*`) locks, the payment process watch key, the station connection registry (read only) | core channels |
 | `ocpi` | OCPI pull locks (`opl:*`) | `ocpp_commands`, `ocpp_command_results`, `csms_events`, `ocpi_*` |
@@ -344,6 +344,23 @@ Passkeys and security keys (WebAuthn) need HTTPS on a domain. The two switches a
 | `appSettings.security.mfaWebauthnEnabled` | Passkeys and security keys as a second factor (on on a fresh install) |
 | `appSettings.security.mfaPasskeyLoginEnabled` | Passwordless operator sign-in with a passkey (off on a fresh install) |
 | `api.env.webauthnRpId` | Relying party ID (`WEBAUTHN_RP_ID`): empty uses the CSMS host for operators and the portal host for drivers. Case does not matter: it renders lowercased. It must be the CSMS host or a parent domain of it. The portal shares it only when it is also a parent of the portal host; otherwise the portal uses its own host, and the install notes say so. Any other value fails the render, and so do an IP address, a single label other than `localhost`, and any value while the CSMS host is an IP address (browsers refuse passkeys there). Changing it later makes registered passkeys unusable |
+
+### SIM Provider Settings
+
+The SIM provider and station signal settings are app settings, also set in Settings > Integrations > SIM Providers. Both switches are off on a fresh install: nothing calls a SIM provider or reads a station until one is on. An empty value keeps the dashboard value and the key is not written. A value out of range, or of the wrong type, fails the render. The Hologram API key is a secret entered in the dashboard; the chart has no value for it.
+
+| Parameter | Setting |
+|-----------|---------|
+| `appSettings.sim.hologramEnabled` | Hologram SIM provider: `true` or `false` (off on a fresh install) |
+| `appSettings.sim.hologramOrgId` | Hologram organization id, 1 to 15 digits (quote it) |
+| `appSettings.sim.sessionsRetentionDays` | Days stored SIM sessions and alerts are kept, 7 to 730 (90 on a fresh install) |
+| `appSettings.sim.sessionsFetchDays` | Default period of a Refresh in days, 1 to 31 (7 on a fresh install) |
+| `appSettings.sim.stationSignalEnabled` | Read the signal from stations on Refresh: `true` or `false` (off on a fresh install) |
+| `appSettings.sim.signalAlertBelowDbm` | Low signal alert threshold in dBm, -140 to -40 (off on a fresh install; turn it off in the dashboard) |
+| `appSettings.sim.ocpp16SignalKeys` | OCPP 1.6 configuration keys read for the signal, for example `[SignalStrength]`: at most 20 names of at most 50 characters, each listed once |
+| `appSettings.sim.signalGoodDbm`, `signalFairDbm` | Signal grade thresholds in dBm, -140 to -40, good above fair (-65 and -85 on a fresh install) |
+
+`SIM_PROVIDER_TEST_BASE_URL`, which points the SIM provider adapters at a local mock server, is for the local development stack only: the render fails when `simProviders.testBaseUrl` or `<api|ocpp|worker|ocpi>.env.simProviderTestBaseUrl` is set.
 
 ### Database Connections
 

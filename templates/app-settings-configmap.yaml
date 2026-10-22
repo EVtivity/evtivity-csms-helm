@@ -145,6 +145,72 @@
 {{- if kindIs "bool" $requireDrivers }}
 {{- $_ := set $securitySettings "security.mfa.requireDrivers" $requireDrivers }}
 {{- end }}
+{{- /* SIM providers and station signal (Settings > Integrations > SIM Providers). Empty keeps
+  the dashboard value and the key is not rendered. A set value renders as a JSON boolean,
+  number, string (the organization id) or list, the types and ranges the API accepts. The
+  Hologram API key is a secret entered in the dashboard, never a chart value. */}}
+{{- $simValues := .Values.appSettings.sim | default dict }}
+{{- $simSettings := dict }}
+{{- range $spec := list (list "hologramEnabled" "sim.hologram.enabled") (list "stationSignalEnabled" "sim.stationSignal.enabled") }}
+{{- $name := index $spec 0 }}
+{{- $raw := index $simValues $name }}
+{{- if kindIs "bool" $raw }}
+{{- $_ := set $simSettings (index $spec 1) $raw }}
+{{- else if not (or (kindIs "invalid" $raw) (eq (toString $raw) "")) }}
+{{- fail (printf "appSettings.sim.%s %q is not supported. Use true, false, or \"\" to keep the value set in the dashboard." $name (toString $raw)) }}
+{{- end }}
+{{- end }}
+{{- $simOrgId := "" }}
+{{- if kindIs "float64" $simValues.hologramOrgId }}{{ $simOrgId = ternary (toString (int64 $simValues.hologramOrgId)) (toString $simValues.hologramOrgId) (eq $simValues.hologramOrgId (floor $simValues.hologramOrgId)) }}{{ else if not (kindIs "invalid" $simValues.hologramOrgId) }}{{ $simOrgId = trim (toString $simValues.hologramOrgId) }}{{ end }}
+{{- if and (ne $simOrgId "") (not (regexMatch "^[0-9]{1,15}$" $simOrgId)) }}
+{{- fail (printf "appSettings.sim.hologramOrgId %q is not supported. Use the Hologram organization id (1 to 15 digits), or \"\" to keep the value set in the dashboard." $simOrgId) }}
+{{- end }}
+{{- if ne $simOrgId "" }}
+{{- $_ := set $simSettings "sim.hologram.orgId" $simOrgId }}
+{{- end }}
+{{- range $spec := list (list "sessionsRetentionDays" "sim.sessions.retentionDays" 7 730) (list "sessionsFetchDays" "sim.sessions.fetchDays" 1 31) (list "signalAlertBelowDbm" "sim.signal.alertBelowDbm" -140 -40) (list "signalGoodDbm" "sim.signal.goodDbm" -140 -40) (list "signalFairDbm" "sim.signal.fairDbm" -140 -40) }}
+{{- $name := index $spec 0 }}
+{{- $min := index $spec 2 }}
+{{- $max := index $spec 3 }}
+{{- $raw := index $simValues $name }}
+{{- $text := "" }}
+{{- if kindIs "float64" $raw }}{{ $text = ternary (toString (int64 $raw)) (toString $raw) (eq $raw (floor $raw)) }}{{ else if not (kindIs "invalid" $raw) }}{{ $text = toString $raw }}{{ end }}
+{{- if and (ne $text "") (not (and (regexMatch "^-?[0-9]+$" $text) (ge (atoi $text) $min) (le (atoi $text) $max))) }}
+{{- fail (printf "appSettings.sim.%s %q is not supported. Use a whole number from %d to %d, or \"\" to keep the value set in the dashboard." $name $text $min $max) }}
+{{- end }}
+{{- if ne $text "" }}
+{{- $_ := set $simSettings (index $spec 1) (atoi $text) }}
+{{- end }}
+{{- end }}
+{{- if and (hasKey $simSettings "sim.signal.goodDbm") (hasKey $simSettings "sim.signal.fairDbm") }}
+{{- if le (get $simSettings "sim.signal.goodDbm") (get $simSettings "sim.signal.fairDbm") }}
+{{- fail (printf "appSettings.sim.signalGoodDbm %d must be above appSettings.sim.signalFairDbm %d." (get $simSettings "sim.signal.goodDbm") (get $simSettings "sim.signal.fairDbm")) }}
+{{- end }}
+{{- end }}
+{{- $simSignalKeys := $simValues.ocpp16SignalKeys }}
+{{- if kindIs "slice" $simSignalKeys }}
+{{- $simKeyList := list }}
+{{- range $key := $simSignalKeys }}
+{{- if not (and (kindIs "string" $key) (ne (trim $key) "")) }}
+{{- fail (printf "appSettings.sim.ocpp16SignalKeys entry %q is not a configuration key name. Use a list of OCPP 1.6 configuration key names, for example [SignalStrength]." (toString $key)) }}
+{{- end }}
+{{- if not (regexMatch "(?s)^.{1,50}$" (trim $key)) }}
+{{- fail (printf "appSettings.sim.ocpp16SignalKeys entry %q is longer than 50 characters, the longest OCPP 1.6 configuration key." $key) }}
+{{- end }}
+{{- $simKeyList = append $simKeyList (trim $key) }}
+{{- end }}
+{{- if gt (len $simKeyList) 20 }}
+{{- fail (printf "appSettings.sim.ocpp16SignalKeys lists %d keys; the dashboard accepts at most 20." (len $simKeyList)) }}
+{{- end }}
+{{- if ne (len $simKeyList) (len (uniq $simKeyList)) }}
+{{- fail "appSettings.sim.ocpp16SignalKeys lists a key more than once. Name each key once." }}
+{{- end }}
+{{- if gt (len $simKeyList) 0 }}
+{{- $_ := set $simSettings "sim.ocpp16.signalKeys" $simKeyList }}
+{{- end }}
+{{- else if not (or (kindIs "invalid" $simSignalKeys) (eq (toString $simSignalKeys) "")) }}
+{{- fail "appSettings.sim.ocpp16SignalKeys must be a list of OCPP 1.6 configuration key names, for example [SignalStrength], or [] to keep the value set in the dashboard." }}
+{{- end }}
 {{- $invoice := .Values.appSettings.invoice | default dict }}
 {{- $paymentTermsDays := "" }}
 {{- if kindIs "float64" $invoice.paymentTermsDays }}{{ $paymentTermsDays = ternary (toString (int64 $invoice.paymentTermsDays)) (toString $invoice.paymentTermsDays) (eq $invoice.paymentTermsDays (floor $invoice.paymentTermsDays)) }}{{ else if not (kindIs "invalid" $invoice.paymentTermsDays) }}{{ $paymentTermsDays = toString $invoice.paymentTermsDays }}{{ end }}
@@ -493,6 +559,9 @@ data:
       "security.mfa.totpEnabled": {{ .Values.appSettings.security.mfaTotpEnabled | toJson }},
       "security.mfa.smsEnabled": {{ .Values.appSettings.security.mfaSmsEnabled | toJson }},
       {{- range $key, $value := $securitySettings }}
+      {{ $key | toJson }}: {{ $value | toJson }},
+      {{- end }}
+      {{- range $key, $value := $simSettings }}
       {{ $key | toJson }}: {{ $value | toJson }},
       {{- end }}
       "portal.registrationEnabled": {{ .Values.appSettings.portal.registrationEnabled | toJson }},

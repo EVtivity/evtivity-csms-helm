@@ -574,5 +574,84 @@ else
   bad "passkey note: no RP ID: render failed: $(head -1 "$TMP/note.err")"
 fi
 
+# SIM provider and station signal settings (appSettings.sim): empty keeps the
+# dashboard value and the key is not rendered, a set value renders as a JSON
+# boolean, number, string (organization id) or list, anything else fails.
+SIM_KEYS='["sim.hologram.enabled","sim.hologram.orgId","sim.hologram.apiKeyEnc","sim.sessions.retentionDays",
+"sim.sessions.fetchDays","sim.stationSignal.enabled","sim.signal.alertBelowDbm","sim.ocpp16.signalKeys",
+"sim.signal.goodDbm","sim.signal.fairDbm"]'
+if render "$TMP/sim-default.json"; then
+  if node -e '
+    const got = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+    const present = JSON.parse(process.argv[2]).filter((k) => k in got);
+    if (present.length) { console.log("rendered " + present.join(", ")); process.exit(1); }
+  ' "$TMP/sim-default.json" "$SIM_KEYS"; then ok; else bad "sim default: keys rendered"; fi
+else
+  bad "sim default: render failed: $(head -1 "$TMP/render.err")"
+fi
+if render "$TMP/sim-old.json" --set appSettings.sim=null; then ok; else
+  bad "sim without the block: render failed: $(head -1 "$TMP/render.err")"
+fi
+if render "$TMP/sim-set.json" --set appSettings.sim.hologramEnabled=true --set-string appSettings.sim.hologramOrgId=012345 \
+  --set appSettings.sim.sessionsRetentionDays=730 --set appSettings.sim.sessionsFetchDays=1 \
+  --set appSettings.sim.stationSignalEnabled=false --set appSettings.sim.signalAlertBelowDbm=-110 \
+  --set 'appSettings.sim.ocpp16SignalKeys={SignalStrength,Vendor.Rssi}' \
+  --set appSettings.sim.signalGoodDbm=-40 --set appSettings.sim.signalFairDbm=-140; then
+  if r=$(expect_json "$TMP/sim-set.json" '{"sim.hologram.enabled":true,"sim.hologram.orgId":"012345","sim.sessions.retentionDays":730,"sim.sessions.fetchDays":1,"sim.stationSignal.enabled":false,"sim.signal.alertBelowDbm":-110,"sim.ocpp16.signalKeys":["SignalStrength","Vendor.Rssi"],"sim.signal.goodDbm":-40,"sim.signal.fairDbm":-140}'); then ok; else bad "sim set: $r"; fi
+else
+  bad "sim set: render failed: $(head -1 "$TMP/render.err")"
+fi
+# A values file: an unquoted organization id and quoted whole numbers.
+printf 'appSettings:\n  sim:\n    hologramOrgId: 98765\n    sessionsRetentionDays: "7"\n    signalGoodDbm: -70\n' > "$TMP/sim-values.yaml"
+if render "$TMP/sim-file.json" -f "$TMP/sim-values.yaml"; then
+  if r=$(expect_json "$TMP/sim-file.json" '{"sim.hologram.orgId":"98765","sim.sessions.retentionDays":7,"sim.signal.goodDbm":-70}'); then ok; else bad "sim values file: $r"; fi
+else
+  bad "sim values file: render failed: $(head -1 "$TMP/render.err")"
+fi
+expect_fail "sim.hologramEnabled string" 'appSettings.sim.hologramEnabled "yes" is not supported' --set-string appSettings.sim.hologramEnabled=yes
+expect_fail "sim.stationSignalEnabled quoted" 'appSettings.sim.stationSignalEnabled "true" is not supported' --set-string appSettings.sim.stationSignalEnabled=true
+expect_fail "sim.hologramOrgId letters" 'appSettings.sim.hologramOrgId "org-12" is not supported' --set appSettings.sim.hologramOrgId=org-12
+expect_fail "sim.hologramOrgId too long" 'appSettings.sim.hologramOrgId "1234567890123456" is not supported' --set-string appSettings.sim.hologramOrgId=1234567890123456
+expect_fail "sim.sessionsRetentionDays low" 'appSettings.sim.sessionsRetentionDays "6" is not supported' --set appSettings.sim.sessionsRetentionDays=6
+expect_fail "sim.sessionsRetentionDays high" 'appSettings.sim.sessionsRetentionDays "731" is not supported' --set appSettings.sim.sessionsRetentionDays=731
+expect_fail "sim.sessionsFetchDays low" 'appSettings.sim.sessionsFetchDays "0" is not supported' --set appSettings.sim.sessionsFetchDays=0
+expect_fail "sim.sessionsFetchDays high" 'appSettings.sim.sessionsFetchDays "32" is not supported' --set appSettings.sim.sessionsFetchDays=32
+expect_fail "sim.sessionsFetchDays fraction" 'appSettings.sim.sessionsFetchDays "1.5" is not supported' --set appSettings.sim.sessionsFetchDays=1.5
+expect_fail "sim.signalAlertBelowDbm low" 'appSettings.sim.signalAlertBelowDbm "-141" is not supported' --set appSettings.sim.signalAlertBelowDbm=-141
+expect_fail "sim.signalAlertBelowDbm high" 'appSettings.sim.signalAlertBelowDbm "-39" is not supported' --set appSettings.sim.signalAlertBelowDbm=-39
+expect_fail "sim.signalAlertBelowDbm positive" 'appSettings.sim.signalAlertBelowDbm "80" is not supported' --set appSettings.sim.signalAlertBelowDbm=80
+expect_fail "sim.signalGoodDbm word" 'appSettings.sim.signalGoodDbm "good" is not supported' --set appSettings.sim.signalGoodDbm=good
+expect_fail "sim.signalFairDbm high" 'appSettings.sim.signalFairDbm "-30" is not supported' --set appSettings.sim.signalFairDbm=-30
+expect_fail "sim good not above fair" 'appSettings.sim.signalGoodDbm -85 must be above appSettings.sim.signalFairDbm -85' --set appSettings.sim.signalGoodDbm=-85 --set appSettings.sim.signalFairDbm=-85
+expect_fail "sim good below fair" 'appSettings.sim.signalGoodDbm -90 must be above appSettings.sim.signalFairDbm -80' --set appSettings.sim.signalGoodDbm=-90 --set appSettings.sim.signalFairDbm=-80
+expect_fail "sim.ocpp16SignalKeys not a list" 'appSettings.sim.ocpp16SignalKeys must be a list' --set appSettings.sim.ocpp16SignalKeys=SignalStrength
+expect_fail "sim.ocpp16SignalKeys blank entry" 'appSettings.sim.ocpp16SignalKeys entry "" is not a configuration key name' --set 'appSettings.sim.ocpp16SignalKeys[0]='
+expect_fail "sim.ocpp16SignalKeys number entry" 'appSettings.sim.ocpp16SignalKeys entry "7" is not a configuration key name' --set 'appSettings.sim.ocpp16SignalKeys={Rssi,7}'
+expect_fail "sim.ocpp16SignalKeys long entry" 'is longer than 50 characters' --set "appSettings.sim.ocpp16SignalKeys[0]=$(printf 'K%.0s' $(seq 1 51))"
+expect_fail "sim.ocpp16SignalKeys duplicate" 'appSettings.sim.ocpp16SignalKeys lists a key more than once' --set 'appSettings.sim.ocpp16SignalKeys={Rssi,Rssi}'
+expect_fail "sim.ocpp16SignalKeys too many" 'appSettings.sim.ocpp16SignalKeys lists 21 keys' --set "appSettings.sim.ocpp16SignalKeys={$(seq -f 'K%g' 1 21 | paste -sd, -)}"
+
+# SIM_PROVIDER_TEST_BASE_URL (the SIM provider mock) is for the local Compose
+# stack only: any chart value for it fails the render.
+sim_cm_render() {
+  helm template t "$CHART" "${S[@]}" --show-only templates/configmap.yaml "$@" > "$TMP/simcm.yaml" 2> "$TMP/simcm.err"
+}
+if sim_cm_render; then
+  if grep -q 'SIM_PROVIDER_TEST_BASE_URL' "$TMP/simcm.yaml"; then bad "SIM mock default: rendered"; else ok; fi
+else
+  bad "SIM mock default: render failed: $(head -1 "$TMP/simcm.err")"
+fi
+for spec in 'simProviders.testBaseUrl|simProviders.testBaseUrl is not supported' 'api.env.simProviderTestBaseUrl|api.env.simProviderTestBaseUrl is not supported' 'ocpp.env.simProviderTestBaseUrl|ocpp.env.simProviderTestBaseUrl is not supported' 'worker.env.simProviderTestBaseUrl|worker.env.simProviderTestBaseUrl is not supported' 'ocpi.env.simProviderTestBaseUrl|ocpi.env.simProviderTestBaseUrl is not supported'; do
+  key="${spec%%|*}"
+  want="${spec#*|}"
+  for value in 'http://sim-mock:8080' ''; do
+    if sim_cm_render --set "$key=$value"; then
+      bad "SIM mock $key=$value: render passed"
+    elif grep -qF "$want" "$TMP/simcm.err"; then ok; else
+      bad "SIM mock $key=$value: wrong error: $(head -1 "$TMP/simcm.err")"
+    fi
+  done
+done
+
 echo "app settings render tests: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
