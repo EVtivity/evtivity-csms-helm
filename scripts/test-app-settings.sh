@@ -75,7 +75,7 @@ expect_fail() {
 NEW_KEYS='["opsAi.enabled","opsAi.provider","opsAi.model","opsAi.effort","opsAi.systemPrompt",
 "aiInsights.station.enabled","aiInsights.session.enabled","aiInsights.authorization.enabled",
 "aiInsights.debounceSeconds","aiInsights.cooldownMinutes","aiInsights.siteIncidentThreshold",
-"aiInsights.maxPerSitePerDay","aiInsights.primaryLanguage","aiInsights.retentionDays",
+"aiInsights.maxPerSitePerDay","aiInsights.primaryLanguage",
 "aiInsights.expireAfterDays",
 "aiWorkers.networkSummary.enabled","aiWorkers.stuckSessions.enabled","aiWorkers.stuckSessions.idleMinutes",
 "aiWorkers.stuckSessions.useModel","aiWorkers.stuckSessions.offlineEndAfterHours",
@@ -114,7 +114,6 @@ appSettings:
     siteIncidentThreshold: 2
     maxPerSitePerDay: 10000
     primaryLanguage: zh-TW
-    retentionDays: 3650
     expireAfterDays: 365
   aiWorkers:
     networkSummary: { enabled: true }
@@ -149,7 +148,7 @@ WANT='{"opsAi.enabled":true,"opsAi.provider":"openai","opsAi.model":"gpt-test","
 "opsAi.systemPrompt":"Be brief.","aiInsights.station.enabled":false,"aiInsights.session.enabled":true,
 "aiInsights.authorization.enabled":false,"aiInsights.debounceSeconds":0,"aiInsights.cooldownMinutes":10080,
 "aiInsights.siteIncidentThreshold":2,"aiInsights.maxPerSitePerDay":10000,"aiInsights.primaryLanguage":"zh-TW",
-"aiInsights.retentionDays":3650,"aiInsights.expireAfterDays":365,"aiWorkers.networkSummary.enabled":true,"aiWorkers.stuckSessions.enabled":true,
+"aiInsights.expireAfterDays":365,"aiWorkers.networkSummary.enabled":true,"aiWorkers.stuckSessions.enabled":true,
 "aiWorkers.stuckSessions.idleMinutes":15,"aiWorkers.stuckSessions.useModel":true,
 "aiWorkers.stuckSessions.offlineEndAfterHours":720,
 "aiWorkers.tariffAnomalies.enabled":false,"aiWorkers.proposalTtlHours":168,"ai.mcp.enabled":true,
@@ -205,7 +204,7 @@ for v in driverAi.maxCasesPerDriverPerDay=0 driverAi.maxCasesPerDriverPerDay=101
   expect_fail "$v" "appSettings.${v%%=*} \"${v#*=}\" is not supported" --set "appSettings.$v"
 done
 for v in aiInsights.debounceSeconds=3601 aiInsights.cooldownMinutes=0 aiInsights.siteIncidentThreshold=1 \
-  aiInsights.maxPerSitePerDay=10001 aiInsights.retentionDays=0 aiWorkers.stuckSessions.idleMinutes=14 \
+  aiInsights.maxPerSitePerDay=10001 aiWorkers.stuckSessions.idleMinutes=14 \
   aiInsights.expireAfterDays=0 aiInsights.expireAfterDays=366 \
   aiWorkers.stuckSessions.offlineEndAfterHours=0 aiWorkers.stuckSessions.offlineEndAfterHours=721 \
   aiWorkers.stuckSessions.offlineEndAfterHours=1.5 \
@@ -593,18 +592,18 @@ if render "$TMP/sim-old.json" --set appSettings.sim=null; then ok; else
   bad "sim without the block: render failed: $(head -1 "$TMP/render.err")"
 fi
 if render "$TMP/sim-set.json" --set appSettings.sim.hologramEnabled=true --set-string appSettings.sim.hologramOrgId=012345 \
-  --set appSettings.sim.sessionsRetentionDays=730 --set appSettings.sim.sessionsFetchDays=1 \
+  --set appSettings.sim.sessionsFetchDays=1 \
   --set appSettings.sim.stationSignalEnabled=false --set appSettings.sim.signalAlertBelowDbm=-110 \
   --set 'appSettings.sim.ocpp16SignalKeys={SignalStrength,Vendor.Rssi}' \
   --set appSettings.sim.signalGoodDbm=-40 --set appSettings.sim.signalFairDbm=-140; then
-  if r=$(expect_json "$TMP/sim-set.json" '{"sim.hologram.enabled":true,"sim.hologram.orgId":"012345","sim.sessions.retentionDays":730,"sim.sessions.fetchDays":1,"sim.stationSignal.enabled":false,"sim.signal.alertBelowDbm":-110,"sim.ocpp16.signalKeys":["SignalStrength","Vendor.Rssi"],"sim.signal.goodDbm":-40,"sim.signal.fairDbm":-140}'); then ok; else bad "sim set: $r"; fi
+  if r=$(expect_json "$TMP/sim-set.json" '{"sim.hologram.enabled":true,"sim.hologram.orgId":"012345","sim.sessions.fetchDays":1,"sim.stationSignal.enabled":false,"sim.signal.alertBelowDbm":-110,"sim.ocpp16.signalKeys":["SignalStrength","Vendor.Rssi"],"sim.signal.goodDbm":-40,"sim.signal.fairDbm":-140}'); then ok; else bad "sim set: $r"; fi
 else
   bad "sim set: render failed: $(head -1 "$TMP/render.err")"
 fi
 # A values file: an unquoted organization id and quoted whole numbers.
-printf 'appSettings:\n  sim:\n    hologramOrgId: 98765\n    sessionsRetentionDays: "7"\n    signalGoodDbm: -70\n' > "$TMP/sim-values.yaml"
+printf 'appSettings:\n  sim:\n    hologramOrgId: 98765\n    sessionsFetchDays: "7"\n    signalGoodDbm: -70\n' > "$TMP/sim-values.yaml"
 if render "$TMP/sim-file.json" -f "$TMP/sim-values.yaml"; then
-  if r=$(expect_json "$TMP/sim-file.json" '{"sim.hologram.orgId":"98765","sim.sessions.retentionDays":7,"sim.signal.goodDbm":-70}'); then ok; else bad "sim values file: $r"; fi
+  if r=$(expect_json "$TMP/sim-file.json" '{"sim.hologram.orgId":"98765","sim.sessions.fetchDays":7,"sim.signal.goodDbm":-70}'); then ok; else bad "sim values file: $r"; fi
 else
   bad "sim values file: render failed: $(head -1 "$TMP/render.err")"
 fi
@@ -612,8 +611,6 @@ expect_fail "sim.hologramEnabled string" 'appSettings.sim.hologramEnabled "yes" 
 expect_fail "sim.stationSignalEnabled quoted" 'appSettings.sim.stationSignalEnabled "true" is not supported' --set-string appSettings.sim.stationSignalEnabled=true
 expect_fail "sim.hologramOrgId letters" 'appSettings.sim.hologramOrgId "org-12" is not supported' --set appSettings.sim.hologramOrgId=org-12
 expect_fail "sim.hologramOrgId too long" 'appSettings.sim.hologramOrgId "1234567890123456" is not supported' --set-string appSettings.sim.hologramOrgId=1234567890123456
-expect_fail "sim.sessionsRetentionDays low" 'appSettings.sim.sessionsRetentionDays "6" is not supported' --set appSettings.sim.sessionsRetentionDays=6
-expect_fail "sim.sessionsRetentionDays high" 'appSettings.sim.sessionsRetentionDays "731" is not supported' --set appSettings.sim.sessionsRetentionDays=731
 expect_fail "sim.sessionsFetchDays low" 'appSettings.sim.sessionsFetchDays "0" is not supported' --set appSettings.sim.sessionsFetchDays=0
 expect_fail "sim.sessionsFetchDays high" 'appSettings.sim.sessionsFetchDays "32" is not supported' --set appSettings.sim.sessionsFetchDays=32
 expect_fail "sim.sessionsFetchDays fraction" 'appSettings.sim.sessionsFetchDays "1.5" is not supported' --set appSettings.sim.sessionsFetchDays=1.5
@@ -652,6 +649,50 @@ for spec in 'simProviders.testBaseUrl|simProviders.testBaseUrl is not supported'
     fi
   done
 done
+
+
+# Data retention is set in the CSMS under Settings > Data Retention (v0.1.48):
+# the chart renders no retention setting and refuses every old value.
+RETENTION_KEYS='["audit.retentionDays","refreshTokens.retentionDays","logs.access.retentionDays",
+"logs.ocppMessage.retentionDays","logs.domainEvents.retentionDays","logs.meterValues.retentionDays",
+"logs.connection.retentionDays","logs.notifications.retentionDays","logs.securityEvents.retentionDays",
+"logs.portStatus.retentionDays","logs.workerJob.retentionDays","logs.loadAllocation.retentionDays",
+"logs.loginAudit.retentionDays","sim.sessions.retentionDays","ai.conversationRetentionDays",
+"aiInsights.retentionDays"]'
+if render "$TMP/retention-default.json"; then
+  if node -e '
+    const got = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+    const present = JSON.parse(process.argv[2]).filter((k) => k in got);
+    if (present.length) { console.log("rendered " + present.join(", ")); process.exit(1); }
+  ' "$TMP/retention-default.json" "$RETENTION_KEYS"; then ok; else bad "retention default: keys rendered"; fi
+else
+  bad "retention default: render failed: $(head -1 "$TMP/render.err")"
+fi
+for v in audit.retentionDays=730 refreshTokens.retentionDays=14 logs.accessRetentionDays=7 \
+  logs.ocppMessageRetentionDays=14 logs.domainEventsRetentionDays=7 logs.meterValuesRetentionDays=0 \
+  logs.connectionRetentionDays=60 logs.notificationsRetentionDays=60 logs.securityEventsRetentionDays=180 \
+  logs.portStatusRetentionDays=7 logs.workerJobRetentionDays=7 logs.loadAllocationRetentionDays=30 \
+  logs.loginAuditRetentionDays=30 sim.sessionsRetentionDays=90 ai.conversationRetentionDays=30 \
+  aiInsights.retentionDays=90; do
+  expect_fail "removed $v" "appSettings.${v%%=*} was removed: data retention is set in the CSMS under Settings > Data Retention" --set "appSettings.$v"
+done
+# An older release's default values (helm upgrade --reuse-values) render as they are:
+# they equal what the older chart wrote, so the guard ignores them.
+printf 'appSettings:\n  audit:\n    retentionDays: 1095\n  refreshTokens:\n    retentionDays: 30\n  logs:\n    accessRetentionDays: 30\n    ocppMessageRetentionDays: 30\n    domainEventsRetentionDays: 30\n    meterValuesRetentionDays: 90\n    connectionRetentionDays: 90\n    notificationsRetentionDays: 90\n    securityEventsRetentionDays: 365\n    portStatusRetentionDays: 30\n    workerJobRetentionDays: 30\n    loadAllocationRetentionDays: 90\n    loginAuditRetentionDays: 90\n  sim:\n    sessionsRetentionDays: ""\n  ai:\n    conversationRetentionDays: ""\n  aiInsights:\n    retentionDays: ""\n' > "$TMP/retention-old.yaml"
+if render "$TMP/retention-old.json" -f "$TMP/retention-old.yaml"; then
+  if node -e '
+    const got = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+    const present = JSON.parse(process.argv[2]).filter((k) => k in got);
+    if (present.length) { console.log("rendered " + present.join(", ")); process.exit(1); }
+  ' "$TMP/retention-old.json" "$RETENTION_KEYS"; then ok; else bad "retention old defaults: keys rendered"; fi
+else
+  bad "retention old defaults: render failed: $(head -1 "$TMP/render.err")"
+fi
+# A changed value carried by --reuse-values renders once the groups are cleared.
+if render "$TMP/retention-cleared.json" --set appSettings.logs=null --set appSettings.audit=null \
+  --set appSettings.refreshTokens=null; then ok; else
+  bad "retention cleared: render failed: $(head -1 "$TMP/render.err")"
+fi
 
 echo "app settings render tests: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

@@ -1,3 +1,13 @@
+{{- /* Data retention is set in the CSMS under Settings > Data Retention (v0.1.48): the chart no longer writes it. A value equal to the default of the older charts (carried by helm upgrade --reuse-values) is ignored; any other value fails the render. */}}
+{{- range $spec := list (list "audit.retentionDays" "audit" "1095") (list "refreshTokens.retentionDays" "refreshTokens" "30") (list "logs.accessRetentionDays" "logs" "30") (list "logs.ocppMessageRetentionDays" "logs" "30") (list "logs.domainEventsRetentionDays" "logs" "30") (list "logs.meterValuesRetentionDays" "logs" "90") (list "logs.connectionRetentionDays" "logs" "90") (list "logs.notificationsRetentionDays" "logs" "90") (list "logs.securityEventsRetentionDays" "logs" "365") (list "logs.portStatusRetentionDays" "logs" "30") (list "logs.workerJobRetentionDays" "logs" "30") (list "logs.loadAllocationRetentionDays" "logs" "90") (list "logs.loginAuditRetentionDays" "logs" "90") (list "sim.sessionsRetentionDays" "sim.sessionsRetentionDays" "") (list "ai.conversationRetentionDays" "ai.conversationRetentionDays" "") (list "aiInsights.retentionDays" "aiInsights.retentionDays" "") }}
+{{- $path := index $spec 0 }}
+{{- $parts := splitList "." $path }}
+{{- $group := index $.Values.appSettings (index $parts 0) | default dict }}
+{{- $raw := index $group (index $parts 1) }}
+{{- if and (not (kindIs "invalid" $raw)) (ne (toString $raw) "") (ne (toString $raw) (index $spec 2)) }}
+{{- fail (printf "appSettings.%s was removed: data retention is set in the CSMS under Settings > Data Retention, and the chart no longer writes it. Remove it from your values (with --reuse-values, add --set appSettings.%s=null)." $path (index $spec 1)) }}
+{{- end }}
+{{- end }}
 {{- $stripeCurrency := (.Values.appSettings.stripe | default dict).currency | default "" }}
 {{- $pricingCurrency := (.Values.appSettings.pricing | default dict).currency | default "" }}
 {{- if or (ne (toString $stripeCurrency) "") (ne (toString $pricingCurrency) "") }}
@@ -168,7 +178,7 @@
 {{- if ne $simOrgId "" }}
 {{- $_ := set $simSettings "sim.hologram.orgId" $simOrgId }}
 {{- end }}
-{{- range $spec := list (list "sessionsRetentionDays" "sim.sessions.retentionDays" 7 730) (list "sessionsFetchDays" "sim.sessions.fetchDays" 1 31) (list "signalAlertBelowDbm" "sim.signal.alertBelowDbm" -140 -40) (list "signalGoodDbm" "sim.signal.goodDbm" -140 -40) (list "signalFairDbm" "sim.signal.fairDbm" -140 -40) }}
+{{- range $spec := list (list "sessionsFetchDays" "sim.sessions.fetchDays" 1 31) (list "signalAlertBelowDbm" "sim.signal.alertBelowDbm" -140 -40) (list "signalGoodDbm" "sim.signal.goodDbm" -140 -40) (list "signalFairDbm" "sim.signal.fairDbm" -140 -40) }}
 {{- $name := index $spec 0 }}
 {{- $min := index $spec 2 }}
 {{- $max := index $spec 3 }}
@@ -406,10 +416,10 @@
 {{- $aiInsights := .Values.appSettings.aiInsights | default dict }}
 {{- $aiWorkers := .Values.appSettings.aiWorkers | default dict }}
 {{- $aiStuckSessions := $aiWorkers.stuckSessions | default dict }}
-{{- $aiNumberInputs := list (list "ai.rateLimit.userPerMinute" $aiRateLimit.userPerMinute 1 1000) (list "ai.rateLimit.sitePerMinute" $aiRateLimit.sitePerMinute 1 100000) (list "ai.budget.userDailyTokens" $aiBudget.userDailyTokens 0 10000000000) (list "ai.maxToolCallsPerTurn" $ai.maxToolCallsPerTurn 1 100) (list "ai.conversationRetentionDays" $ai.conversationRetentionDays 1 3650) (list "ai.attachments.maxBytes" $aiAttachments.maxBytes 1 33554432) (list "ai.attachments.maxPerMessage" $aiAttachments.maxPerMessage 1 20) }}
+{{- $aiNumberInputs := list (list "ai.rateLimit.userPerMinute" $aiRateLimit.userPerMinute 1 1000) (list "ai.rateLimit.sitePerMinute" $aiRateLimit.sitePerMinute 1 100000) (list "ai.budget.userDailyTokens" $aiBudget.userDailyTokens 0 10000000000) (list "ai.maxToolCallsPerTurn" $ai.maxToolCallsPerTurn 1 100) (list "ai.attachments.maxBytes" $aiAttachments.maxBytes 1 33554432) (list "ai.attachments.maxPerMessage" $aiAttachments.maxPerMessage 1 20) }}
 {{- $aiNumberInputs = concat $aiNumberInputs (list (list "ai.budget.companyMonthlyTokens" $aiBudget.companyMonthlyTokens 0 1000000000000) (list "ai.budget.siteMonthlyTokens" $aiBudget.siteMonthlyTokens 0 1000000000000) (list "ai.budget.siteDailyTokens" $aiBudget.siteDailyTokens 0 10000000000) (list "ai.budget.warnPercent" $aiBudget.warnPercent 1 100)) }}
 {{- $aiNumberInputs = concat $aiNumberInputs (list (list "ai.mcp.rateLimitPerMinute" $aiMcp.rateLimitPerMinute 1 10000) (list "ai.mcp.dailyCallsPerKey" $aiMcp.dailyCallsPerKey 1 10000000)) }}
-{{- $aiNumberInputs = concat $aiNumberInputs (list (list "aiInsights.debounceSeconds" $aiInsights.debounceSeconds 0 3600) (list "aiInsights.cooldownMinutes" $aiInsights.cooldownMinutes 1 10080) (list "aiInsights.siteIncidentThreshold" $aiInsights.siteIncidentThreshold 2 1000) (list "aiInsights.maxPerSitePerDay" $aiInsights.maxPerSitePerDay 1 10000) (list "aiInsights.retentionDays" $aiInsights.retentionDays 1 3650) (list "aiInsights.expireAfterDays" $aiInsights.expireAfterDays 1 365)) }}
+{{- $aiNumberInputs = concat $aiNumberInputs (list (list "aiInsights.debounceSeconds" $aiInsights.debounceSeconds 0 3600) (list "aiInsights.cooldownMinutes" $aiInsights.cooldownMinutes 1 10080) (list "aiInsights.siteIncidentThreshold" $aiInsights.siteIncidentThreshold 2 1000) (list "aiInsights.maxPerSitePerDay" $aiInsights.maxPerSitePerDay 1 10000) (list "aiInsights.expireAfterDays" $aiInsights.expireAfterDays 1 365)) }}
 {{- $aiNumberInputs = concat $aiNumberInputs (list (list "aiWorkers.stuckSessions.idleMinutes" $aiStuckSessions.idleMinutes 15 1440) (list "aiWorkers.stuckSessions.offlineEndAfterHours" $aiStuckSessions.offlineEndAfterHours 1 720) (list "aiWorkers.proposalTtlHours" $aiWorkers.proposalTtlHours 1 168)) }}
 {{- $aiNumberInputs = concat $aiNumberInputs (list (list "driverAi.maxCasesPerDriverPerDay" $driverAi.maxCasesPerDriverPerDay 1 100) (list "driverAi.feedbackTimeoutHours" $driverAi.feedbackTimeoutHours 1 168) (list "ai.budget.driverDailyTokens" $aiBudget.driverDailyTokens 0 10000000000) (list "ai.rateLimit.driverPerMinute" $aiRateLimit.driverPerMinute 1 1000)) }}
 {{- $aiNumbers := dict }}
@@ -574,19 +584,6 @@ data:
       "mobile.attestation.android.serviceAccountEnc": {{ .Values.appSettings.mobile.attestation.androidServiceAccount | toJson }},
       "mobile.app.urlSchemes": {{ $mobileUrlSchemes | toJson }},
       "mobile.app.androidPackageNames": {{ $mobileAndroidPackages | toJson }},
-      "audit.retentionDays": {{ .Values.appSettings.audit.retentionDays | toJson }},
-      "refreshTokens.retentionDays": {{ .Values.appSettings.refreshTokens.retentionDays | toJson }},
-      "logs.access.retentionDays": {{ .Values.appSettings.logs.accessRetentionDays | toJson }},
-      "logs.ocppMessage.retentionDays": {{ .Values.appSettings.logs.ocppMessageRetentionDays | toJson }},
-      "logs.domainEvents.retentionDays": {{ .Values.appSettings.logs.domainEventsRetentionDays | toJson }},
-      "logs.meterValues.retentionDays": {{ .Values.appSettings.logs.meterValuesRetentionDays | toJson }},
-      "logs.connection.retentionDays": {{ .Values.appSettings.logs.connectionRetentionDays | toJson }},
-      "logs.notifications.retentionDays": {{ .Values.appSettings.logs.notificationsRetentionDays | toJson }},
-      "logs.securityEvents.retentionDays": {{ .Values.appSettings.logs.securityEventsRetentionDays | toJson }},
-      "logs.portStatus.retentionDays": {{ .Values.appSettings.logs.portStatusRetentionDays | toJson }},
-      "logs.workerJob.retentionDays": {{ .Values.appSettings.logs.workerJobRetentionDays | toJson }},
-      "logs.loadAllocation.retentionDays": {{ .Values.appSettings.logs.loadAllocationRetentionDays | toJson }},
-      "logs.loginAudit.retentionDays": {{ .Values.appSettings.logs.loginAuditRetentionDays | toJson }},
       "pnc.provider": {{ .Values.appSettings.pnc.provider | toJson }},
       "pnc.expirationWarningDays": {{ .Values.appSettings.pnc.expirationWarningDays | toJson }},
       "pnc.expirationCriticalDays": {{ .Values.appSettings.pnc.expirationCriticalDays | toJson }},

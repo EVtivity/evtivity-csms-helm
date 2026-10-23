@@ -826,9 +826,6 @@ appSettings:
     hologramEnabled: ""
     # Hologram organization id, 1 to 15 digits. Quote it in a values file.
     hologramOrgId: ""
-    # Days stored SIM sessions and alerts are kept, whole number from 7 to 730
-    # (90 on a fresh install).
-    sessionsRetentionDays: ""
     # Default period of a Refresh in days, whole number from 1 to 31 (7 on a
     # fresh install).
     sessionsFetchDays: ""
@@ -870,24 +867,12 @@ appSettings:
         - evtivity
       androidPackageNames:
         - com.evtivity.driver
-  audit:
-    retentionDays: 1095
-  refreshTokens:
-    retentionDays: 30
-  logs:
-    accessRetentionDays: 30
-    ocppMessageRetentionDays: 30
-    domainEventsRetentionDays: 30
-    meterValuesRetentionDays: 90
-    connectionRetentionDays: 90
-    notificationsRetentionDays: 90
-    securityEventsRetentionDays: 365
-    portStatusRetentionDays: 30
-    workerJobRetentionDays: 30
-    loadAllocationRetentionDays: 90
-    # Login rows (login_succeeded, login_failed) of the user and driver audit
-    # logs. 0 keeps them; their other rows follow audit.retentionDays.
-    loginAuditRetentionDays: 90
+  # Data retention (how many days logs, meter values, audit history, sign-in
+  # tokens, AI data and SIM data are kept) is set in the CSMS under
+  # Settings > Data Retention, not in this chart. The chart refuses a changed old
+  # values (audit.retentionDays, refreshTokens.retentionDays,
+  # logs.*RetentionDays, sim.sessionsRetentionDays,
+  # ai.conversationRetentionDays, aiInsights.retentionDays).
   # Support case AI. provider and effort take the same values as chatbotAi.
   # tone: professional, friendly or formal.
   # temperature, topP and topK were removed: the chart refuses them.
@@ -959,9 +944,6 @@ appSettings:
       allowedOrigins: ""
     # Tool calls the model may make in one reply, 1 to 100 (fresh install: 20).
     maxToolCallsPerTurn: ""
-    # Days a conversation is kept after its last message, 1 to 3650
-    # (fresh install: 30).
-    conversationRetentionDays: ""
     attachments:
       # Largest attachment in bytes, 1 to 33554432 (fresh install: 10485760).
       maxBytes: ""
@@ -1027,8 +1009,6 @@ appSettings:
     # Language of the insight summary: en, de, es, ko, zh or zh-TW
     # (fresh install: en).
     primaryLanguage: ""
-    # Days an insight is kept, 1 to 3650 (fresh install: 90).
-    retentionDays: ""
     # Days after which a one-off event insight still open (a failed session,
     # a reservation problem, a tariff anomaly, some authorization refusals)
     # is closed expired, 1 to 365 (fresh install: 7).

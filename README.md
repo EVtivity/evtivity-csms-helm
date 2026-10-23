@@ -295,7 +295,6 @@ AI settings are app settings in the database, and provider API keys are stored e
 | `appSettings.ai.rateLimit.sitePerMinute` | Support AI drafts per site per minute (the support case's site), 1 to 100000 (60) |
 | `appSettings.ai.budget.userDailyTokens` | Tokens per user per day, 0 to 10000000000, 0 for no limit (2000000) |
 | `appSettings.ai.maxToolCallsPerTurn` | Tool calls the model may make in one reply, 1 to 100 (20) |
-| `appSettings.ai.conversationRetentionDays` | Days a conversation is kept after its last message, 1 to 3650 (30) |
 | `appSettings.ai.attachments.maxBytes` | Largest attachment in bytes, 1 to 33554432 (10485760) |
 | `appSettings.ai.attachments.maxPerMessage` | Attachments per message, 1 to 20 (5) |
 | `appSettings.ai.budget.companyMonthlyTokens` | Tokens the whole company may use per calendar month, 0 to 1000000000000, 0 for no limit (0) |
@@ -322,7 +321,6 @@ AI settings are app settings in the database, and provider API keys are stored e
 | `appSettings.aiInsights.siteIncidentThreshold` | Stations of one site going offline or faulted inside the debounce window that make one site incident insight, 2 to 1000 (3) |
 | `appSettings.aiInsights.maxPerSitePerDay` | Insights per site per day, 1 to 10000 (50) |
 | `appSettings.aiInsights.primaryLanguage` | Language of the insight summary: `en`, `de`, `es`, `ko`, `zh`, or `zh-TW` (`en`) |
-| `appSettings.aiInsights.retentionDays` | Days an insight is kept, 1 to 3650 (90) |
 | `appSettings.aiInsights.expireAfterDays` | Days after which a one-off event insight still open is closed expired, 1 to 365 (7) |
 | `appSettings.aiWorkers.networkSummary.enabled`, `stuckSessions.enabled`, `tariffAnomalies.enabled` | AI worker jobs: `true` or `false` (`false`) |
 | `appSettings.aiWorkers.stuckSessions.idleMinutes` | Minutes without a meter value or transaction event before an active session counts as stuck, 15 to 1440, below the stale session timeout (90) |
@@ -404,7 +402,6 @@ The SIM provider and station signal settings are app settings, also set in Setti
 |-----------|---------|
 | `appSettings.sim.hologramEnabled` | Hologram SIM provider: `true` or `false` (off on a fresh install) |
 | `appSettings.sim.hologramOrgId` | Hologram organization id, 1 to 15 digits (quote it) |
-| `appSettings.sim.sessionsRetentionDays` | Days stored SIM sessions and alerts are kept, 7 to 730 (90 on a fresh install) |
 | `appSettings.sim.sessionsFetchDays` | Default period of a Refresh in days, 1 to 31 (7 on a fresh install) |
 | `appSettings.sim.stationSignalEnabled` | Read the signal from stations on Refresh: `true` or `false` (off on a fresh install) |
 | `appSettings.sim.signalAlertBelowDbm` | Low signal alert threshold in dBm, -140 to -40 (off on a fresh install; turn it off in the dashboard) |
@@ -431,7 +428,7 @@ The chart does not run PostgreSQL. `scripts/install.sh` installs the Bitnami Pos
 
 Every OCPP message is a row in `ocpp_message_logs`, heartbeats included, and every meter reading is a row in `meter_values`. On a test network of about 2,000 simulated stations that stayed connected, the database reached 90 GB: 57 GB in `ocpp_message_logs` (about 100 million rows at 30 days) and 32 GB in `meter_values` (about 61 million rows). The simulator in chaos mode (`css.env.mode: chaos`) and the demo data (`seedDemo`, 2,000 simulated stations) produce this kind of volume.
 
-`appSettings.logs.<name>RetentionDays` sets how many days each log table keeps (for example `ocppMessageRetentionDays: 30`, `meterValuesRetentionDays: 90`, 0 keeps the rows forever), and `appSettings.audit.retentionDays` the audit history. The seed-settings job writes these values on every install and upgrade. See [Data Retention](https://evtivity.com/docs/configuration/data-retention) for every retention setting and the prune jobs.
+Set how many days each table keeps in the CSMS under **Settings > Data Retention**: OCPP messages, meter values, logs, audit history, sign-in tokens, AI data and SIM data. The chart sets no retention. It ignores an old retention value equal to the older chart default and refuses any other (`appSettings.logs.*RetentionDays`, `appSettings.audit.retentionDays`, `appSettings.refreshTokens.retentionDays`, `appSettings.sim.sessionsRetentionDays`, `appSettings.ai.conversationRetentionDays`, `appSettings.aiInsights.retentionDays`). See [Data Retention](https://evtivity.com/docs/configuration/data-retention) for every retention setting and the prune jobs.
 
 ### Credential Rotation
 
