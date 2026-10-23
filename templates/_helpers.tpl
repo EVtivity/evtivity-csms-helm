@@ -243,17 +243,38 @@ App settings sensitive Secret name
 {{- end }}
 
 {{/*
+"true" when a proxy list entry is an IPv6 CIDR of prefix 96 or less that starts
+with a zero group (::/80, ::ffff:0.0.0.0/96, 0:0::/64): such a range holds the
+IPv4-mapped addresses, and the proxy check compares an IPv4 peer in that form,
+so it trusts every IPv4 peer (security review R2-L2). Real proxy ranges never
+start with a zero group. Empty otherwise.
+*/}}
+{{- define "evtivity-csms.trustsEveryIpv4" -}}
+{{- if regexMatch "^(?i)(::|0{1,4}:)[0-9a-f:.]*/[0-9]+$" . -}}
+{{- if le (atoi (regexFind "[0-9]+$" .)) 96 }}true{{ end -}}
+{{- end -}}
+{{- end }}
+
+{{/*
+The init container image, pinned by digest (the busybox 1.37 index, the same
+pin as the CSMS CI build context check).
+*/}}
+{{- define "evtivity-csms.initImage" -}}
+busybox:1.37@sha256:bdf57e528e45e4433820e045b29b4597825a1c9e38353532d90a01445013f82e
+{{- end }}
+
+{{/*
 Init containers that wait for PostgreSQL and Redis to be ready.
 Uses dependencies.postgresHost/redisHost from values.yaml.
 */}}
 {{- define "evtivity-csms.waitForDeps" -}}
 - name: wait-for-postgres
-  image: busybox:1.37
+  image: {{ include "evtivity-csms.initImage" . }}
   securityContext:
     {{- include "evtivity-csms.containerSecurityContext" . | nindent 4 }}
   command: ['sh', '-c', 'until nc -z {{ .Values.dependencies.postgresHost }} {{ .Values.dependencies.postgresPort }}; do echo "waiting for postgres..."; sleep 2; done']
 - name: wait-for-redis
-  image: busybox:1.37
+  image: {{ include "evtivity-csms.initImage" . }}
   securityContext:
     {{- include "evtivity-csms.containerSecurityContext" . | nindent 4 }}
   command: ['sh', '-c', 'until nc -z {{ .Values.dependencies.redisHost }} {{ .Values.dependencies.redisPort }}; do echo "waiting for redis..."; sleep 2; done']

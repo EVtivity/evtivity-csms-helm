@@ -66,7 +66,12 @@ data:
   {{- end }}
   {{- if $corsOrigins }}
   CORS_ORIGIN: {{ join "," $corsOrigins | quote }}
-  {{- else if and .Values.api.env.corsOrigin (ne .Values.api.env.corsOrigin "*") }}
+  {{- else if .Values.api.env.corsOrigin }}
+  {{- range $origin := splitList "," (.Values.api.env.corsOrigin | toString) }}
+  {{- if eq (trim $origin) "*" }}
+  {{- fail "api.env.corsOrigin must list explicit origins: * lets every site read API replies with the user's cookies (the API refuses to start with it in production)" }}
+  {{- end }}
+  {{- end }}
   CORS_ORIGIN: {{ .Values.api.env.corsOrigin | quote }}
   {{- else }}
   {{- fail "CORS_ORIGIN is required. Configure gateway routes (preferred) or set api.env.corsOrigin to explicit origins." }}
@@ -90,7 +95,7 @@ data:
   {{- fail (printf "api.env.trustProxy must list proxy IPs or CIDRs, got %q (a hop count or true is refused)" $trustProxy) }}
   {{- end }}
   {{- range $entry := splitList "," $trustProxy }}
-  {{- if regexMatch "/0+$" (trim $entry) }}
+  {{- if or (regexMatch "/0+$" (trim $entry)) (include "evtivity-csms.trustsEveryIpv4" (trim $entry)) }}
   {{- fail (printf "api.env.trustProxy must not trust every address, got %q: list the proxy addresses or CIDRs" (trim $entry)) }}
   {{- end }}
   {{- end }}
@@ -126,7 +131,7 @@ data:
   OCPP_MAX_CONNECTIONS_PER_IP: {{ .Values.ocpp.env.maxConnectionsPerIp | quote }}
   OCPP_MAX_MESSAGES_PER_IP_PER_SECOND: {{ .Values.ocpp.env.maxMessagesPerIpPerSecond | quote }}
   {{- range $entry := splitList "," (.Values.ocpp.env.trustedProxyCidrs | default "" | toString) }}
-  {{- if regexMatch "/0+$" (trim $entry) }}
+  {{- if or (regexMatch "/0+$" (trim $entry)) (include "evtivity-csms.trustsEveryIpv4" (trim $entry)) }}
   {{- fail (printf "ocpp.env.trustedProxyCidrs must not trust every address, got %q: list the proxy addresses or CIDRs" (trim $entry)) }}
   {{- end }}
   {{- end }}

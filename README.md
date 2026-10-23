@@ -596,7 +596,7 @@ The CSMS and portal nginx ConfigMaps send `Content-Security-Policy` (with `frame
 
 ### Refused Values
 
-The chart refuses to render with `api.env.nodeEnv` other than `production`, `ocpp.env.trustedProxyCidrs` or `api.env.trustProxy` containing `0.0.0.0/0` or `::/0`, `monitoring.enabled` without `monitoring.grafana.adminPassword`, and on install a `secrets.jwtSecret` or `secrets.settingsEncryptionKey` shorter than 32 characters or equal to a published example value. Generate the secrets with `openssl rand -hex 32`.
+The chart refuses to render with `api.env.nodeEnv` other than `production`, `ocpp.env.trustedProxyCidrs` or `api.env.trustProxy` containing `0.0.0.0/0`, `::/0` or an IPv6 range that holds every IPv4-mapped address (`::ffff:0.0.0.0/96`, `::/80`), `api.env.corsOrigin` containing `*`, `monitoring.enabled` without `monitoring.grafana.adminPassword` or with `admin` as the password, and on install a `secrets.jwtSecret` or `secrets.settingsEncryptionKey` shorter than 32 characters or equal to a published example value. Generate the secrets with `openssl rand -hex 32`.
 
 ### Behind a Proxy
 

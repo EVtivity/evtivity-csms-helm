@@ -24,7 +24,7 @@ spec:
       restartPolicy: Never
       initContainers:
         - name: wait-for-postgres
-          image: busybox:1.37
+          image: {{ include "evtivity-csms.initImage" . }}
           securityContext:
             {{- include "evtivity-csms.containerSecurityContext" . | nindent 12 }}
           command: ['sh', '-c', 'until nc -z {{ .Values.dependencies.postgresHost }} {{ .Values.dependencies.postgresPort }}; do echo "waiting for postgres..."; sleep 2; done']
