@@ -711,5 +711,40 @@ if helm template t "$CHART" "${S[@]}" > /dev/null 2> "$TMP/tp.err"; then ok; els
   bad "trustProxy: the default HTTP gateway refused: $(head -1 "$TMP/tp.err")"
 fi
 
+# Station data plans: the Wi-Fi or wired defaults render, empty dc and cellular
+# values do not (the dashboard value stays), set ones render as numbers or strings.
+if render "$TMP/plan.json"; then
+  if expect_json "$TMP/plan.json" '{"ocpp.heartbeatInterval":900,"ocpp.csmsPingInterval":120,"ocpp.meterValueInterval":60,"ocpp.clockAlignedInterval":900,"ocpp.sampledMeasurands":"Energy.Active.Import.Register,Power.Active.Import,Current.Import","ocpp.alignedMeasurands":"Energy.Active.Import.Register"}'; then ok; else bad "data plan defaults"; fi
+  if node -e 'const s=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));process.exit(Object.keys(s).some(k=>k.startsWith("ocpp.dc.")||k.startsWith("ocpp.cellular."))?1:0)' "$TMP/plan.json"; then ok; else bad "data plan: an empty dc or cellular value rendered"; fi
+else
+  bad "data plan defaults: render failed: $(head -1 "$TMP/render.err")"
+fi
+if render "$TMP/plan-set.json" --set appSettings.ocpp.cellular.clockAlignedInterval=0 \
+  --set appSettings.ocpp.cellular.heartbeatInterval=3600 --set appSettings.ocpp.dc.meterValueInterval=30 \
+  --set "appSettings.ocpp.cellular.dc.sampledMeasurands=Energy.Active.Import.Register\,SoC"; then
+  if expect_json "$TMP/plan-set.json" '{"ocpp.cellular.clockAlignedInterval":0,"ocpp.cellular.heartbeatInterval":3600,"ocpp.dc.meterValueInterval":30,"ocpp.cellular.dc.sampledMeasurands":"Energy.Active.Import.Register,SoC"}'; then ok; else bad "data plan set values"; fi
+else
+  bad "data plan set values: render failed: $(head -1 "$TMP/render.err")"
+fi
+for v in ocpp.heartbeatInterval=29 ocpp.cellular.heartbeatInterval=86401 ocpp.csmsPingInterval=3601 \
+  ocpp.meterValueInterval=4 ocpp.cellular.dc.meterValueInterval=3601 ocpp.clockAlignedInterval=59 \
+  ocpp.cellular.clockAlignedInterval=1.5; do
+  expect_fail "$v" "appSettings.${v%%=*} \"${v#*=}\" is not supported" --set "appSettings.$v"
+done
+expect_fail "ocpp.sampledMeasurands" 'appSettings.ocpp.sampledMeasurands "SoC, Voltage" is not supported' --set "appSettings.ocpp.sampledMeasurands=SoC\, Voltage"
+# OCPP_WS_COMPRESSION renders true or false as set (true by default), anything else fails.
+for want in true false; do
+  helm template t "$CHART" "${S[@]}" --show-only templates/configmap.yaml \
+    --set "ocpp.env.wsCompression=$want" > "$TMP/ws.yaml" 2> "$TMP/ws.err"
+  if grep -q "OCPP_WS_COMPRESSION: \"$want\"" "$TMP/ws.yaml"; then ok; else
+    bad "OCPP_WS_COMPRESSION $want: $(head -1 "$TMP/ws.err")"
+  fi
+done
+if helm template t "$CHART" "${S[@]}" --show-only templates/configmap.yaml --set-string ocpp.env.wsCompression=yes > /dev/null 2> "$TMP/ws.err"; then
+  bad "ocpp.env.wsCompression yes rendered"
+elif grep -q 'ocpp.env.wsCompression "yes" is not supported' "$TMP/ws.err"; then ok; else
+  bad "ocpp.env.wsCompression refused for another reason: $(head -1 "$TMP/ws.err")"
+fi
+
 echo "app settings render tests: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
