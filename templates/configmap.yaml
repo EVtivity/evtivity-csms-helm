@@ -99,6 +99,12 @@ data:
   {{- fail (printf "api.env.trustProxy must not trust every address, got %q: list the proxy addresses or CIDRs" (trim $entry)) }}
   {{- end }}
   {{- end }}
+  {{- /* Behind an HTTPS gateway, or one the chart does not create (its listeners are
+  unknown here), the API learns the https scheme only from a trusted proxy: without
+  it sign-in cookies lose Secure and SSO uses the plain binding cookie (R2-L3). */}}
+  {{- if and .Values.gatewayAPI.enabled (eq $trustProxy "") (or (eq $proto "https") (not .Values.gatewayAPI.gateway.create)) }}
+  {{- fail "api.env.trustProxy is required behind an HTTPS gateway or a Gateway the chart does not create: set api.env.trustProxy to the gateway pod range (for example 10.244.0.0/16), else sign-in cookies get no Secure flag and a slow SSO sign-in fails" }}
+  {{- end }}
   TRUST_PROXY: {{ $trustProxy | quote }}
   {{- $webauthnRpId := .Values.api.env.webauthnRpId | default "" | toString | trim | lower }}
   {{- if ne $webauthnRpId "" }}

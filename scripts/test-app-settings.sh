@@ -694,5 +694,22 @@ if render "$TMP/retention-cleared.json" --set appSettings.logs=null --set appSet
   bad "retention cleared: render failed: $(head -1 "$TMP/render.err")"
 fi
 
+# api.env.trustProxy is required behind an HTTPS gateway or one the chart does not create (R2-L3).
+for v in 'gatewayAPI.gateway.listeners[0].protocol=HTTPS' 'gatewayAPI.gateway.create=false'; do
+  if helm template t "$CHART" "${S[@]}" --set "$v" --set 'gatewayAPI.parentRefs[0].name=gw' > /dev/null 2> "$TMP/tp.err"; then
+    bad "trustProxy: $v rendered without api.env.trustProxy"
+  elif grep -q 'api.env.trustProxy is required' "$TMP/tp.err"; then ok; else
+    bad "trustProxy: $v refused for another reason: $(head -1 "$TMP/tp.err")"
+  fi
+  if helm template t "$CHART" "${S[@]}" --set "$v" --set 'gatewayAPI.parentRefs[0].name=gw' \
+    --set api.env.trustProxy=10.244.0.0/16 > /dev/null 2> "$TMP/tp.err"; then ok; else
+    bad "trustProxy: $v with api.env.trustProxy refused: $(head -1 "$TMP/tp.err")"
+  fi
+done
+# The default HTTP gateway still renders without it (the install notes warn).
+if helm template t "$CHART" "${S[@]}" > /dev/null 2> "$TMP/tp.err"; then ok; else
+  bad "trustProxy: the default HTTP gateway refused: $(head -1 "$TMP/tp.err")"
+fi
+
 echo "app settings render tests: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

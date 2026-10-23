@@ -322,7 +322,8 @@ Basic Auth credentials travel unencrypted. Add an HTTPS listener with a certific
 
 WARNING: api.env.trustProxy is empty. Behind the gateway the API sees every request
 as plain HTTP from the gateway address: sign-in cookies get no Secure flag and all
-clients share one rate limit. Set it to the gateway pod range.
+clients share one rate limit. Set it to the gateway pod range. The chart refuses to
+render without it once the Gateway has an HTTPS listener.
 {{- end }}
 
 {{- if and .Values.ocpp.enabled .Values.gatewayAPI.enabled (not .Values.ocpp.env.trustedProxyCidrs) }}

@@ -600,7 +600,7 @@ The chart refuses to render with `api.env.nodeEnv` other than `production`, `ocp
 
 ### Behind a Proxy
 
-Set `api.env.trustProxy` and `ocpp.env.trustedProxyCidrs` to the gateway pod range. Without them the API sees every request as plain HTTP from the gateway (sign-in cookies get no `Secure` flag, every client shares one rate limit), and the OCPP server counts every station as the gateway address for its per-IP limits (`ocpp.env.maxConnectionsPerIp`, `ocpp.env.maxPendingAuthPerIp`, default 50 authentications in progress per IP). The install notes warn when either is empty or the Gateway has no HTTPS listener.
+Set `api.env.trustProxy` and `ocpp.env.trustedProxyCidrs` to the gateway pod range. Without them the API sees every request as plain HTTP from the gateway (sign-in cookies get no `Secure` flag, every client shares one rate limit), and the OCPP server counts every station as the gateway address for its per-IP limits (`ocpp.env.maxConnectionsPerIp`, `ocpp.env.maxPendingAuthPerIp`, default 50 authentications in progress per IP). The install notes warn when either is empty or the Gateway has no HTTPS listener. The chart refuses to render with an empty `api.env.trustProxy` while `gatewayAPI.enabled` is true and the Gateway the chart creates has an HTTPS or TLS listener, or the chart uses a Gateway it does not create (`gatewayAPI.gateway.create: false`): set it to the gateway pod range, for example `10.244.0.0/16`.
 
 Security profile 3 needs the CA that issues the station certificates: the OCPP server reads it from `ca.crt` of `ocpp.tls.certSecret` and refuses profile 3 connections without it.
 
