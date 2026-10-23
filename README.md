@@ -408,6 +408,22 @@ The SIM provider and station signal settings are app settings, also set in Setti
 | `appSettings.sim.ocpp16SignalKeys` | OCPP 1.6 configuration keys read for the signal, for example `[SignalStrength]`: at most 20 names of at most 50 characters, each listed once |
 | `appSettings.sim.signalGoodDbm`, `signalFairDbm` | Signal grade thresholds in dBm, -140 to -40, good above fair (-65 and -85 on a fresh install) |
 
+### OCPP Data Plan Settings
+
+The OCPP values sent to stations at every boot are app settings, one set per station data plan, also set in Settings > Integrations & Features > OCPP. `appSettings.ocpp` is the Wi-Fi or wired plan (the default; `meterValueInterval` and `sampledMeasurands` are its AC readings while charging), `appSettings.ocpp.dc` its DC readings while charging, and `appSettings.ocpp.cellular` (with `cellular.dc`) the Cellular plan. An empty value keeps the dashboard value and the key is not written; the database migration seeds the shipped values. A value out of range, or a measurand list that is not comma-separated names, fails the render.
+
+| Parameter | Setting |
+|-----------|---------|
+| `appSettings.ocpp.heartbeatInterval`, `cellular.heartbeatInterval` | Heartbeat interval in seconds, 30 to 86400 (900 and 3600 shipped) |
+| `appSettings.ocpp.csmsPingInterval`, `cellular.csmsPingInterval` | Seconds without a frame from a station before the CSMS pings it, 30 to 3600 (120 and 240 shipped) |
+| `appSettings.ocpp.meterValueInterval`, `dc.meterValueInterval`, `cellular.meterValueInterval`, `cellular.dc.meterValueInterval` | Reading interval while charging in seconds, AC and DC, 5 to 3600 (60, 30, 300 and 60 shipped) |
+| `appSettings.ocpp.sampledMeasurands`, `dc.sampledMeasurands`, `cellular.sampledMeasurands`, `cellular.dc.sampledMeasurands` | Values read while charging, AC and DC |
+| `appSettings.ocpp.clockAlignedInterval`, `cellular.clockAlignedInterval` | Idle reading interval in seconds, 0 (off) or 60 to 86400 (900 and 0 shipped) |
+| `appSettings.ocpp.alignedMeasurands`, `txEndedMeasurands` and their `cellular.` keys | Idle reading values and values at the end of a session (`Energy.Active.Import.Register` shipped) |
+| `ocpp.env.wsCompression` | WebSocket compression (permessage-deflate) on the station listeners, `OCPP_WS_COMPRESSION`: `true` (default) or `false` |
+
+Keep the idle timeout of an ingress or gateway in front of the OCPP service above the largest CSMS or station ping interval plus 30 seconds.
+
 `SIM_PROVIDER_TEST_BASE_URL`, which points the SIM provider adapters at a local mock server, is for the local development stack only: the render fails when `simProviders.testBaseUrl` or `<api|ocpp|worker|ocpi>.env.simProviderTestBaseUrl` is set.
 
 ### Database Connections

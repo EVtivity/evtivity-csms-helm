@@ -143,6 +143,12 @@ data:
   {{- end }}
   OCPP_TRUSTED_PROXY_CIDRS: {{ .Values.ocpp.env.trustedProxyCidrs | default "" | quote }}
   OCPP_MAX_PENDING_AUTH_PER_IP: {{ .Values.ocpp.env.maxPendingAuthPerIp | quote }}
+  {{- $wsCompression := .Values.ocpp.env.wsCompression }}
+  {{- if kindIs "invalid" $wsCompression }}{{ $wsCompression = true }}{{ end }}
+  {{- if not (kindIs "bool" $wsCompression) }}
+  {{- fail (printf "ocpp.env.wsCompression %q is not supported. Use true or false." (toString $wsCompression)) }}
+  {{- end }}
+  OCPP_WS_COMPRESSION: {{ $wsCompression | toString | quote }}
   {{- range $key, $name := dict "authMaxConcurrent" "OCPP_AUTH_MAX_CONCURRENT" "authMaxQueued" "OCPP_AUTH_MAX_QUEUED" "authMaxWaitMs" "OCPP_AUTH_MAX_WAIT_MS" }}
   {{- $value := get $.Values.ocpp.env $key }}
   {{- if and (not (kindIs "invalid" $value)) (ne (toString $value) "") }}

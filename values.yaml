@@ -153,6 +153,12 @@ ocpp:
     # worker's conformance runs, the simulator, and station pairing in the API.
     # Empty: ws://<release>-ocpp:<ocpp.port>.
     internalUrl: ""
+    # WebSocket compression (permessage-deflate, RFC 7692) on the plain and TLS
+    # station listeners (OCPP_WS_COMPRESSION). A station that does not offer it
+    # works uncompressed. false turns it off, for example to read frames while
+    # debugging. Keep an ingress or gateway idle timeout above the largest CSMS
+    # or station ping interval plus 30 seconds (300 s with the shipped plans).
+    wsCompression: true
   resources:
     requests:
       cpu: 200m
@@ -587,13 +593,46 @@ appSettings:
   system:
     name: "EVtivity CSMS"
     timezone: "America/New_York"
+  # Station data plans. These keys are the Wi-Fi or wired plan (the default;
+  # meterValueInterval and sampledMeasurands are its AC charging readings),
+  # dc its DC charging readings, cellular the Cellular plan. Stations get their
+  # plan's values at every boot. An empty value is not written, so the value set
+  # in Settings > Integrations & Features > OCPP stays (the migration seeds the
+  # shipped values). Ranges: heartbeatInterval 30 to 86400, csmsPingInterval 30
+  # to 3600, meterValueInterval 5 to 3600, clockAlignedInterval 0 (idle readings
+  # off) or 60 to 86400 seconds.
   ocpp:
-    heartbeatInterval: 300
+    heartbeatInterval: 900
+    # How long the CSMS waits without a frame from a station before it pings it.
+    csmsPingInterval: 120
     meterValueInterval: 60
     clockAlignedInterval: 900
-    sampledMeasurands: "Energy.Active.Import.Register,Power.Active.Import,Voltage,SoC,Current.Import"
-    alignedMeasurands: "Energy.Active.Import.Register,Power.Active.Import,Voltage,SoC,Current.Import"
+    sampledMeasurands: "Energy.Active.Import.Register,Power.Active.Import,Current.Import"
+    alignedMeasurands: "Energy.Active.Import.Register"
     txEndedMeasurands: "Energy.Active.Import.Register"
+    # DC stations on the Wi-Fi or wired plan, readings while charging.
+    # Shipped: meterValueInterval 30,
+    # sampledMeasurands Energy.Active.Import.Register,Power.Active.Import,Current.Import,SoC.
+    dc:
+      meterValueInterval: ""
+      sampledMeasurands: ""
+    # The Cellular plan. Shipped: heartbeatInterval 3600, csmsPingInterval 240,
+    # meterValueInterval 300, sampledMeasurands
+    # Energy.Active.Import.Register,Power.Active.Import, clockAlignedInterval 0,
+    # alignedMeasurands and txEndedMeasurands Energy.Active.Import.Register;
+    # dc: meterValueInterval 60,
+    # sampledMeasurands Energy.Active.Import.Register,Power.Active.Import,SoC.
+    cellular:
+      heartbeatInterval: ""
+      csmsPingInterval: ""
+      meterValueInterval: ""
+      sampledMeasurands: ""
+      clockAlignedInterval: ""
+      alignedMeasurands: ""
+      txEndedMeasurands: ""
+      dc:
+        meterValueInterval: ""
+        sampledMeasurands: ""
     connectionTimeout: 120
     resetRetries: 3
     offlineCommandTtlHours: 24

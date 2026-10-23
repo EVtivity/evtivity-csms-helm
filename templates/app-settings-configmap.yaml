@@ -474,6 +474,43 @@
 {{- else if not (or (kindIs "invalid" $aiMcpOrigins) (eq (toString $aiMcpOrigins) "")) }}
 {{- fail "appSettings.ai.mcp.allowedOrigins must be a list of origins, for example [https://agent.example.com], or empty to keep the dashboard value." }}
 {{- end }}
+{{- /* Station data plans: appSettings.ocpp holds the Wi-Fi or wired plan (AC for the charging keys), ocpp.dc its DC charging values, ocpp.cellular the Cellular plan (with cellular.dc). An empty value is not rendered, so the dashboard value stays. Intervals are checked against the ranges the API accepts. */}}
+{{- $ocppValues := .Values.appSettings.ocpp | default dict }}
+{{- $ocppCellular := $ocppValues.cellular | default dict }}
+{{- $ocppGroups := dict "" $ocppValues "dc." ($ocppValues.dc | default dict) "cellular." $ocppCellular "cellular.dc." ($ocppCellular.dc | default dict) }}
+{{- $ocppPlanSettings := dict }}
+{{- range $spec := list (list "" "heartbeatInterval" 30 86400 false) (list "" "csmsPingInterval" 30 3600 false) (list "" "meterValueInterval" 5 3600 false) (list "" "clockAlignedInterval" 60 86400 true) (list "dc." "meterValueInterval" 5 3600 false) (list "cellular." "heartbeatInterval" 30 86400 false) (list "cellular." "csmsPingInterval" 30 3600 false) (list "cellular." "meterValueInterval" 5 3600 false) (list "cellular." "clockAlignedInterval" 60 86400 true) (list "cellular.dc." "meterValueInterval" 5 3600 false) }}
+{{- $prefix := index $spec 0 }}
+{{- $name := index $spec 1 }}
+{{- $min := index $spec 2 }}
+{{- $max := index $spec 3 }}
+{{- $zero := index $spec 4 }}
+{{- $raw := index (index $ocppGroups $prefix) $name }}
+{{- $text := "" }}
+{{- if kindIs "float64" $raw }}{{ $text = ternary (toString (int64 $raw)) (toString $raw) (eq $raw (floor $raw)) }}{{ else if not (kindIs "invalid" $raw) }}{{ $text = toString $raw }}{{ end }}
+{{- if ne $text "" }}
+{{- $ok := false }}
+{{- if regexMatch "^[0-9]+$" $text }}
+{{- $n := atoi $text }}
+{{- $ok = or (and $zero (eq $n 0)) (and (ge $n $min) (le $n $max)) }}
+{{- end }}
+{{- if not $ok }}
+{{- fail (printf "appSettings.ocpp.%s%s %q is not supported. Use a whole number of seconds from %s%d to %d, or \"\" to keep the value set in the dashboard." $prefix $name $text (ternary "0 or " "" $zero) $min $max) }}
+{{- end }}
+{{- $_ := set $ocppPlanSettings (printf "ocpp.%s%s" $prefix $name) (atoi $text) }}
+{{- end }}
+{{- end }}
+{{- range $spec := list (list "" "sampledMeasurands") (list "" "alignedMeasurands") (list "" "txEndedMeasurands") (list "dc." "sampledMeasurands") (list "cellular." "sampledMeasurands") (list "cellular." "alignedMeasurands") (list "cellular." "txEndedMeasurands") (list "cellular.dc." "sampledMeasurands") }}
+{{- $prefix := index $spec 0 }}
+{{- $name := index $spec 1 }}
+{{- $raw := index (index $ocppGroups $prefix) $name }}
+{{- if and (not (kindIs "invalid" $raw)) (ne (toString $raw) "") }}
+{{- if not (regexMatch "^[A-Za-z.]+(,[A-Za-z.]+)*$" (toString $raw)) }}
+{{- fail (printf "appSettings.ocpp.%s%s %q is not supported. Use a comma-separated list of OCPP measurands without spaces, for example Energy.Active.Import.Register,Power.Active.Import, or \"\" to keep the value set in the dashboard." $prefix $name (toString $raw)) }}
+{{- end }}
+{{- $_ := set $ocppPlanSettings (printf "ocpp.%s%s" $prefix $name) (toString $raw) }}
+{{- end }}
+{{- end }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -485,12 +522,9 @@ data:
     {
       "system.name": {{ .Values.appSettings.system.name | toJson }},
       "system.timezone": {{ .Values.appSettings.system.timezone | toJson }},
-      "ocpp.heartbeatInterval": {{ .Values.appSettings.ocpp.heartbeatInterval | toJson }},
-      "ocpp.meterValueInterval": {{ .Values.appSettings.ocpp.meterValueInterval | toJson }},
-      "ocpp.clockAlignedInterval": {{ .Values.appSettings.ocpp.clockAlignedInterval | toJson }},
-      "ocpp.sampledMeasurands": {{ .Values.appSettings.ocpp.sampledMeasurands | toJson }},
-      "ocpp.alignedMeasurands": {{ .Values.appSettings.ocpp.alignedMeasurands | toJson }},
-      "ocpp.txEndedMeasurands": {{ .Values.appSettings.ocpp.txEndedMeasurands | toJson }},
+      {{- range $key, $value := $ocppPlanSettings }}
+      {{ $key | toJson }}: {{ $value | toJson }},
+      {{- end }}
       "ocpp.connectionTimeout": {{ .Values.appSettings.ocpp.connectionTimeout | toJson }},
       "ocpp.resetRetries": {{ .Values.appSettings.ocpp.resetRetries | toJson }},
       "ocpp.offlineCommandTtlHours": {{ .Values.appSettings.ocpp.offlineCommandTtlHours | toJson }},
