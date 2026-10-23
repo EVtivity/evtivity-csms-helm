@@ -12,6 +12,38 @@ HTTPRoutes:
 {{- end }}
 {{- end }}
 
+{{- if .Values.ocpp.enabled }}
+{{- $ocppHost := "" }}
+{{- $plain := false }}
+{{- $secure := false }}
+{{- if .Values.gatewayAPI.enabled }}
+{{- range $route := .Values.gatewayAPI.routes }}
+{{- range $route.rules }}{{ if eq .service "ocpp" }}{{ $ocppHost = $route.host }}{{ end }}{{ end }}
+{{- end }}
+{{- if .Values.gatewayAPI.gateway.create }}
+{{- range .Values.gatewayAPI.gateway.listeners }}
+{{- if eq .protocol "HTTP" }}{{ $plain = true }}{{ end }}
+{{- if eq .protocol "HTTPS" }}{{ $secure = true }}{{ end }}
+{{- end }}
+{{- else }}
+{{- /* An existing Gateway: its own listeners decide which of the two answer. */}}
+{{- $plain = true }}
+{{- $secure = true }}
+{{- end }}
+{{- end }}
+
+Charging station connections:
+{{- if and $ocppHost $plain }}
+  Security profiles 0 and 1: ws://{{ $ocppHost }}/<stationId>
+{{- end }}
+{{- if and $ocppHost $secure }}
+  Security profile 2:        wss://{{ $ocppHost }}/<stationId> (needs ocpp.env.trustedProxyCidrs)
+{{- end }}
+{{- if .Values.ocpp.tls.enabled }}
+  Security profile 3:        wss://<address of Service {{ include "evtivity-csms.fullname" . }}-ocpp-tls>:{{ .Values.ocpp.tls.port }}/<stationId>
+{{- end }}
+{{- end }}
+
 {{- if .Values.worker.enabled }}
 
 Background worker is running ({{ .Values.worker.replicaCount }} replica(s)).

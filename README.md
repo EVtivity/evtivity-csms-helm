@@ -118,7 +118,7 @@ kubectl rollout restart deployment -n evtivity
 | Service | Default Port | Description |
 |---------|-------------|-------------|
 | API | 3001 | REST API (Fastify) |
-| OCPP | 8080 (ws), 8443 (wss) | OCPP 1.6/2.0.1/2.1 WebSocket server |
+| OCPP | 7103 (ws), 8443 (wss) | OCPP 1.6/2.0.1/2.1 WebSocket server |
 | OCPI | 3002 | OCPI 2.2.1/2.3.0 roaming server |
 | CSMS | 80 | Operator dashboard (React + Nginx) |
 | Portal | 80 | Driver portal (React + Nginx) |
@@ -126,6 +126,55 @@ kubectl rollout restart deployment -n evtivity
 | CSS | - | Charging station simulator (internal) |
 
 Each service can be toggled with `{service}.enabled` and configured with `replicaCount`, `resources`, `nodeSelector`, `tolerations`, and `affinity`. API, OCPP, and the worker support HPA autoscaling (`{service}.autoscaling.enabled`, `minReplicas`, `maxReplicas`, `targetCPUUtilization`). The worker scales on CPU from 1 to 4 replicas when enabled. Keep it at one replica when `worker.env.octtOcspResponderUrl` is set: the chart refuses more.
+
+## Charging Station Connections
+
+Stations reach the OCPP server through up to three entry points. `<ocpp host>` is the OCPP route host in `gatewayAPI.routes` (default `ocpp.evtivity.local`). `<tls address>` is the DNS name or IP address of the `<release>-ocpp-tls` LoadBalancer Service (`kubectl get svc <release>-ocpp-tls -n <namespace>`).
+
+| Security profile | Station URL | Values | Default | The station needs |
+|------------------|-------------|--------|---------|-------------------|
+| 0 and 1 | `ws://<ocpp host>/<stationId>` | The OCPP route in `gatewayAPI.routes` and an `HTTP` listener in `gatewayAPI.gateway.listeners` | On (listener `http`, port 80) | Profile 1: its Basic Auth password. No TLS. |
+| 2 | `wss://<ocpp host>/<stationId>` | An `HTTPS` listener with `tls.certificateRefs` in `gatewayAPI.gateway.listeners`, and `ocpp.env.trustedProxyCidrs` set to the gateway pod range | Off | Its Basic Auth password and the CA of the gateway certificate |
+| 3 (mutual TLS) | `wss://<tls address>:8443/<stationId>` | `ocpp.tls.enabled`, `ocpp.tls.certSecret`, `ocpp.tls.port` | On (`scripts/install.sh` creates the Secret) | A client certificate signed by the Secret's `ca.crt`, and the CA that signed its `tls.crt` |
+
+Profiles 0 and 1 use the gateway's plain HTTP listener, so station passwords cross the network unencrypted. Remove the `HTTP` listener when no station needs `ws://`.
+
+Profile 2 terminates TLS at the gateway. The gateway forwards `X-Forwarded-Proto`, and the OCPP server trusts it only from the CIDRs in `ocpp.env.trustedProxyCidrs`. Without them it refuses profile 2 stations. Example listener:
+
+```yaml
+gatewayAPI:
+  gateway:
+    listeners:
+      - name: http
+        hostname: "*.example.com"
+        port: 80
+        protocol: HTTP
+      - name: https
+        hostname: "*.example.com"
+        port: 443
+        protocol: HTTPS
+        tls:
+          certificateRefs:
+            - name: example-com-tls
+ocpp:
+  env:
+    trustedProxyCidrs: "10.244.0.0/16"
+```
+
+Stations reject a wildcard certificate unless `AllowCSMSTLSWildcards` (2.1) or `AllowCentralSystemTLSWildcards` (1.6) is true, and both default to false. Give the OCPP host its own certificate, or a listener for the OCPP host whose certificate names it exactly. A profile 2 station can also connect to `wss://<tls address>:8443/<stationId>` without a client certificate.
+
+Profile 3 runs on its own LoadBalancer Service on `ocpp.tls.port` (8443) with TCP passthrough: the OCPP server terminates TLS and checks the client certificate. The Secret named in `ocpp.tls.certSecret` holds `tls.crt` (the server certificate, which names `<tls address>` exactly, with no wildcard), `tls.key` and `ca.crt` (the CA that signs station client certificates). Set `api.env.stationTlsUrl` to `wss://<tls address>:8443` so the CSMS can move connected OCPP 2.1 stations to TLS. Use `ocpp.tls.serviceAnnotations` for cloud load balancer settings, such as an AWS NLB. See [OCPP TLS](#ocpp-tls).
+
+```yaml
+ocpp:
+  tls:
+    enabled: true
+    port: 8443
+    certSecret: my-ocpp-tls-secret
+api:
+  env:
+    stationTlsUrl: "wss://ocpp-tls.example.com:8443"
+```
 
 ## Configuration
 
