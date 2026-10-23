@@ -140,31 +140,42 @@ enabled ones (api, ocpp, ocpi, worker, css).
 {{- end }}
 
 {{/*
-Connection credentials of one service. REDIS_URL comes from the service's own
-key (REDIS_URL_API, REDIS_URL_OCPP, REDIS_URL_OCPI, REDIS_URL_WORKER,
-REDIS_URL_CSS): each service connects to Redis as its own ACL user
-(redis/acl-rules.conf). With credentialRotation.enabled, DATABASE_URL and
-REDIS_URL come from the credentials Secret instead of the chart Secret. Explicit
-env entries win over the Secret's envFrom. With redisTls.enabled it also sets
+Secret environment of one service, key by key (secretKeyRef, never envFrom): a pod
+gets only the keys it uses, so a compromised pod cannot read another service's
+Redis password, sign tokens or decrypt settings it never needs (SH-M21).
+DATABASE_URL, and REDIS_URL from the service's own key (REDIS_URL_API,
+REDIS_URL_OCPP, REDIS_URL_OCPI, REDIS_URL_WORKER, REDIS_URL_CSS): each service
+connects to Redis as its own ACL user (redis/acl-rules.conf). With
+credentialRotation.enabled both come from the credentials Secret instead of the
+chart Secret. "keys" lists the other chart Secret keys the service reads
+(JWT_SECRET, SETTINGS_ENCRYPTION_KEY). With redisTls.enabled it also sets
 REDIS_TLS_CA_PEM, the CA that signed the Redis server certificate, which the
 services trust for rediss://.
-Usage: include "evtivity-csms.credentialsEnv" (dict "context" . "component" "api")
+Usage: include "evtivity-csms.credentialsEnv" (dict "context" . "component" "api" "keys" (list "JWT_SECRET"))
 */}}
 {{- define "evtivity-csms.credentialsEnv" -}}
-{{- $secret := include "evtivity-csms.secretName" .context -}}
+{{- $chartSecret := include "evtivity-csms.secretName" .context -}}
+{{- $secret := $chartSecret -}}
 {{- if (.context.Values.credentialRotation | default dict).enabled -}}
 {{- $secret = include "evtivity-csms.credentialsSecretName" .context -}}
+{{- end -}}
 - name: DATABASE_URL
   valueFrom:
     secretKeyRef:
       name: {{ $secret }}
       key: DATABASE_URL
-{{ end -}}
 - name: REDIS_URL
   valueFrom:
     secretKeyRef:
       name: {{ $secret }}
       key: REDIS_URL_{{ upper .component }}
+{{- range $key := (.keys | default list) }}
+- name: {{ $key }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ $chartSecret }}
+      key: {{ $key }}
+{{- end }}
 {{- if .context.Values.redisTls.enabled }}
 - name: REDIS_TLS_CA_PEM
   valueFrom:

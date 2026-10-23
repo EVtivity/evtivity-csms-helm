@@ -231,8 +231,9 @@ portal:
   podAnnotations: {}
 
 # --- Charging Station Simulator ---
+# Off by default: a test and demo tool, never part of a production install.
 css:
-  enabled: true
+  enabled: false
   replicaCount: 1
   image:
     repository: ""

@@ -517,6 +517,7 @@ helm upgrade --install "$RELEASE" "$CHART_DIR" \
   --set secrets.settingsEncryptionKey="$SETTINGS_ENCRYPTION_KEY" \
   --set ocpp.tls.enabled=true \
   --set ocpp.tls.certSecret="$OCPP_TLS_SECRET" \
+  --set css.enabled=true \
   --set css.tls.enabled=true \
   --set css.tls.certSecret="$CSS_TLS_SECRET" \
   --set monitoring.enabled="$MONITORING_ENABLED" \

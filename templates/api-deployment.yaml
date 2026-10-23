@@ -45,10 +45,8 @@ spec:
           envFrom:
             - configMapRef:
                 name: {{ include "evtivity-csms.configMapName" . }}
-            - secretRef:
-                name: {{ include "evtivity-csms.secretName" . }}
           env:
-            {{- include "evtivity-csms.credentialsEnv" (dict "context" . "component" "api") | nindent 12 }}
+            {{- include "evtivity-csms.credentialsEnv" (dict "context" . "component" "api" "keys" (list "JWT_SECRET" "SETTINGS_ENCRYPTION_KEY")) | nindent 12 }}
           livenessProbe:
             httpGet:
               path: /v1/health

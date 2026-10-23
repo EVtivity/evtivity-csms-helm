@@ -49,7 +49,7 @@ spec:
               protocol: TCP
             {{- end }}
           env:
-            {{- include "evtivity-csms.credentialsEnv" (dict "context" . "component" "ocpp") | nindent 12 }}
+            {{- include "evtivity-csms.credentialsEnv" (dict "context" . "component" "ocpp" "keys" (list "SETTINGS_ENCRYPTION_KEY")) | nindent 12 }}
             - name: OCPP_INSTANCE_ID
               valueFrom:
                 fieldRef:
@@ -76,8 +76,6 @@ spec:
           envFrom:
             - configMapRef:
                 name: {{ include "evtivity-csms.configMapName" . }}
-            - secretRef:
-                name: {{ include "evtivity-csms.secretName" . }}
           livenessProbe:
             httpGet:
               path: /

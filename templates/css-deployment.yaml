@@ -38,10 +38,8 @@ spec:
           envFrom:
             - configMapRef:
                 name: {{ include "evtivity-csms.configMapName" . }}
-            - secretRef:
-                name: {{ include "evtivity-csms.secretName" . }}
           env:
-            {{- include "evtivity-csms.credentialsEnv" (dict "context" . "component" "css") | nindent 12 }}
+            {{- include "evtivity-csms.credentialsEnv" (dict "context" . "component" "css" "keys" (list)) | nindent 12 }}
           {{- if .Values.css.tls.enabled }}
             # SP3 client cert PEMs sourced from the TLS Secret. The simulator
             # reads inlined PEM content directly from these env vars.

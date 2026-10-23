@@ -123,7 +123,7 @@ kubectl rollout restart deployment -n evtivity
 | CSMS | 80 | Operator dashboard (React + Nginx) |
 | Portal | 80 | Driver portal (React + Nginx) |
 | Worker | - | Background job processor (BullMQ) |
-| CSS | - | Charging station simulator (internal) |
+| CSS | - | Charging station simulator (internal, off by default: `css.enabled`) |
 
 Each service can be toggled with `{service}.enabled` and configured with `replicaCount`, `resources`, `nodeSelector`, `tolerations`, and `affinity`. API, OCPP, and the worker support HPA autoscaling (`{service}.autoscaling.enabled`, `minReplicas`, `maxReplicas`, `targetCPUUtilization`). The worker scales on CPU from 1 to 4 replicas when enabled. Keep it at one replica when `worker.env.octtOcspResponderUrl` is set: the chart refuses more.
 
@@ -194,6 +194,8 @@ All configuration is in `values.yaml`. Override with `--set` flags or a custom v
 | `secrets.settingsEncryptionKey` | AES-256 encryption key for settings |
 
 For GitOps or Vault workflows, set `secrets.create: false` and `secrets.existingSecret: my-secret-name`. The Secret must contain: `DATABASE_URL`, `REDIS_URL_API`, `REDIS_URL_OCPP`, `REDIS_URL_OCPI`, `REDIS_URL_WORKER`, `REDIS_URL_CSS`, `JWT_SECRET`, `SETTINGS_ENCRYPTION_KEY`.
+
+Each pod reads only the keys it uses, one `secretKeyRef` each, never the whole Secret: every service gets `DATABASE_URL` and its own `REDIS_URL_<SERVICE>` as `REDIS_URL`; the API also gets `JWT_SECRET` and `SETTINGS_ENCRYPTION_KEY`; OCPP, the worker and OCPI get `SETTINGS_ENCRYPTION_KEY`; the simulator gets neither. Other keys in an existing Secret are no longer loaded into the pods.
 
 With [Credential Rotation](#credential-rotation) on, the database and Redis URLs move to the job-owned Secret `<fullname>-credentials` once, and the services read them from there.
 
