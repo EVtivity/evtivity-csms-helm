@@ -423,6 +423,14 @@ Each api, ocpp, ocpi, worker and css pod pools `dependencies.postgresPoolMax` co
 
 Raise `max_connections` on the database or lower the pool for the second case. The OCPP server authenticates at most half its pool of station connections at once and queues the rest, so a reconnect wave leaves connections for connected stations.
 
+### Database Storage
+
+The chart does not run PostgreSQL. `scripts/install.sh` installs the Bitnami PostgreSQL chart with its default volume size (8 Gi), which a large network outgrows. Size the database disk for your station count: set `primary.persistence.size` on that release, or size your own database.
+
+Every OCPP message is a row in `ocpp_message_logs`, heartbeats included, and every meter reading is a row in `meter_values`. On a test network of about 2,000 simulated stations that stayed connected, the database reached 90 GB: 57 GB in `ocpp_message_logs` (about 100 million rows at 30 days) and 32 GB in `meter_values` (about 61 million rows). The simulator in chaos mode (`css.env.mode: chaos`) and the demo data (`seedDemo`, 2,000 simulated stations) produce this kind of volume.
+
+`appSettings.logs.<name>RetentionDays` sets how many days each log table keeps (for example `ocppMessageRetentionDays: 30`, `meterValuesRetentionDays: 90`, 0 keeps the rows forever), and `appSettings.audit.retentionDays` the audit history. The seed-settings job writes these values on every install and upgrade. See [Data Retention](https://evtivity.com/docs/configuration/data-retention) for every retention setting and the prune jobs.
+
 ### Credential Rotation
 
 Off by default. With `credentialRotation.enabled: true`, a CronJob rotates the PostgreSQL and Redis passwords of the services on `credentialRotation.schedule` (default 03:00 on the 1st of each month), without downtime. It needs admin credentials for both servers, so you turn it on deliberately.
