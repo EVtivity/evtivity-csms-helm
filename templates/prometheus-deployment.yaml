@@ -18,11 +18,13 @@ spec:
         {{- include "evtivity-csms.componentSelectorLabels" (dict "context" . "component" "prometheus") | nindent 8 }}
     spec:
       securityContext:
-        fsGroup: 65534
+        {{- include "evtivity-csms.podSecurityContext" (dict "uid" 65534) | nindent 8 }}
       containers:
         - name: prometheus
           image: "{{ .Values.monitoring.prometheus.image.repository }}:{{ .Values.monitoring.prometheus.image.tag }}"
           imagePullPolicy: IfNotPresent
+          securityContext:
+            {{- include "evtivity-csms.containerSecurityContext" . | nindent 12 }}
           args:
             - "--config.file=/etc/prometheus/prometheus.yml"
             - "--storage.tsdb.path=/prometheus"
@@ -45,6 +47,8 @@ spec:
             initialDelaySeconds: 5
             periodSeconds: 10
           volumeMounts:
+            - name: tmp
+              mountPath: /tmp
             - name: config
               mountPath: /etc/prometheus/
             - name: data
@@ -54,6 +58,8 @@ spec:
             {{- toYaml . | nindent 12 }}
           {{- end }}
       volumes:
+        - name: tmp
+          emptyDir: {}
         - name: config
           configMap:
             name: {{ include "evtivity-csms.fullname" . }}-prometheus-config

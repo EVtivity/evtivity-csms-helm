@@ -48,6 +48,11 @@ spec:
       labels:
         {{- include "evtivity-csms.componentSelectorLabels" (dict "context" . "component" "migrate") | nindent 8 }}
     spec:
+      securityContext:
+        {{- include "evtivity-csms.podSecurityContext" (dict "uid" 1000) | nindent 8 }}
+      volumes:
+        - name: tmp
+          emptyDir: {}
       {{- with .Values.image.pullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -56,14 +61,28 @@ spec:
       initContainers:
         - name: wait-for-postgres
           image: busybox:1.37
+          securityContext:
+            {{- include "evtivity-csms.containerSecurityContext" . | nindent 12 }}
           command: ['sh', '-c', 'until nc -z {{ .Values.dependencies.postgresHost }} {{ .Values.dependencies.postgresPort }}; do echo "waiting for postgres..."; sleep 2; done']
       containers:
         - name: migrate
           image: {{ include "evtivity-csms.image" (dict "context" . "component" "migrate" "values" .Values.migrate) }}
           imagePullPolicy: {{ include "evtivity-csms.imagePullPolicy" . }}
+          securityContext:
+            {{- include "evtivity-csms.containerSecurityContext" . | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
           # Only what the migration reads: the chart ConfigMap and Secret do not
           # exist yet on install.
           env:
+            # Read-only root filesystem: npm writes its cache and logs under /tmp.
+            - name: HOME
+              value: /tmp
+            - name: npm_config_cache
+              value: /tmp/.npm
+            - name: npm_config_update_notifier
+              value: "false"
             - name: NODE_ENV
               value: {{ .Values.api.env.nodeEnv | quote }}
             - name: LOG_LEVEL

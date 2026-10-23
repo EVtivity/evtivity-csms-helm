@@ -5,6 +5,11 @@ metadata:
   labels:
     {{- include "evtivity-csms.labels" . | nindent 4 }}
 data:
+  {{- /* The images run in production mode; development relaxes the simulated
+  payment provider, CORS "*" and private AI hosts (SH-M13). */}}
+  {{- if ne (toString .Values.api.env.nodeEnv) "production" }}
+  {{- fail (printf "api.env.nodeEnv must be production, got %q: development and test turn on the simulated payment provider, CORS \"*\" and private AI base URLs" (toString .Values.api.env.nodeEnv)) }}
+  {{- end }}
   NODE_ENV: {{ .Values.api.env.nodeEnv | quote }}
   LOG_LEVEL: {{ .Values.api.env.logLevel | quote }}
   SEED_DEMO: {{ if and .Values.seedDemo.enabled .Values.seedDemo.confirmed }}"true"{{ else }}"false"{{ end }}
@@ -84,6 +89,11 @@ data:
   {{- if regexMatch "^(?i:true|[0-9]+)$" $trustProxy }}
   {{- fail (printf "api.env.trustProxy must list proxy IPs or CIDRs, got %q (a hop count or true is refused)" $trustProxy) }}
   {{- end }}
+  {{- range $entry := splitList "," $trustProxy }}
+  {{- if regexMatch "/0+$" (trim $entry) }}
+  {{- fail (printf "api.env.trustProxy must not trust every address, got %q: list the proxy addresses or CIDRs" (trim $entry)) }}
+  {{- end }}
+  {{- end }}
   TRUST_PROXY: {{ $trustProxy | quote }}
   {{- $webauthnRpId := .Values.api.env.webauthnRpId | default "" | toString | trim | lower }}
   {{- if ne $webauthnRpId "" }}
@@ -115,7 +125,13 @@ data:
   OCPP_HEALTH_PORT: {{ .Values.ocpp.healthPort | quote }}
   OCPP_MAX_CONNECTIONS_PER_IP: {{ .Values.ocpp.env.maxConnectionsPerIp | quote }}
   OCPP_MAX_MESSAGES_PER_IP_PER_SECOND: {{ .Values.ocpp.env.maxMessagesPerIpPerSecond | quote }}
+  {{- range $entry := splitList "," (.Values.ocpp.env.trustedProxyCidrs | default "" | toString) }}
+  {{- if regexMatch "/0+$" (trim $entry) }}
+  {{- fail (printf "ocpp.env.trustedProxyCidrs must not trust every address, got %q: list the proxy addresses or CIDRs" (trim $entry)) }}
+  {{- end }}
+  {{- end }}
   OCPP_TRUSTED_PROXY_CIDRS: {{ .Values.ocpp.env.trustedProxyCidrs | default "" | quote }}
+  OCPP_MAX_PENDING_AUTH_PER_IP: {{ .Values.ocpp.env.maxPendingAuthPerIp | quote }}
   {{- range $key, $name := dict "authMaxConcurrent" "OCPP_AUTH_MAX_CONCURRENT" "authMaxQueued" "OCPP_AUTH_MAX_QUEUED" "authMaxWaitMs" "OCPP_AUTH_MAX_WAIT_MS" }}
   {{- $value := get $.Values.ocpp.env $key }}
   {{- if and (not (kindIs "invalid" $value)) (ne (toString $value) "") }}

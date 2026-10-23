@@ -129,6 +129,11 @@ ocpp:
     logLevel: info
     maxConnectionsPerIp: 2500
     maxMessagesPerIpPerSecond: 5000
+    # Upgrade requests from one IP (an IPv6 /64) whose authentication is still
+    # running (OCPP_MAX_PENDING_AUTH_PER_IP). Stations with a password that
+    # succeeded within 24 hours are not counted. Behind a proxy set
+    # trustedProxyCidrs, or every station counts as the proxy address.
+    maxPendingAuthPerIp: 50
     # Station connection authentications after a reconnect wave, so it cannot
     # fill the database pool. Empty keeps the server default: half of the
     # pool (DB_POOL_MAX) at once, 1000 queued, 10000 ms wait. Over the
@@ -139,8 +144,10 @@ ocpp:
     authMaxWaitMs: ""
     # Comma-separated CIDRs of proxies (e.g. the ingress gateway pod range) whose
     # X-Forwarded-For (station IP) and X-Forwarded-Proto (TLS) headers are trusted.
-    # Security profile 2 stations behind a TLS-terminating ingress need this set.
-    # Empty trusts no proxy.
+    # Security profile 2 stations behind a TLS-terminating ingress need this set,
+    # and so do the per-IP limits: without it every station behind the gateway
+    # counts as the gateway address (the server logs a warning). Empty trusts no
+    # proxy. 0.0.0.0/0 and ::/0 are refused.
     trustedProxyCidrs: ""
     # Address other pods use to reach the OCPP server (OCPP_SERVER_URL): the
     # worker's conformance runs, the simulator, and station pairing in the API.
@@ -1179,7 +1186,7 @@ monitoring:
   prometheus:
     image:
       repository: prom/prometheus
-      tag: v3.2.1
+      tag: v3.15.1
     resources:
       requests:
         cpu: 100m
@@ -1194,7 +1201,7 @@ monitoring:
   grafana:
     image:
       repository: grafana/grafana
-      tag: "11.5.2"
+      tag: "11.5.10"
     resources:
       requests:
         cpu: 100m
@@ -1204,12 +1211,14 @@ monitoring:
         memory: 256Mi
     storage:
       size: 5Gi
-    adminPassword: admin
+    # Required while monitoring.enabled (no default): stored in the Secret
+    # <release>-grafana, never in the pod spec.
+    adminPassword: ""
   loki:
     enabled: false
     image:
       repository: grafana/loki
-      tag: "3.4.2"
+      tag: "3.4.6"
     resources:
       requests:
         cpu: 100m
@@ -1224,7 +1233,7 @@ monitoring:
     enabled: false
     image:
       repository: grafana/alloy
-      tag: "v1.8.1"
+      tag: "v1.8.3"
     resources:
       requests:
         cpu: 50m

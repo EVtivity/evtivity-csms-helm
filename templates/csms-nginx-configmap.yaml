@@ -40,10 +40,24 @@ data:
         {{- if eq $proto "https" }}{{ $wsProto = "wss" }}{{ end }}
         location = /runtime-config.js {
             default_type application/javascript;
+            add_header Cache-Control "no-store" always;
+            {{- include "evtivity-csms.nginxSecurityHeaders" "csms" | nindent 12 }}
             return 200 'window.__RUNTIME_CONFIG__={"apiUrl":"{{ $proto }}://{{ $apiHost }}","portalUrl":"{{ $proto }}://{{ $portalHost }}","csmsUrl":"{{ $proto }}://{{ $csmsHost }}","ocppUrl":"{{ $wsProto }}://{{ $ocppHost }}"};';
         }
 
+        # Content-hashed bundle files: cached for a year.
+        location /assets/ {
+            expires 1y;
+            add_header Cache-Control "public, immutable" always;
+            {{- include "evtivity-csms.nginxSecurityHeaders" "csms" | nindent 12 }}
+            try_files $uri =404;
+        }
+
+        # index.html and the SPA fallback: never cached, or a stale page names
+        # bundle files that no longer exist.
         location / {
+            add_header Cache-Control "no-store, must-revalidate" always;
+            {{- include "evtivity-csms.nginxSecurityHeaders" "csms" | nindent 12 }}
             try_files $uri $uri/ /index.html;
         }
     }

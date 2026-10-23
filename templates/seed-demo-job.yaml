@@ -19,6 +19,11 @@ spec:
       labels:
         {{- include "evtivity-csms.componentSelectorLabels" (dict "context" . "component" "seed-demo") | nindent 8 }}
     spec:
+      securityContext:
+        {{- include "evtivity-csms.podSecurityContext" (dict "uid" 1000) | nindent 8 }}
+      volumes:
+        - name: tmp
+          emptyDir: {}
       {{- with .Values.image.pullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -27,11 +32,18 @@ spec:
       initContainers:
         - name: wait-for-postgres
           image: busybox:1.37
+          securityContext:
+            {{- include "evtivity-csms.containerSecurityContext" . | nindent 12 }}
           command: ['sh', '-c', 'until nc -z {{ .Values.dependencies.postgresHost }} {{ .Values.dependencies.postgresPort }}; do echo "waiting for postgres..."; sleep 2; done']
       containers:
         - name: seed-demo
           image: {{ include "evtivity-csms.image" (dict "context" . "component" "migrate" "values" .Values.migrate) }}
           imagePullPolicy: {{ include "evtivity-csms.imagePullPolicy" . }}
+          securityContext:
+            {{- include "evtivity-csms.containerSecurityContext" . | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
           # Demo seed creates TEST DATA only: simulator stations, fake drivers,
           # sessions, and payments. Never enable on a production deployment.
           # Runs seed.ts directly because the `npm run seed` script loads a
@@ -40,6 +52,13 @@ spec:
           command:
             ['sh', '-c', 'cd packages/database && node --import=tsx/esm src/seed.ts']
           env:
+            # Read-only root filesystem: npm writes its cache and logs under /tmp.
+            - name: HOME
+              value: /tmp
+            - name: npm_config_cache
+              value: /tmp/.npm
+            - name: npm_config_update_notifier
+              value: "false"
             - name: SEED_DEMO
               value: "true"
             # target_url for css_stations rows, as seen from the CSS pod.

@@ -14,6 +14,7 @@ REDIS_PASSWORD="${REDIS_PASSWORD:-$(generate_secret)}"
 JWT_SECRET="${JWT_SECRET:-$(generate_secret)}"
 SETTINGS_ENCRYPTION_KEY="${SETTINGS_ENCRYPTION_KEY:-$(generate_secret)}"
 ADMIN_PASSWORD="${ADMIN_PASSWORD:-$(generate_secret)}"
+GRAFANA_ADMIN_PASSWORD="${GRAFANA_ADMIN_PASSWORD:-$(generate_secret)}"
 
 POSTGRES_HOST="${POSTGRES_HOST:-${RELEASE}-postgresql}"
 POSTGRES_PORT="${POSTGRES_PORT:-5432}"
@@ -521,6 +522,7 @@ helm upgrade --install "$RELEASE" "$CHART_DIR" \
   --set css.tls.enabled=true \
   --set css.tls.certSecret="$CSS_TLS_SECRET" \
   --set monitoring.enabled="$MONITORING_ENABLED" \
+  --set monitoring.grafana.adminPassword="$GRAFANA_ADMIN_PASSWORD" \
   --set monitoring.loki.enabled="$LOKI_ENABLED" \
   --set monitoring.alloy.enabled="$ALLOY_ENABLED" \
   --set ocpi.enabled=true \
@@ -532,6 +534,7 @@ helm upgrade --install "$RELEASE" "$CHART_DIR" \
 echo "EVtivity CSMS ready."
 echo "Admin email: admin@evtivity.local"
 echo "Admin password: $ADMIN_PASSWORD (must be changed on first login)"
+if [ "$MONITORING_ENABLED" = "true" ]; then echo "Grafana admin password: $GRAFANA_ADMIN_PASSWORD"; fi
 
 echo ""
 echo "Run 'kubectl get pods -n $NAMESPACE' to check status."

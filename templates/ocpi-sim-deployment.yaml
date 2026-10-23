@@ -19,6 +19,11 @@ spec:
       labels:
         {{- include "evtivity-csms.componentSelectorLabels" (dict "context" . "component" "ocpi-sim") | nindent 8 }}
     spec:
+      securityContext:
+        {{- include "evtivity-csms.podSecurityContext" (dict "uid" 1000) | nindent 8 }}
+      volumes:
+        - name: tmp
+          emptyDir: {}
       {{- with .Values.image.pullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -27,6 +32,11 @@ spec:
         - name: ocpi-sim
           image: {{ include "evtivity-csms.image" (dict "context" . "component" "ocpi-simulator" "values" .Values.ocpiSim) }}
           imagePullPolicy: {{ include "evtivity-csms.imagePullPolicy" . }}
+          securityContext:
+            {{- include "evtivity-csms.containerSecurityContext" . | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
           ports:
             - name: http
               containerPort: {{ .Values.ocpiSim.port }}

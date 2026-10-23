@@ -26,6 +26,11 @@ spec:
       labels:
         {{- include "evtivity-csms.componentSelectorLabels" (dict "context" . "component" "ocpp") | nindent 8 }}
     spec:
+      securityContext:
+        {{- include "evtivity-csms.podSecurityContext" (dict "uid" 1000) | nindent 8 }}
+      volumes:
+        - name: tmp
+          emptyDir: {}
       {{- with .Values.image.pullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -36,6 +41,11 @@ spec:
         - name: ocpp
           image: {{ include "evtivity-csms.image" (dict "context" . "component" "ocpp" "values" .Values.ocpp) }}
           imagePullPolicy: {{ include "evtivity-csms.imagePullPolicy" . }}
+          securityContext:
+            {{- include "evtivity-csms.containerSecurityContext" . | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
           ports:
             - name: ws
               containerPort: {{ .Values.ocpp.port }}

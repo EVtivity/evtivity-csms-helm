@@ -249,10 +249,96 @@ Uses dependencies.postgresHost/redisHost from values.yaml.
 {{- define "evtivity-csms.waitForDeps" -}}
 - name: wait-for-postgres
   image: busybox:1.37
+  securityContext:
+    {{- include "evtivity-csms.containerSecurityContext" . | nindent 4 }}
   command: ['sh', '-c', 'until nc -z {{ .Values.dependencies.postgresHost }} {{ .Values.dependencies.postgresPort }}; do echo "waiting for postgres..."; sleep 2; done']
 - name: wait-for-redis
   image: busybox:1.37
+  securityContext:
+    {{- include "evtivity-csms.containerSecurityContext" . | nindent 4 }}
   command: ['sh', '-c', 'until nc -z {{ .Values.dependencies.redisHost }} {{ .Values.dependencies.redisPort }}; do echo "waiting for redis..."; sleep 2; done']
+{{- end }}
+
+{{/*
+Security headers of the CSMS and portal pages (SH-M20), the same as the images'
+packages/<app>/nginx-security-headers.conf: change both together. Included in
+every location of the nginx ConfigMaps, because nginx drops server-level
+add_header in a location that sets its own. frame-ancestors works only as a
+header. Referrer-Policy keeps the origin: Google Maps keys restricted by referrer
+need it. Browsers apply HSTS only on responses that reached them over HTTPS.
+Usage: include "evtivity-csms.nginxSecurityHeaders" "csms" (or "portal")
+*/}}
+{{- define "evtivity-csms.nginxSecurityHeaders" -}}
+{{- $csp := "default-src 'self'; script-src 'self' https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/ https://www.googletagmanager.com https://maps.googleapis.com https://js.stripe.com https://m.stripe.network https://*.adyen.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://maps.gstatic.com https://maps.googleapis.com https://*.ggpht.com https://*.googleusercontent.com https://*.amazonaws.com https://*.stripe.com https://*.adyen.com; connect-src 'self' http: https:; frame-src 'self' https://www.google.com/recaptcha/ https://www.google.com/maps/ https://js.stripe.com https://hooks.stripe.com https://m.stripe.network https:; object-src 'none'; base-uri 'self'; form-action 'self' https:; frame-ancestors 'none'" -}}
+{{- if eq . "portal" -}}
+{{- $csp = "default-src 'self'; script-src 'self' https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/ https://www.googletagmanager.com https://js.stripe.com https://m.stripe.network https://maps.googleapis.com https://*.adyen.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.stripe.com https://maps.gstatic.com https://maps.googleapis.com https://*.ggpht.com https://*.googleusercontent.com https://*.amazonaws.com https://*.adyen.com; connect-src 'self' http: https:; frame-src 'self' https://www.google.com/recaptcha/ https://js.stripe.com https://hooks.stripe.com https://m.stripe.network https:; object-src 'none'; base-uri 'self'; form-action 'self' https:; frame-ancestors 'none'" -}}
+{{- end -}}
+add_header Content-Security-Policy "{{ $csp }}" always;
+add_header X-Frame-Options "DENY" always;
+add_header X-Content-Type-Options "nosniff" always;
+add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+add_header Strict-Transport-Security "max-age=31536000" always;
+{{- end }}
+
+{{/*
+Install warnings of NOTES.txt about values that leave an install weaker than it
+looks: a gateway without HTTPS, and no trusted proxy for the API or OCPP behind
+the gateway. Empty when none applies. internal-scripts/helm-check.sh renders it.
+*/}}
+{{- define "evtivity-csms.deploymentWarnings" -}}
+{{- if and .Values.gatewayAPI.enabled .Values.gatewayAPI.gateway.create }}
+{{- $https := false }}
+{{- range .Values.gatewayAPI.gateway.listeners }}{{ if eq .protocol "HTTPS" }}{{ $https = true }}{{ end }}{{ end }}
+{{- if not $https }}
+
+WARNING: the Gateway has no HTTPS listener. Sign-in cookies, passwords and station
+Basic Auth credentials travel unencrypted. Add an HTTPS listener with a certificate
+(gatewayAPI.gateway.listeners) before you use this install outside a test network.
+{{- end }}
+{{- end }}
+
+{{- if and .Values.gatewayAPI.enabled (not .Values.api.env.trustProxy) }}
+
+WARNING: api.env.trustProxy is empty. Behind the gateway the API sees every request
+as plain HTTP from the gateway address: sign-in cookies get no Secure flag and all
+clients share one rate limit. Set it to the gateway pod range.
+{{- end }}
+
+{{- if and .Values.ocpp.enabled .Values.gatewayAPI.enabled (not .Values.ocpp.env.trustedProxyCidrs) }}
+
+WARNING: ocpp.env.trustedProxyCidrs is empty. Stations reach the OCPP server through
+the gateway, so the per-IP connection limits count every station as the gateway
+address. Set it to the gateway pod range.
+{{- end }}
+
+{{- end }}
+
+{{/*
+Pod security context of every workload (SH-M23, the Pod Security "restricted"
+profile): non-root as the image's own user, RuntimeDefault seccomp, and the
+volume group of that user. uid: node images 1000, nginx-unprivileged 101,
+Grafana 472, Prometheus 65534, Loki 10001, Alloy 473.
+Usage: include "evtivity-csms.podSecurityContext" (dict "uid" 1000)
+*/}}
+{{- define "evtivity-csms.podSecurityContext" -}}
+runAsNonRoot: true
+runAsUser: {{ .uid }}
+runAsGroup: {{ .uid }}
+fsGroup: {{ .uid }}
+seccompProfile:
+  type: RuntimeDefault
+{{- end }}
+
+{{/*
+Container security context of every container: no privilege escalation, no
+capabilities, read-only root filesystem (writable paths are emptyDir volumes,
+/tmp in every pod).
+*/}}
+{{- define "evtivity-csms.containerSecurityContext" -}}
+allowPrivilegeEscalation: false
+readOnlyRootFilesystem: true
+capabilities:
+  drop: ["ALL"]
 {{- end }}
 
 {{/*

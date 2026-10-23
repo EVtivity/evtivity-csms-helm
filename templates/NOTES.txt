@@ -86,6 +86,11 @@ Rotate now:
 Passkeys: {{ $passkeyNote }}
 {{- end }}
 
+{{- $warnings := include "evtivity-csms.deploymentWarnings" . }}
+{{- if $warnings }}
+{{ $warnings }}
+{{- end }}
+
 Verify the deployment:
 
   kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/part-of=evtivity-csms

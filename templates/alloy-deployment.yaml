@@ -17,19 +17,26 @@ spec:
       labels:
         {{- include "evtivity-csms.componentSelectorLabels" (dict "context" . "component" "alloy") | nindent 8 }}
     spec:
+      securityContext:
+        {{- include "evtivity-csms.podSecurityContext" (dict "uid" 473) | nindent 8 }}
       serviceAccountName: {{ include "evtivity-csms.fullname" . }}-alloy
       containers:
         - name: alloy
           image: "{{ .Values.monitoring.alloy.image.repository }}:{{ .Values.monitoring.alloy.image.tag }}"
           imagePullPolicy: IfNotPresent
+          securityContext:
+            {{- include "evtivity-csms.containerSecurityContext" . | nindent 12 }}
           args:
             - "run"
             - "/etc/alloy/config.alloy"
+            - "--storage.path=/tmp/alloy"
           ports:
             - name: http
               containerPort: 12345
               protocol: TCP
           volumeMounts:
+            - name: tmp
+              mountPath: /tmp
             - name: config
               mountPath: /etc/alloy/
           {{- with .Values.monitoring.alloy.resources }}
@@ -37,6 +44,8 @@ spec:
             {{- toYaml . | nindent 12 }}
           {{- end }}
       volumes:
+        - name: tmp
+          emptyDir: {}
         - name: config
           configMap:
             name: {{ include "evtivity-csms.fullname" . }}-alloy-config

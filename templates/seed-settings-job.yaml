@@ -15,6 +15,8 @@ spec:
       labels:
         {{- include "evtivity-csms.componentSelectorLabels" (dict "context" . "component" "seed-settings") | nindent 8 }}
     spec:
+      securityContext:
+        {{- include "evtivity-csms.podSecurityContext" (dict "uid" 1000) | nindent 8 }}
       {{- with .Values.image.pullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -23,11 +25,15 @@ spec:
       initContainers:
         - name: wait-for-postgres
           image: busybox:1.37
+          securityContext:
+            {{- include "evtivity-csms.containerSecurityContext" . | nindent 12 }}
           command: ['sh', '-c', 'until nc -z {{ .Values.dependencies.postgresHost }} {{ .Values.dependencies.postgresPort }}; do echo "waiting for postgres..."; sleep 2; done']
       containers:
         - name: seed-settings
           image: {{ include "evtivity-csms.image" (dict "context" . "component" "migrate" "values" .Values.migrate) }}
           imagePullPolicy: {{ include "evtivity-csms.imagePullPolicy" . }}
+          securityContext:
+            {{- include "evtivity-csms.containerSecurityContext" . | nindent 12 }}
           command:
             - node
             - --input-type=module
@@ -88,6 +94,13 @@ spec:
               console.log('Upserted ' + count + ' settings from Helm values.');
               await sql.end();
           env:
+            # Read-only root filesystem: npm writes its cache and logs under /tmp.
+            - name: HOME
+              value: /tmp
+            - name: npm_config_cache
+              value: /tmp/.npm
+            - name: npm_config_update_notifier
+              value: "false"
             {{- include "evtivity-csms.ownerDatabaseUrlEnv" . | nindent 12 }}
             - name: SETTINGS_ENCRYPTION_KEY
               valueFrom:
@@ -95,6 +108,8 @@ spec:
                   name: {{ include "evtivity-csms.secretName" . }}
                   key: SETTINGS_ENCRYPTION_KEY
           volumeMounts:
+            - name: tmp
+              mountPath: /tmp
             - name: app-settings
               mountPath: /etc/app-settings
               readOnly: true
@@ -106,6 +121,8 @@ spec:
             {{- toYaml . | nindent 12 }}
           {{- end }}
       volumes:
+        - name: tmp
+          emptyDir: {}
         - name: app-settings
           configMap:
             name: {{ include "evtivity-csms.fullname" . }}-app-settings

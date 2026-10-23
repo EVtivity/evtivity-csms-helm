@@ -205,8 +205,8 @@ Each service connects to Redis as its own ACL user. `redis/acl-rules.conf` lists
 
 | User | Keys | Channels |
 |------|------|----------|
-| `api` | response cache (`rc:*`), attestation nonces, SIM provider locks and limits (`sim:*`), the payment process watch key (read only) | core channels, simulator channels |
-| `ocpp` | station connection registry (`ocpp:conn:*`) | core channels |
+| `api` | response cache (`rc:*`), shared API rate limit counters (`rl:*`), attestation nonces, SIM provider locks and limits (`sim:*`), the payment process watch key (read only) | core channels, simulator channels |
+| `ocpp` | station connection registry (`ocpp:conn:*`), known-good station credential digests (`ocpp:auth:*`) | core channels |
 | `worker` | BullMQ queues (`bull:*`), maintenance (`mfl:*`), station message (`sml:*`) and job (`wkl:*`) locks, the payment process watch key, the station connection registry (read only) | core channels |
 | `ocpi` | OCPI pull locks (`opl:*`) | `ocpp_commands`, `ocpp_command_results`, `csms_events`, `ocpi_*` |
 | `css` | none | `css_commands`, `css_command_results` |
@@ -577,13 +577,35 @@ Disabled by default. When enabled, deploys Prometheus, Grafana, Loki, and Alloy 
 ```yaml
 monitoring:
   enabled: true
+  grafana:
+    adminPassword: "<a strong password>"
   loki:
     enabled: true
   alloy:
     enabled: true
 ```
 
+`monitoring.grafana.adminPassword` is required while monitoring is on: the chart stores it in the Secret `<release>-grafana` and refuses to render without it.
+
 Grafana provisions Prometheus and Loki datasources with pre-built dashboards (system metrics, business metrics, logs).
+
+### Pod Security
+
+Every workload runs as a non-root user with a read-only root filesystem, `RuntimeDefault` seccomp, no privilege escalation and all capabilities dropped, so the namespace can enforce the Pod Security `restricted` profile. Each pod gets an `emptyDir` on `/tmp` (and Grafana on `/var/log/grafana`). The node images run as UID 1000, the CSMS and portal (`nginx-unprivileged`) as 101, Grafana 472, Prometheus 65534, Loki 10001, Alloy 473.
+
+### Security Headers
+
+The CSMS and portal nginx ConfigMaps send `Content-Security-Policy` (with `frame-ancestors 'none'`), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin` and `Strict-Transport-Security` on every page response.
+
+### Refused Values
+
+The chart refuses to render with `api.env.nodeEnv` other than `production`, `ocpp.env.trustedProxyCidrs` or `api.env.trustProxy` containing `0.0.0.0/0` or `::/0`, `monitoring.enabled` without `monitoring.grafana.adminPassword`, and on install a `secrets.jwtSecret` or `secrets.settingsEncryptionKey` shorter than 32 characters or equal to a published example value. Generate the secrets with `openssl rand -hex 32`.
+
+### Behind a Proxy
+
+Set `api.env.trustProxy` and `ocpp.env.trustedProxyCidrs` to the gateway pod range. Without them the API sees every request as plain HTTP from the gateway (sign-in cookies get no `Secure` flag, every client shares one rate limit), and the OCPP server counts every station as the gateway address for its per-IP limits (`ocpp.env.maxConnectionsPerIp`, `ocpp.env.maxPendingAuthPerIp`, default 50 authentications in progress per IP). The install notes warn when either is empty or the Gateway has no HTTPS listener.
+
+Security profile 3 needs the CA that issues the station certificates: the OCPP server reads it from `ca.crt` of `ocpp.tls.certSecret` and refuses profile 3 connections without it.
 
 ### Rate Limiting
 
