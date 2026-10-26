@@ -341,12 +341,12 @@ AI settings are app settings in the database, and provider API keys are stored e
 
 AI uploads wait under `ai-uploads/quarantine/` in the S3 bucket until their checks pass. On a bucket you manage yourself, add a lifecycle rule that expires objects under the `ai-uploads/quarantine/` prefix after 1 day.
 
-Support case and AI chat attachments upload straight from the browser to the bucket with a presigned POST. On a bucket you manage yourself, add a CORS rule that allows `POST` from the CSMS origin, for example:
+Support case and AI chat attachments, station images and driver avatars upload straight from the browser to the bucket with a presigned POST: attachments and images from the CSMS, avatars from the driver portal. On a bucket you manage yourself, add a CORS rule that allows `POST` from both the CSMS and the portal origins, for example:
 
 ```json
 [
   {
-    "AllowedOrigins": ["https://csms.example.com"],
+    "AllowedOrigins": ["https://csms.example.com", "https://portal.example.com"],
     "AllowedMethods": ["POST"],
     "AllowedHeaders": ["*"],
     "MaxAgeSeconds": 3000
