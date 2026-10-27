@@ -258,6 +258,13 @@ css:
     stationPassword: "password"
     stationLimit: "0"
     tlsRejectUnauthorized: "false"
+    # Hosts (host or host:port, comma-separated) simulator stations may upload logs to
+    # and download firmware from on a private address. Every other private address is
+    # refused; unroutable and cloud metadata addresses always are.
+    fileTransferAllowedHosts: ""
+    # SFTP server host key (OpenSSH SHA256 fingerprint) stations trust while
+    # tlsRejectUnauthorized is "true"; sftp:// transfers fail without it then.
+    sftpHostKeySha256: ""
   # Mount SP3 test certificates from a Kubernetes secret.
   # Secret must contain: client.pem, client-key.pem, ca.pem
   tls:

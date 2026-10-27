@@ -187,6 +187,10 @@ data:
   CSS_STATION_PASSWORD: {{ .Values.css.env.stationPassword | quote }}
   CSS_STATION_LIMIT: {{ .Values.css.env.stationLimit | quote }}
   TLS_REJECT_UNAUTHORIZED: {{ .Values.css.env.tlsRejectUnauthorized | quote }}
+  CSS_FILE_TRANSFER_ALLOWED_HOSTS: {{ .Values.css.env.fileTransferAllowedHosts | default "" | quote }}
+  {{- if .Values.css.env.sftpHostKeySha256 }}
+  CSS_SFTP_HOST_KEY_SHA256: {{ .Values.css.env.sftpHostKeySha256 | quote }}
+  {{- end }}
   {{- if .Values.ocpp.tls.enabled }}
   OCPP_TLS_SERVER_URL: "wss://{{ include "evtivity-csms.fullname" . }}-ocpp:{{ .Values.ocpp.tls.port }}"
   {{- end }}
