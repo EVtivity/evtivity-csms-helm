@@ -396,12 +396,14 @@ Passkeys and security keys (WebAuthn) need HTTPS on a domain. The two switches a
 
 ### SIM Provider Settings
 
-The SIM provider and station signal settings are app settings, also set in Settings > Integrations > SIM Providers. Both switches are off on a fresh install: nothing calls a SIM provider or reads a station until one is on. An empty value keeps the dashboard value and the key is not written. A value out of range, or of the wrong type, fails the render. The Hologram API key is a secret entered in the dashboard; the chart has no value for it.
+The SIM provider and station signal settings are app settings, also set in Settings > Integrations > SIM Providers. Both switches are off on a fresh install: nothing calls a SIM provider or reads a station until one is on. An empty value keeps the dashboard value and the key is not written. A value out of range, or of the wrong type, fails the render. The Hologram API key and the 1NCE client secret are secrets entered in the dashboard; the chart has no value for them (`appSettings.sim.oneNceClientSecret` fails the render).
 
 | Parameter | Setting |
 |-----------|---------|
 | `appSettings.sim.hologramEnabled` | Hologram SIM provider: `true` or `false` (off on a fresh install) |
 | `appSettings.sim.hologramOrgId` | Hologram organization id, 1 to 15 digits (quote it) |
+| `appSettings.sim.oneNceEnabled` | 1NCE SIM provider: `true` or `false` (off on a fresh install) |
+| `appSettings.sim.oneNceClientId` | 1NCE Management API client id (1NCE Portal, Account, Management API Access): 1 to 128 printable characters without a space or colon |
 | `appSettings.sim.sessionsFetchDays` | Default period of a Refresh in days, 1 to 31 (7 on a fresh install) |
 | `appSettings.sim.stationSignalEnabled` | Read the signal from stations on Refresh: `true` or `false` (off on a fresh install) |
 | `appSettings.sim.signalAlertBelowDbm` | Low signal alert threshold in dBm, -140 to -40 (off on a fresh install; turn it off in the dashboard) |

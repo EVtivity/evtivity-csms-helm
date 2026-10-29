@@ -157,11 +157,15 @@
 {{- end }}
 {{- /* SIM providers and station signal (Settings > Integrations > SIM Providers). Empty keeps
   the dashboard value and the key is not rendered. A set value renders as a JSON boolean,
-  number, string (the organization id) or list, the types and ranges the API accepts. The
-  Hologram API key is a secret entered in the dashboard, never a chart value. */}}
+  number, string (the organization id, the 1NCE client id) or list, the types and ranges the
+  API accepts. The Hologram API key and the 1NCE client secret are secrets entered in the
+  dashboard, never chart values. */}}
 {{- $simValues := .Values.appSettings.sim | default dict }}
 {{- $simSettings := dict }}
-{{- range $spec := list (list "hologramEnabled" "sim.hologram.enabled") (list "stationSignalEnabled" "sim.stationSignal.enabled") }}
+{{- if hasKey $simValues "oneNceClientSecret" }}
+{{- fail "appSettings.sim.oneNceClientSecret is not supported: the 1NCE client secret is entered in the dashboard (Settings > Integrations > SIM Providers), where it is stored encrypted." }}
+{{- end }}
+{{- range $spec := list (list "hologramEnabled" "sim.hologram.enabled") (list "oneNceEnabled" "sim.1nce.enabled") (list "stationSignalEnabled" "sim.stationSignal.enabled") }}
 {{- $name := index $spec 0 }}
 {{- $raw := index $simValues $name }}
 {{- if kindIs "bool" $raw }}
@@ -177,6 +181,16 @@
 {{- end }}
 {{- if ne $simOrgId "" }}
 {{- $_ := set $simSettings "sim.hologram.orgId" $simOrgId }}
+{{- end }}
+{{- /* The 1NCE client id: the rule of isOneNceClientId in @evtivity/lib/sim-settings (change
+  both together): 1 to 128 printable ASCII characters without a space or colon. */}}
+{{- $oneNceClientId := "" }}
+{{- if not (kindIs "invalid" $simValues.oneNceClientId) }}{{ $oneNceClientId = trim (toString $simValues.oneNceClientId) }}{{ end }}
+{{- if and (ne $oneNceClientId "") (not (regexMatch "^[!-9;-~]{1,128}$" $oneNceClientId)) }}
+{{- fail (printf "appSettings.sim.oneNceClientId %q is not supported. Use the 1NCE API client id (1 to 128 printable characters without a space or colon), or \"\" to keep the value set in the dashboard." $oneNceClientId) }}
+{{- end }}
+{{- if ne $oneNceClientId "" }}
+{{- $_ := set $simSettings "sim.1nce.clientId" $oneNceClientId }}
 {{- end }}
 {{- range $spec := list (list "sessionsFetchDays" "sim.sessions.fetchDays" 1 31) (list "signalAlertBelowDbm" "sim.signal.alertBelowDbm" -140 -40) (list "signalGoodDbm" "sim.signal.goodDbm" -140 -40) (list "signalFairDbm" "sim.signal.fairDbm" -140 -40) }}
 {{- $name := index $spec 0 }}

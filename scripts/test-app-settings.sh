@@ -576,7 +576,8 @@ fi
 # SIM provider and station signal settings (appSettings.sim): empty keeps the
 # dashboard value and the key is not rendered, a set value renders as a JSON
 # boolean, number, string (organization id) or list, anything else fails.
-SIM_KEYS='["sim.hologram.enabled","sim.hologram.orgId","sim.hologram.apiKeyEnc","sim.sessions.retentionDays",
+SIM_KEYS='["sim.hologram.enabled","sim.hologram.orgId","sim.hologram.apiKeyEnc","sim.1nce.enabled","sim.1nce.clientId",
+"sim.1nce.clientSecretEnc","sim.sessions.retentionDays",
 "sim.sessions.fetchDays","sim.stationSignal.enabled","sim.signal.alertBelowDbm","sim.ocpp16.signalKeys",
 "sim.signal.goodDbm","sim.signal.fairDbm"]'
 if render "$TMP/sim-default.json"; then
@@ -608,6 +609,17 @@ else
   bad "sim values file: render failed: $(head -1 "$TMP/render.err")"
 fi
 expect_fail "sim.hologramEnabled string" 'appSettings.sim.hologramEnabled "yes" is not supported' --set-string appSettings.sim.hologramEnabled=yes
+# 1NCE: the switch and the client id render; the client secret is refused.
+if render "$TMP/sim-1nce.json" --set appSettings.sim.oneNceEnabled=true --set-string 'appSettings.sim.oneNceClientId= client-1.A_b '; then
+  if r=$(expect_json "$TMP/sim-1nce.json" '{"sim.1nce.enabled":true,"sim.1nce.clientId":"client-1.A_b"}'); then ok; else bad "sim 1nce set: $r"; fi
+else
+  bad "sim 1nce set: render failed: $(head -1 "$TMP/render.err")"
+fi
+expect_fail "sim.oneNceEnabled string" 'appSettings.sim.oneNceEnabled "yes" is not supported' --set-string appSettings.sim.oneNceEnabled=yes
+expect_fail "sim.oneNceClientId colon" 'appSettings.sim.oneNceClientId "user:pass" is not supported' --set-string 'appSettings.sim.oneNceClientId=user:pass'
+expect_fail "sim.oneNceClientId space" 'appSettings.sim.oneNceClientId "two words" is not supported' --set-string 'appSettings.sim.oneNceClientId=two words'
+expect_fail "sim.oneNceClientId too long" 'appSettings.sim.oneNceClientId' --set-string "appSettings.sim.oneNceClientId=$(printf 'x%.0s' $(seq 1 129))"
+expect_fail "sim.oneNceClientSecret" 'appSettings.sim.oneNceClientSecret is not supported' --set-string appSettings.sim.oneNceClientSecret=secret
 expect_fail "sim.stationSignalEnabled quoted" 'appSettings.sim.stationSignalEnabled "true" is not supported' --set-string appSettings.sim.stationSignalEnabled=true
 expect_fail "sim.hologramOrgId letters" 'appSettings.sim.hologramOrgId "org-12" is not supported' --set appSettings.sim.hologramOrgId=org-12
 expect_fail "sim.hologramOrgId too long" 'appSettings.sim.hologramOrgId "1234567890123456" is not supported' --set-string appSettings.sim.hologramOrgId=1234567890123456

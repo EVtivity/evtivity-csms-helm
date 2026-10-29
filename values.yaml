@@ -866,12 +866,18 @@ appSettings:
   # SIM providers and station signal (Settings > Integrations > SIM Providers).
   # Off on a fresh install: nothing calls a provider or reads a station until a
   # switch is on. Leave a value empty to keep the dashboard value. The Hologram
-  # API key is a secret: enter it in the dashboard, it is not a chart value.
+  # API key and the 1NCE client secret are secrets: enter them in the
+  # dashboard, they are not chart values.
   sim:
     # Hologram SIM provider: true, false, or "" to keep the dashboard value.
     hologramEnabled: ""
     # Hologram organization id, 1 to 15 digits. Quote it in a values file.
     hologramOrgId: ""
+    # 1NCE SIM provider: true, false, or "" to keep the dashboard value.
+    oneNceEnabled: ""
+    # 1NCE Management API client id (1NCE Portal, Account, Management API
+    # Access): 1 to 128 printable characters without a space or colon.
+    oneNceClientId: ""
     # Default period of a Refresh in days, whole number from 1 to 31 (7 on a
     # fresh install).
     sessionsFetchDays: ""
