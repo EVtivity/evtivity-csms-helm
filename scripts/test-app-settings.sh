@@ -662,6 +662,72 @@ for spec in 'simProviders.testBaseUrl|simProviders.testBaseUrl is not supported'
   done
 done
 
+# Payment terminal settings (appSettings.paymentTerminals): empty keeps the
+# dashboard value and the key is not rendered; the secrets are refused.
+TERMINAL_KEYS='["paymentTerminals.idtech.enabled","paymentTerminals.idtech.environment","paymentTerminals.idtech.merchantId",
+"paymentTerminals.idtech.apiKeyEnc","paymentTerminals.idtech.apiSecretEnc","paymentTerminals.idtech.webhookSecretEnc"]'
+if render "$TMP/terminal-default.json"; then
+  if node -e '
+    const got = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+    const present = JSON.parse(process.argv[2]).filter((k) => k in got);
+    if (present.length) { console.log("rendered " + present.join(", ")); process.exit(1); }
+  ' "$TMP/terminal-default.json" "$TERMINAL_KEYS"; then ok; else bad "terminal default: keys rendered"; fi
+else
+  bad "terminal default: render failed: $(head -1 "$TMP/render.err")"
+fi
+if render "$TMP/terminal-old.json" --set appSettings.paymentTerminals=null; then ok; else
+  bad "terminal without the block: render failed: $(head -1 "$TMP/render.err")"
+fi
+if render "$TMP/terminal-set.json" --set appSettings.paymentTerminals.idtechEnabled=true \
+  --set appSettings.paymentTerminals.idtechEnvironment=production --set-string 'appSettings.paymentTerminals.idtechMerchantId= merchant_01-A '; then
+  if r=$(expect_json "$TMP/terminal-set.json" '{"paymentTerminals.idtech.enabled":true,"paymentTerminals.idtech.environment":"production","paymentTerminals.idtech.merchantId":"merchant_01-A"}'); then ok; else bad "terminal set: $r"; fi
+else
+  bad "terminal set: render failed: $(head -1 "$TMP/render.err")"
+fi
+printf 'appSettings:\n  paymentTerminals:\n    idtechEnabled: false\n    idtechMerchantId: 123456\n' > "$TMP/terminal-values.yaml"
+if render "$TMP/terminal-file.json" -f "$TMP/terminal-values.yaml"; then
+  if r=$(expect_json "$TMP/terminal-file.json" '{"paymentTerminals.idtech.enabled":false,"paymentTerminals.idtech.merchantId":"123456"}'); then ok; else bad "terminal values file: $r"; fi
+else
+  bad "terminal values file: render failed: $(head -1 "$TMP/render.err")"
+fi
+expect_fail "paymentTerminals.idtechEnabled string" 'appSettings.paymentTerminals.idtechEnabled "yes" is not supported' --set-string appSettings.paymentTerminals.idtechEnabled=yes
+expect_fail "paymentTerminals.idtechEnvironment" 'appSettings.paymentTerminals.idtechEnvironment "live" is not supported' --set appSettings.paymentTerminals.idtechEnvironment=live
+expect_fail "paymentTerminals.idtechMerchantId space" 'appSettings.paymentTerminals.idtechMerchantId "two words" is not supported' --set-string 'appSettings.paymentTerminals.idtechMerchantId=two words'
+expect_fail "paymentTerminals.idtechMerchantId too long" 'appSettings.paymentTerminals.idtechMerchantId' --set-string "appSettings.paymentTerminals.idtechMerchantId=$(printf 'm%.0s' $(seq 1 65))"
+for name in idtechApiKey idtechApiSecret idtechWebhookSecret; do
+  expect_fail "paymentTerminals.$name" "appSettings.paymentTerminals.$name is not supported" --set-string "appSettings.paymentTerminals.$name=secret"
+done
+
+# PAYMENT_TERMINALS_ALLOW_SIMULATED follows paymentTerminals.allowSimulatedProvider
+# (false by default), and PAYMENT_TERMINAL_TEST_BASE_URL (the terminal mock) is
+# for the local Compose stack only: any chart value for it fails the render.
+if sim_cm_render; then
+  if grep -q 'PAYMENT_TERMINALS_ALLOW_SIMULATED: "false"' "$TMP/simcm.yaml"; then ok; else bad "terminal simulated default: not false"; fi
+  if grep -q 'PAYMENT_TERMINAL_TEST_BASE_URL' "$TMP/simcm.yaml"; then bad "terminal mock default: rendered"; else ok; fi
+else
+  bad "terminal default: render failed: $(head -1 "$TMP/simcm.err")"
+fi
+if sim_cm_render --set paymentTerminals.allowSimulatedProvider=true; then
+  if grep -q 'PAYMENT_TERMINALS_ALLOW_SIMULATED: "true"' "$TMP/simcm.yaml"; then ok; else bad "terminal simulated on: not true"; fi
+else
+  bad "terminal simulated on: render failed: $(head -1 "$TMP/simcm.err")"
+fi
+if sim_cm_render --set-string paymentTerminals.allowSimulatedProvider=yes; then
+  bad "terminal simulated string: render passed"
+elif grep -qF 'paymentTerminals.allowSimulatedProvider "yes" is not supported' "$TMP/simcm.err"; then ok; else
+  bad "terminal simulated string: wrong error: $(head -1 "$TMP/simcm.err")"
+fi
+for spec in 'paymentTerminals.testBaseUrl|paymentTerminals.testBaseUrl is not supported' 'api.env.paymentTerminalTestBaseUrl|api.env.paymentTerminalTestBaseUrl is not supported' 'ocpp.env.paymentTerminalTestBaseUrl|ocpp.env.paymentTerminalTestBaseUrl is not supported' 'worker.env.paymentTerminalTestBaseUrl|worker.env.paymentTerminalTestBaseUrl is not supported' 'ocpi.env.paymentTerminalTestBaseUrl|ocpi.env.paymentTerminalTestBaseUrl is not supported'; do
+  key="${spec%%|*}"
+  want="${spec#*|}"
+  for value in 'http://terminal-mock:8080' ''; do
+    if sim_cm_render --set "$key=$value"; then
+      bad "terminal mock $key=$value: render passed"
+    elif grep -qF "$want" "$TMP/simcm.err"; then ok; else
+      bad "terminal mock $key=$value: wrong error: $(head -1 "$TMP/simcm.err")"
+    fi
+  done
+done
 
 # Data retention is set in the CSMS under Settings > Data Retention (v0.1.48):
 # the chart renders no retention setting and refuses every old value.

@@ -410,6 +410,19 @@ The SIM provider and station signal settings are app settings, also set in Setti
 | `appSettings.sim.ocpp16SignalKeys` | OCPP 1.6 configuration keys read for the signal, for example `[SignalStrength]`: at most 20 names of at most 50 characters, each listed once |
 | `appSettings.sim.signalGoodDbm`, `signalFairDbm` | Signal grade thresholds in dBm, -140 to -40, good above fair (-65 and -85 on a fresh install) |
 
+### Payment Terminal Settings
+
+The ID TECH payment terminal settings are app settings, also set in Settings > Integrations > Payment Terminals. The provider is off on a fresh install. An empty value keeps the dashboard value and the key is not written. A value out of range, or of the wrong type, fails the render. The ID TECH API key, API secret and webhook secret are secrets entered in the dashboard; the chart has no value for them (`appSettings.paymentTerminals.idtechApiKey`, `idtechApiSecret` and `idtechWebhookSecret` fail the render).
+
+| Parameter | Setting |
+|-----------|---------|
+| `appSettings.paymentTerminals.idtechEnabled` | ID TECH payment terminal provider: `true` or `false` (off on a fresh install) |
+| `appSettings.paymentTerminals.idtechEnvironment` | ID TECH environment: `sandbox` or `production` (`sandbox` on a fresh install) |
+| `appSettings.paymentTerminals.idtechMerchantId` | ID TECH merchant id: 1 to 64 letters, numbers, `_` or `-` |
+| `paymentTerminals.allowSimulatedProvider` | Allows the simulated payment terminal provider in the API and worker, `PAYMENT_TERMINALS_ALLOW_SIMULATED`: `false` (default) or `true`. It moves no money, so keep it `false` in production |
+
+`PAYMENT_TERMINAL_TEST_BASE_URL`, which points the ID TECH adapter at a local mock server, is for the local development stack only: the render fails when `paymentTerminals.testBaseUrl` or `<api|ocpp|worker|ocpi>.env.paymentTerminalTestBaseUrl` is set.
+
 ### OCPP Data Plan Settings
 
 The OCPP values sent to stations at every boot are app settings, one set per station data plan, also set in Settings > Integrations & Features > OCPP. `appSettings.ocpp` is the Wi-Fi or wired plan (the default; `meterValueInterval` and `sampledMeasurands` are its AC readings while charging), `appSettings.ocpp.dc` its DC readings while charging, and `appSettings.ocpp.cellular` (with `cellular.dc`) the Cellular plan. An empty value keeps the dashboard value and the key is not written; the database migration seeds the shipped values. A value out of range, or a measurand list that is not comma-separated names, fails the render.

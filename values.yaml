@@ -363,6 +363,17 @@ seedDemo:
 payments:
   allowSimulatedProvider: false
 
+# --- Payment terminals ---
+# Allows the simulated payment terminal provider in the API and worker
+# (PAYMENT_TERMINALS_ALLOW_SIMULATED). It moves no money, so keep it false in
+# production. The demo seed creates no terminals, so seedDemo does not need it.
+# The CSMS can point its ID TECH terminal adapter at a local mock server
+# (PAYMENT_TERMINAL_TEST_BASE_URL). It is for the local Docker Compose stack
+# only: the chart never sets it and fails the render when
+# paymentTerminals.testBaseUrl or <api|ocpp|worker|ocpi>.env.paymentTerminalTestBaseUrl is set.
+paymentTerminals:
+  allowSimulatedProvider: false
+
 # --- Notification test sink ---
 # The CSMS can send driver SMS and push to a local test service instead of
 # Twilio and Expo (NOTIFICATIONS_ALLOW_TEST_SINK, NOTIFICATIONS_TEST_SINK_URL).
@@ -897,6 +908,17 @@ appSettings:
     # fair (-65 and -85 on a fresh install).
     signalGoodDbm: ""
     signalFairDbm: ""
+  # Payment terminals, the ID TECH provider (Settings > Integrations > Payment
+  # Terminals). Off on a fresh install. Leave a value empty to keep the
+  # dashboard value. The ID TECH API key, API secret and webhook secret are
+  # secrets: enter them in the dashboard, they are not chart values.
+  paymentTerminals:
+    # ID TECH provider: true, false, or "" to keep the dashboard value.
+    idtechEnabled: ""
+    # ID TECH environment: sandbox or production (sandbox on a fresh install).
+    idtechEnvironment: ""
+    # ID TECH merchant id: 1 to 64 letters, numbers, _ or -.
+    idtechMerchantId: ""
   portal:
     registrationEnabled: true
   mobile:

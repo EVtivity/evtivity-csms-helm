@@ -18,6 +18,24 @@ data:
   {{- fail "seedDemo needs payments.allowSimulatedProvider=true: demo drivers pay with simulated cards." }}
   {{- end }}
   PAYMENTS_ALLOW_SIMULATED: {{ if $allowSimulated }}"true"{{ else }}"false"{{ end }}
+  {{- /* The simulated payment terminal provider moves no money either (api and worker). */}}
+  {{- $paymentTerminals := .Values.paymentTerminals | default dict }}
+  {{- $allowSimulatedTerminals := $paymentTerminals.allowSimulatedProvider | default false }}
+  {{- if not (kindIs "bool" $allowSimulatedTerminals) }}
+  {{- fail (printf "paymentTerminals.allowSimulatedProvider %q is not supported. Use true or false." (toString $allowSimulatedTerminals)) }}
+  {{- end }}
+  PAYMENT_TERMINALS_ALLOW_SIMULATED: {{ if $allowSimulatedTerminals }}"true"{{ else }}"false"{{ end }}
+  {{- /* The payment terminal mock (PAYMENT_TERMINAL_TEST_BASE_URL points the ID TECH
+         adapter at a local mock server) is for the local Compose stack only. */}}
+  {{- if hasKey $paymentTerminals "testBaseUrl" }}
+  {{- fail "paymentTerminals.testBaseUrl is not supported: the payment terminal mock is for the local development stack only. Remove it from your values." }}
+  {{- end }}
+  {{- range $component := list "api" "ocpp" "worker" "ocpi" }}
+  {{- $env := (get $.Values $component | default dict).env | default dict }}
+  {{- if hasKey $env "paymentTerminalTestBaseUrl" }}
+  {{- fail (printf "%s.env.paymentTerminalTestBaseUrl is not supported: the payment terminal mock is for the local development stack only. Remove it from your values." $component) }}
+  {{- end }}
+  {{- end }}
   {{- /* The notification test sink (driver SMS and push to a local dev service
          instead of Twilio and Expo) is for the local Compose stack only. */}}
   {{- $notifications := .Values.notifications | default dict }}

@@ -235,6 +235,40 @@
 {{- else if not (or (kindIs "invalid" $simSignalKeys) (eq (toString $simSignalKeys) "")) }}
 {{- fail "appSettings.sim.ocpp16SignalKeys must be a list of OCPP 1.6 configuration key names, for example [SignalStrength], or [] to keep the value set in the dashboard." }}
 {{- end }}
+{{- /* Payment terminals, the ID TECH provider (Settings > Integrations > Payment Terminals).
+  Empty keeps the dashboard value and the key is not rendered. The API key, API secret and
+  webhook secret are secrets entered in the dashboard, never chart values. The rules match
+  isIdtechEnvironment and isIdtechMerchantId in @evtivity/lib/payment-terminal-settings
+  (change both together). */}}
+{{- $terminalValues := .Values.appSettings.paymentTerminals | default dict }}
+{{- $terminalSettings := dict }}
+{{- range $name := list "idtechApiKey" "idtechApiSecret" "idtechWebhookSecret" }}
+{{- if hasKey $terminalValues $name }}
+{{- fail (printf "appSettings.paymentTerminals.%s is not supported: the ID TECH credentials are entered in the dashboard (Settings > Integrations > Payment Terminals), where they are stored encrypted." $name) }}
+{{- end }}
+{{- end }}
+{{- $idtechEnabled := $terminalValues.idtechEnabled }}
+{{- if kindIs "bool" $idtechEnabled }}
+{{- $_ := set $terminalSettings "paymentTerminals.idtech.enabled" $idtechEnabled }}
+{{- else if not (or (kindIs "invalid" $idtechEnabled) (eq (toString $idtechEnabled) "")) }}
+{{- fail (printf "appSettings.paymentTerminals.idtechEnabled %q is not supported. Use true, false, or \"\" to keep the value set in the dashboard." (toString $idtechEnabled)) }}
+{{- end }}
+{{- $idtechEnvironment := "" }}
+{{- if not (kindIs "invalid" $terminalValues.idtechEnvironment) }}{{ $idtechEnvironment = trim (toString $terminalValues.idtechEnvironment) }}{{ end }}
+{{- if and (ne $idtechEnvironment "") (not (has $idtechEnvironment (list "sandbox" "production"))) }}
+{{- fail (printf "appSettings.paymentTerminals.idtechEnvironment %q is not supported. Use sandbox, production, or \"\" to keep the value set in the dashboard." $idtechEnvironment) }}
+{{- end }}
+{{- if ne $idtechEnvironment "" }}
+{{- $_ := set $terminalSettings "paymentTerminals.idtech.environment" $idtechEnvironment }}
+{{- end }}
+{{- $idtechMerchantId := "" }}
+{{- if kindIs "float64" $terminalValues.idtechMerchantId }}{{ $idtechMerchantId = ternary (toString (int64 $terminalValues.idtechMerchantId)) (toString $terminalValues.idtechMerchantId) (eq $terminalValues.idtechMerchantId (floor $terminalValues.idtechMerchantId)) }}{{ else if not (kindIs "invalid" $terminalValues.idtechMerchantId) }}{{ $idtechMerchantId = trim (toString $terminalValues.idtechMerchantId) }}{{ end }}
+{{- if and (ne $idtechMerchantId "") (not (regexMatch "^[A-Za-z0-9_-]{1,64}$" $idtechMerchantId)) }}
+{{- fail (printf "appSettings.paymentTerminals.idtechMerchantId %q is not supported. Use the ID TECH merchant id (1 to 64 letters, numbers, _ or -), or \"\" to keep the value set in the dashboard." $idtechMerchantId) }}
+{{- end }}
+{{- if ne $idtechMerchantId "" }}
+{{- $_ := set $terminalSettings "paymentTerminals.idtech.merchantId" $idtechMerchantId }}
+{{- end }}
 {{- $invoice := .Values.appSettings.invoice | default dict }}
 {{- $paymentTermsDays := "" }}
 {{- if kindIs "float64" $invoice.paymentTermsDays }}{{ $paymentTermsDays = ternary (toString (int64 $invoice.paymentTermsDays)) (toString $invoice.paymentTermsDays) (eq $invoice.paymentTermsDays (floor $invoice.paymentTermsDays)) }}{{ else if not (kindIs "invalid" $invoice.paymentTermsDays) }}{{ $paymentTermsDays = toString $invoice.paymentTermsDays }}{{ end }}
@@ -620,6 +654,9 @@ data:
       {{ $key | toJson }}: {{ $value | toJson }},
       {{- end }}
       {{- range $key, $value := $simSettings }}
+      {{ $key | toJson }}: {{ $value | toJson }},
+      {{- end }}
+      {{- range $key, $value := $terminalSettings }}
       {{ $key | toJson }}: {{ $value | toJson }},
       {{- end }}
       "portal.registrationEnabled": {{ .Values.appSettings.portal.registrationEnabled | toJson }},
