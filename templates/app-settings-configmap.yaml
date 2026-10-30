@@ -269,6 +269,103 @@
 {{- if ne $idtechMerchantId "" }}
 {{- $_ := set $terminalSettings "paymentTerminals.idtech.merchantId" $idtechMerchantId }}
 {{- end }}
+{{- /* Object storage provider (Settings > Integrations > S3): s3 (AWS S3) or s3-compatible
+  (MinIO, Wasabi and the like at a custom endpoint). Empty keeps the dashboard value and the
+  key is not rendered. The rules follow validateStorageEndpoint and
+  parseStorageAllowedPrivateHosts in @evtivity/services/storage (change both together): the
+  endpoint is the origin of an http(s) URL without credentials, path, query or fragment; a
+  public host must use https; a private host must be listed in allowedPrivateHosts (it may
+  then use http); an unroutable or cloud metadata address (0.0.0.0/8, 169.254.0.0/16,
+  multicast and reserved, ::, fe80::/10, ff00::/8, fd00:ec2::254, 64:ff9b:1::/48) is refused
+  even when listed. The API checks again when it loads the settings. */}}
+{{- $s3Values := .Values.appSettings.s3 | default dict }}
+{{- $storageSettings := dict }}
+{{- $s3Provider := "" }}
+{{- if not (kindIs "invalid" $s3Values.provider) }}{{ $s3Provider = trim (toString $s3Values.provider) }}{{ end }}
+{{- if and (ne $s3Provider "") (not (has $s3Provider (list "s3" "s3-compatible"))) }}
+{{- fail (printf "appSettings.s3.provider %q is not supported. Use s3, s3-compatible, or \"\" to keep the value set in the dashboard." $s3Provider) }}
+{{- end }}
+{{- $s3Endpoint := "" }}
+{{- if not (kindIs "invalid" $s3Values.endpoint) }}{{ $s3Endpoint = trim (toString $s3Values.endpoint) }}{{ end }}
+{{- $s3PathStyle := $s3Values.forcePathStyle }}
+{{- if not (or (kindIs "bool" $s3PathStyle) (kindIs "invalid" $s3PathStyle) (eq (toString $s3PathStyle) "")) }}
+{{- fail (printf "appSettings.s3.forcePathStyle %q is not supported. Use true, false, or \"\" to keep the value set in the dashboard." (toString $s3PathStyle)) }}
+{{- end }}
+{{- $unroutableV4 := "^(0\\.|169\\.254\\.|22[4-9]\\.|2[3-5][0-9]\\.)" }}
+{{- $unroutableV6 := "^(::|fe[89ab][0-9a-f]?:.*|ff[0-9a-f]{0,2}:.*|fd00:ec2::254|64:ff9b:1:.*)$" }}
+{{- $s3Hosts := list }}
+{{- $rawHosts := $s3Values.allowedPrivateHosts }}
+{{- if kindIs "slice" $rawHosts }}
+{{- if gt (len $rawHosts) 20 }}
+{{- fail "appSettings.s3.allowedPrivateHosts lists more than 20 hosts. List at most 20." }}
+{{- end }}
+{{- range $item := $rawHosts }}
+{{- if not (kindIs "string" $item) }}
+{{- fail (printf "appSettings.s3.allowedPrivateHosts entry %v is not a host name or IP address." $item) }}
+{{- end }}
+{{- $host := lower (trim $item) }}
+{{- $isV4 := regexMatch "^[0-9]{1,3}(\\.[0-9]{1,3}){3}$" $host }}
+{{- $isV6 := and (contains ":" $host) (regexMatch "^[0-9a-f:.]+$" $host) }}
+{{- $isName := and (le (len $host) 253) (regexMatch "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$" $host) }}
+{{- if not (or $isV4 $isV6 $isName) }}
+{{- fail (printf "appSettings.s3.allowedPrivateHosts entry %q is not a host name or IP address. Give the host without a scheme or port, for example minio.internal.example." $host) }}
+{{- end }}
+{{- if or (and $isV4 (regexMatch $unroutableV4 $host)) (and $isV6 (regexMatch $unroutableV6 $host)) }}
+{{- fail (printf "appSettings.s3.allowedPrivateHosts entry %q is an unroutable or cloud metadata address, which storage never reaches." $host) }}
+{{- end }}
+{{- $s3Hosts = append $s3Hosts $host }}
+{{- end }}
+{{- $s3Hosts = uniq $s3Hosts }}
+{{- else if not (or (kindIs "invalid" $rawHosts) (eq (toString $rawHosts) "")) }}
+{{- fail "appSettings.s3.allowedPrivateHosts must be a list of host names or IP addresses, or [] to keep the value set in the dashboard." }}
+{{- end }}
+{{- if eq $s3Provider "s3" }}
+{{- if or (ne $s3Endpoint "") (eq (toString $s3PathStyle) "true") (gt (len $s3Hosts) 0) }}
+{{- fail "appSettings.s3.endpoint, forcePathStyle and allowedPrivateHosts are used by s3-compatible only. Clear them, or set appSettings.s3.provider to s3-compatible." }}
+{{- end }}
+{{- else if ne $s3Provider "s3-compatible" }}
+{{- if or (ne $s3Endpoint "") (kindIs "bool" $s3PathStyle) (gt (len $s3Hosts) 0) }}
+{{- fail "appSettings.s3.endpoint, forcePathStyle and allowedPrivateHosts need appSettings.s3.provider s3-compatible." }}
+{{- end }}
+{{- end }}
+{{- if eq $s3Provider "s3-compatible" }}
+{{- if eq $s3Endpoint "" }}
+{{- fail "appSettings.s3.provider s3-compatible needs appSettings.s3.endpoint, for example https://s3.example.com." }}
+{{- end }}
+{{- $endpointPattern := "^(https?)://([a-zA-Z0-9.-]+|\\[[0-9a-fA-F:.]+\\])(:[0-9]{1,5})?/?$" }}
+{{- if not (regexMatch $endpointPattern $s3Endpoint) }}
+{{- fail (printf "appSettings.s3.endpoint %q is not supported. Use the origin of an http(s) URL without credentials, path, query or fragment, for example https://s3.example.com." $s3Endpoint) }}
+{{- end }}
+{{- $scheme := regexReplaceAll $endpointPattern $s3Endpoint "${1}" }}
+{{- $endpointHost := lower (trimSuffix "." (trimAll "[]" (regexReplaceAll $endpointPattern $s3Endpoint "${2}"))) }}
+{{- $endpointPort := regexReplaceAll $endpointPattern $s3Endpoint "${3}" }}
+{{- $endpointV4 := regexMatch "^[0-9]{1,3}(\\.[0-9]{1,3}){3}$" $endpointHost }}
+{{- $endpointV6 := contains ":" $endpointHost }}
+{{- if or (and $endpointV4 (regexMatch $unroutableV4 $endpointHost)) (and $endpointV6 (regexMatch $unroutableV6 $endpointHost)) }}
+{{- fail (printf "appSettings.s3.endpoint %q names an unroutable or cloud metadata address, which storage never reaches." $s3Endpoint) }}
+{{- end }}
+{{- if not (has $endpointHost $s3Hosts) }}
+{{- $privateV4 := "^(10\\.|127\\.|100\\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.|192\\.168\\.|192\\.0\\.[02]\\.|198\\.1[89]\\.|198\\.51\\.100\\.|203\\.0\\.113\\.|192\\.88\\.99\\.)" }}
+{{- $privateV6 := "^(::1?|f[c-d][0-9a-f]{0,2}:.*|fe[c-f][0-9a-f]?:.*|2001:db8:.*|::ffff:.*)$" }}
+{{- $privateName := or (eq $endpointHost "localhost") (hasSuffix ".local" $endpointHost) (hasSuffix ".internal" $endpointHost) (hasSuffix ".localhost" $endpointHost) }}
+{{- if or $privateName (and $endpointV4 (regexMatch $privateV4 $endpointHost)) (and $endpointV6 (regexMatch $privateV6 $endpointHost)) }}
+{{- fail (printf "appSettings.s3.endpoint %q names a private or internal host. List the host in appSettings.s3.allowedPrivateHosts to allow it." $s3Endpoint) }}
+{{- end }}
+{{- if ne $scheme "https" }}
+{{- fail (printf "appSettings.s3.endpoint %q must use https on a public host. Only a host listed in appSettings.s3.allowedPrivateHosts may use http." $s3Endpoint) }}
+{{- end }}
+{{- end }}
+{{- $_ := set $storageSettings "s3.endpoint" (printf "%s://%s%s" $scheme (ternary (printf "[%s]" $endpointHost) $endpointHost $endpointV6) $endpointPort) }}
+{{- end }}
+{{- if ne $s3Provider "" }}
+{{- $_ := set $storageSettings "s3.provider" $s3Provider }}
+{{- end }}
+{{- if kindIs "bool" $s3PathStyle }}
+{{- $_ := set $storageSettings "s3.forcePathStyle" $s3PathStyle }}
+{{- end }}
+{{- if gt (len $s3Hosts) 0 }}
+{{- $_ := set $storageSettings "s3.allowedPrivateHosts" $s3Hosts }}
+{{- end }}
 {{- $invoice := .Values.appSettings.invoice | default dict }}
 {{- $paymentTermsDays := "" }}
 {{- if kindIs "float64" $invoice.paymentTermsDays }}{{ $paymentTermsDays = ternary (toString (int64 $invoice.paymentTermsDays)) (toString $invoice.paymentTermsDays) (eq $invoice.paymentTermsDays (floor $invoice.paymentTermsDays)) }}{{ else if not (kindIs "invalid" $invoice.paymentTermsDays) }}{{ $paymentTermsDays = toString $invoice.paymentTermsDays }}{{ end }}
@@ -683,8 +780,11 @@ data:
       "ftp.port": {{ .Values.appSettings.ftp.port | toJson }},
       "ftp.username": {{ .Values.appSettings.ftp.username | toJson }},
       "ftp.path": {{ .Values.appSettings.ftp.path | toJson }},
-      "s3.bucket": {{ .Values.appSettings.s3.bucket | toJson }},
-      "s3.region": {{ .Values.appSettings.s3.region | toJson }},
+      "s3.bucket": {{ $s3Values.bucket | default "" | toJson }},
+      "s3.region": {{ $s3Values.region | default "" | toJson }},
+      {{- range $key, $value := $storageSettings }}
+      {{ $key | toJson }}: {{ $value | toJson }},
+      {{- end }}
       "payments.provider": {{ $paymentProvider | toJson }},
       "payments.preAuthAmountCents": {{ if eq $preAuthAmountCents "" }}""{{ else }}{{ atoi $preAuthAmountCents }}{{ end }},
       "payments.platformFeePercent": {{ if eq $platformFeePercent "" }}""{{ else }}{{ float64 $platformFeePercent | toJson }}{{ end }},

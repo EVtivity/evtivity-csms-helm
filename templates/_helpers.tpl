@@ -287,18 +287,51 @@ every location of the nginx ConfigMaps, because nginx drops server-level
 add_header in a location that sets its own. frame-ancestors works only as a
 header. Referrer-Policy keeps the origin: Google Maps keys restricted by referrer
 need it. Browsers apply HSTS only on responses that reached them over HTTPS.
-Usage: include "evtivity-csms.nginxSecurityHeaders" "csms" (or "portal")
+The img-src also lists the object storage origins of storage.imgSrc (the
+images' STORAGE_IMG_SRC), after https://*.amazonaws.com.
+Usage: include "evtivity-csms.nginxSecurityHeaders" (dict "app" "csms" "context" $) (app "portal" for the portal)
 */}}
 {{- define "evtivity-csms.nginxSecurityHeaders" -}}
-{{- $csp := "default-src 'self'; script-src 'self' https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/ https://www.googletagmanager.com https://maps.googleapis.com https://js.stripe.com https://m.stripe.network https://*.adyen.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://maps.gstatic.com https://maps.googleapis.com https://*.ggpht.com https://*.googleusercontent.com https://*.amazonaws.com https://*.stripe.com https://*.adyen.com; connect-src 'self' http: https:; frame-src 'self' https://www.google.com/recaptcha/ https://www.google.com/maps/ https://js.stripe.com https://hooks.stripe.com https://m.stripe.network https:; object-src 'none'; base-uri 'self'; form-action 'self' https:; frame-ancestors 'none'" -}}
-{{- if eq . "portal" -}}
+{{- $app := .app -}}
+{{- $storageOrigins := include "evtivity-csms.storageImgSrc" .context -}}
+{{- $csp :="default-src 'self'; script-src 'self' https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/ https://www.googletagmanager.com https://maps.googleapis.com https://js.stripe.com https://m.stripe.network https://*.adyen.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://maps.gstatic.com https://maps.googleapis.com https://*.ggpht.com https://*.googleusercontent.com https://*.amazonaws.com https://*.stripe.com https://*.adyen.com; connect-src 'self' http: https:; frame-src 'self' https://www.google.com/recaptcha/ https://www.google.com/maps/ https://js.stripe.com https://hooks.stripe.com https://m.stripe.network https:; object-src 'none'; base-uri 'self'; form-action 'self' https:; frame-ancestors 'none'" -}}
+{{- if eq $app "portal" -}}
 {{- $csp = "default-src 'self'; script-src 'self' https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/ https://www.googletagmanager.com https://js.stripe.com https://m.stripe.network https://maps.googleapis.com https://*.adyen.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.stripe.com https://maps.gstatic.com https://maps.googleapis.com https://*.ggpht.com https://*.googleusercontent.com https://*.amazonaws.com https://*.adyen.com; connect-src 'self' http: https:; frame-src 'self' https://www.google.com/recaptcha/ https://js.stripe.com https://hooks.stripe.com https://m.stripe.network https:; object-src 'none'; base-uri 'self'; form-action 'self' https:; frame-ancestors 'none'" -}}
+{{- end -}}
+{{- if ne $storageOrigins "" -}}
+{{- $csp = replace "https://*.amazonaws.com" (printf "https://*.amazonaws.com %s" $storageOrigins) $csp -}}
 {{- end -}}
 add_header Content-Security-Policy "{{ $csp }}" always;
 add_header X-Frame-Options "DENY" always;
 add_header X-Content-Type-Options "nosniff" always;
 add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 add_header Strict-Transport-Security "max-age=31536000" always;
+{{- end }}
+
+{{/*
+The object storage origins of storage.imgSrc, space-separated, for the CSP
+img-src of the CSMS and portal pages (images stored with an S3-compatible
+provider). Each origin is scheme://host[:port] with an optional *. wildcard, the
+grammar of the images' docker-security-headers.sh (STORAGE_IMG_SRC): change both
+together. Anything else fails the render, so the value cannot change the rest of
+the policy. Empty when unset.
+*/}}
+{{- define "evtivity-csms.storageImgSrc" -}}
+{{- $raw := (.Values.storage | default dict).imgSrc -}}
+{{- if kindIs "invalid" $raw }}{{ $raw = "" }}{{ end -}}
+{{- if not (kindIs "string" $raw) -}}
+{{- fail "storage.imgSrc must be a string of space-separated origins, for example \"https://s3.example.com http://minio.local:9000\"." -}}
+{{- end -}}
+{{- $origins := list -}}
+{{- if ne (trim $raw) "" -}}
+{{- range $origin := regexSplit "\\s+" (trim $raw) -1 -}}
+{{- if not (regexMatch "^https?://(\\*\\.)?[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?(:[0-9]{1,5})?$" $origin) -}}
+{{- fail (printf "storage.imgSrc: invalid origin %q (expected scheme://host[:port], for example https://s3.example.com)." $origin) -}}
+{{- end -}}
+{{- $origins = append $origins $origin -}}
+{{- end -}}
+{{- end -}}
+{{- join " " $origins -}}
 {{- end }}
 
 {{/*

@@ -243,6 +243,18 @@ portal:
   affinity: {}
   podAnnotations: {}
 
+# --- Object storage image origins ---
+storage:
+  # Origins the CSMS and the driver portal may load stored images from, added to
+  # the CSP img-src of both (the images' STORAGE_IMG_SRC). Space-separated, each
+  # scheme://host[:port] with an optional *. wildcard, for example
+  # "https://s3.example.com http://minio.internal.example:9000". Needed for an
+  # S3-compatible provider (appSettings.s3.provider s3-compatible): list the
+  # endpoint origin, or <bucket>.<endpoint host> with path-style requests off.
+  # AWS S3 needs nothing here (https://*.amazonaws.com is always allowed).
+  # Anything else fails the render.
+  imgSrc: ""
+
 # --- Charging Station Simulator ---
 # Off by default: a test and demo tool, never part of a production install.
 css:
@@ -1146,6 +1158,21 @@ appSettings:
   s3:
     bucket: ""
     region: ""
+    # Storage provider: s3 (AWS S3) or s3-compatible (MinIO, Wasabi and the like).
+    # Empty keeps the value set in Settings > Integrations > S3.
+    provider: ""
+    # s3-compatible only: the endpoint origin without a path, for example
+    # https://s3.example.com. A public host must use https. A private host must be
+    # listed in allowedPrivateHosts and may then use http, but browsers block it
+    # when the CSMS or portal is served over https: use https there too.
+    endpoint: ""
+    # s3-compatible only: true puts the bucket in the URL path (most MinIO setups).
+    # Empty keeps the dashboard value.
+    forcePathStyle: ""
+    # s3-compatible only: at most 20 private host names or IP addresses the endpoint
+    # may name, without scheme or port. Unroutable and cloud metadata addresses are
+    # refused even when listed. [] keeps the dashboard value.
+    allowedPrivateHosts: []
   payments:
     # Provider for new payments: none (payments off), stripe, or simulated
     # (needs payments.allowSimulatedProvider). Leave empty to keep the value set in

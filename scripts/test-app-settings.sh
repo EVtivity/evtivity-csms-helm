@@ -824,5 +824,79 @@ elif grep -q 'ocpp.env.wsCompression "yes" is not supported' "$TMP/ws.err"; then
   bad "ocpp.env.wsCompression refused for another reason: $(head -1 "$TMP/ws.err")"
 fi
 
+# Object storage provider: empty keeps the dashboard value (no key rendered), set
+# values render, and the endpoint and private host rules of the API fail the render.
+STORAGE_KEYS='["s3.provider","s3.endpoint","s3.forcePathStyle","s3.allowedPrivateHosts"]'
+if render "$TMP/storage-default.json"; then
+  if node -e '
+    const got = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+    const present = JSON.parse(process.argv[2]).filter((k) => k in got);
+    if (present.length) { console.log("rendered " + present.join(", ")); process.exit(1); }
+  ' "$TMP/storage-default.json" "$STORAGE_KEYS"; then ok; else bad "storage default: keys rendered"; fi
+else
+  bad "storage default: render failed: $(head -1 "$TMP/render.err")"
+fi
+if render "$TMP/storage-old.json" --set appSettings.s3=null; then ok; else
+  bad "storage without the block: render failed: $(head -1 "$TMP/render.err")"
+fi
+if render "$TMP/storage-aws.json" --set appSettings.s3.provider=s3 --set appSettings.s3.forcePathStyle=false; then
+  if r=$(expect_json "$TMP/storage-aws.json" '{"s3.provider":"s3","s3.forcePathStyle":false}'); then ok; else bad "storage aws: $r"; fi
+else
+  bad "storage aws: render failed: $(head -1 "$TMP/render.err")"
+fi
+if render "$TMP/storage-public.json" --set appSettings.s3.provider=s3-compatible --set appSettings.s3.endpoint=https://S3.Wasabisys.com/; then
+  if r=$(expect_json "$TMP/storage-public.json" '{"s3.provider":"s3-compatible","s3.endpoint":"https://s3.wasabisys.com"}'); then ok; else bad "storage public: $r"; fi
+else
+  bad "storage public: render failed: $(head -1 "$TMP/render.err")"
+fi
+printf 'appSettings:\n  s3:\n    provider: s3-compatible\n    endpoint: http://minio.internal:9000\n    forcePathStyle: true\n    allowedPrivateHosts: [" MinIO.internal ", minio.internal, 10.0.0.5]\n' > "$TMP/storage-values.yaml"
+if render "$TMP/storage-private.json" -f "$TMP/storage-values.yaml"; then
+  if r=$(expect_json "$TMP/storage-private.json" '{"s3.provider":"s3-compatible","s3.endpoint":"http://minio.internal:9000","s3.forcePathStyle":true,"s3.allowedPrivateHosts":["minio.internal","10.0.0.5"]}'); then ok; else bad "storage private: $r"; fi
+else
+  bad "storage private: render failed: $(head -1 "$TMP/render.err")"
+fi
+expect_fail "s3.provider" 'appSettings.s3.provider "r2" is not supported' --set appSettings.s3.provider=r2
+expect_fail "s3.forcePathStyle string" 'appSettings.s3.forcePathStyle "yes" is not supported' --set-string appSettings.s3.forcePathStyle=yes
+expect_fail "s3-compatible without endpoint" 'needs appSettings.s3.endpoint' --set appSettings.s3.provider=s3-compatible
+expect_fail "s3 with endpoint" 'used by s3-compatible only' --set appSettings.s3.provider=s3 --set appSettings.s3.endpoint=https://s3.example.com
+expect_fail "endpoint without provider" 'need appSettings.s3.provider s3-compatible' --set appSettings.s3.endpoint=https://s3.example.com
+for ep in 'https://user:pw@s3.example.com' 'https://s3.example.com/bucket' 'https://s3.example.com?x=1' 'ftp://s3.example.com'; do
+  expect_fail "s3.endpoint $ep" 'is not supported. Use the origin' --set appSettings.s3.provider=s3-compatible --set "appSettings.s3.endpoint=$ep"
+done
+expect_fail "s3.endpoint http public" 'must use https on a public host' --set appSettings.s3.provider=s3-compatible --set appSettings.s3.endpoint=http://s3.example.com
+for ep in 'https://10.0.0.5' 'https://localhost:9000' 'https://minio.internal' 'https://[fd12::1]'; do
+  expect_fail "s3.endpoint private $ep" 'names a private or internal host' --set appSettings.s3.provider=s3-compatible --set "appSettings.s3.endpoint=$ep"
+done
+for ep in 'http://169.254.169.254' 'http://[fd00:ec2::254]' 'http://0.0.0.0'; do
+  host="${ep#http://}"; host="${host#[}"; host="${host%]}"
+  expect_fail "s3.endpoint unroutable $ep" 'unroutable or cloud metadata address' --set appSettings.s3.provider=s3-compatible --set "appSettings.s3.endpoint=$ep" --set "appSettings.s3.allowedPrivateHosts={$host}"
+done
+expect_fail "s3.allowedPrivateHosts scheme" 'is not a host name or IP address' --set appSettings.s3.provider=s3-compatible --set appSettings.s3.endpoint=https://s3.example.com --set 'appSettings.s3.allowedPrivateHosts={http://minio.local}'
+expect_fail "s3.allowedPrivateHosts too many" 'more than 20 hosts' --set appSettings.s3.provider=s3-compatible --set appSettings.s3.endpoint=https://s3.example.com --set "appSettings.s3.allowedPrivateHosts={$(seq -s, -f 'h%g.example' 1 21)}"
+expect_fail "s3.allowedPrivateHosts string" 'must be a list of host names' --set appSettings.s3.provider=s3-compatible --set appSettings.s3.endpoint=https://s3.example.com --set-string appSettings.s3.allowedPrivateHosts=minio.local
+
+# storage.imgSrc: the origins go into the CSP img-src of both nginx ConfigMaps;
+# anything that is not scheme://host[:port] fails the render.
+for app in csms portal; do
+  if helm template t "$CHART" "${S[@]}" --show-only "templates/$app-nginx-configmap.yaml" \
+    --set 'storage.imgSrc=https://s3.example.com  http://minio.internal:9000 https://*.example.net' > "$TMP/csp.yaml" 2> "$TMP/csp.err"; then
+    n=$(grep -c "https://\*.amazonaws.com https://s3.example.com http://minio.internal:9000 https://\*.example.net" "$TMP/csp.yaml")
+    if [ "$n" -eq 3 ]; then ok; else bad "storage.imgSrc $app: origins in $n locations, want 3"; fi
+  else
+    bad "storage.imgSrc $app: render failed: $(head -1 "$TMP/csp.err")"
+  fi
+  if helm template t "$CHART" "${S[@]}" --show-only "templates/$app-nginx-configmap.yaml" > "$TMP/csp.yaml" 2> "$TMP/csp.err" \
+    && grep -q 'https://\*.amazonaws.com https://\*.' "$TMP/csp.yaml"; then ok; else
+    bad "storage.imgSrc $app default: $(head -1 "$TMP/csp.err")"
+  fi
+done
+for v in "https://s3.example.com/path" "https://s3.example.com;" "'unsafe-inline'" 'https://s3.example.com"'; do
+  if helm template t "$CHART" "${S[@]}" --show-only templates/csms-nginx-configmap.yaml --set-string "storage.imgSrc=$v" > /dev/null 2> "$TMP/csp.err"; then
+    bad "storage.imgSrc $v rendered"
+  elif grep -q 'storage.imgSrc: invalid origin' "$TMP/csp.err"; then ok; else
+    bad "storage.imgSrc $v refused for another reason: $(head -1 "$TMP/csp.err")"
+  fi
+done
+
 echo "app settings render tests: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

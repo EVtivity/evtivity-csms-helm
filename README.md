@@ -625,6 +625,20 @@ Every workload runs as a non-root user with a read-only root filesystem, `Runtim
 
 The CSMS and portal nginx ConfigMaps send `Content-Security-Policy` (with `frame-ancestors 'none'`), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin` and `Strict-Transport-Security` on every page response.
 
+`storage.imgSrc` adds object storage origins to the `img-src` of both policies, so images stored with an S3-compatible provider show. Give space-separated origins, each `scheme://host[:port]` with an optional `*.` wildcard, for example `"https://s3.example.com http://minio.internal.example:9000"`. With path-style requests off, list `<bucket>.<endpoint host>` instead of the endpoint host. AWS S3 needs nothing here. Any other value fails the render.
+
+### Object Storage Settings
+
+| Value | Setting | Notes |
+|---|---|---|
+| `appSettings.s3.bucket`, `region` | `s3.bucket`, `s3.region` | Bucket and region |
+| `appSettings.s3.provider` | `s3.provider` | `s3` (AWS S3) or `s3-compatible` (MinIO, Wasabi and the like) |
+| `appSettings.s3.endpoint` | `s3.endpoint` | `s3-compatible` only, required there. The origin of an http(s) URL without a path. A public host must use https |
+| `appSettings.s3.forcePathStyle` | `s3.forcePathStyle` | `s3-compatible` only, `true` or `false` |
+| `appSettings.s3.allowedPrivateHosts` | `s3.allowedPrivateHosts` | `s3-compatible` only, at most 20 private hosts the endpoint may name, without scheme or port |
+
+Empty values (`""`, `[]`) keep the value set in Settings > Integrations > S3. A private endpoint host must be listed in `allowedPrivateHosts` and may then use http, but browsers block http images when the CSMS or portal is served over https, so use https there too. Unroutable and cloud metadata addresses (such as `169.254.169.254` and `fd00:ec2::254`) are refused even when listed. The access keys are entered in the dashboard or through `appSettings.sensitive.s3AccessKeyId` and `s3SecretAccessKey`. An S3-compatible provider also needs `storage.imgSrc`.
+
 ### Refused Values
 
 The chart refuses to render with `api.env.nodeEnv` other than `production`, `ocpp.env.trustedProxyCidrs` or `api.env.trustProxy` containing `0.0.0.0/0`, `::/0` or an IPv6 range that holds every IPv4-mapped address (`::ffff:0.0.0.0/96`, `::/80`), `api.env.corsOrigin` containing `*`, `monitoring.enabled` without `monitoring.grafana.adminPassword` or with `admin` as the password, and on install a `secrets.jwtSecret` or `secrets.settingsEncryptionKey` shorter than 32 characters or equal to a published example value. Generate the secrets with `openssl rand -hex 32`.

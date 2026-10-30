@@ -41,7 +41,7 @@ data:
         location = /runtime-config.js {
             default_type application/javascript;
             add_header Cache-Control "no-store" always;
-            {{- include "evtivity-csms.nginxSecurityHeaders" "csms" | nindent 12 }}
+            {{- include "evtivity-csms.nginxSecurityHeaders" (dict "app" "csms" "context" $) | nindent 12 }}
             return 200 'window.__RUNTIME_CONFIG__={"apiUrl":"{{ $proto }}://{{ $apiHost }}","portalUrl":"{{ $proto }}://{{ $portalHost }}","csmsUrl":"{{ $proto }}://{{ $csmsHost }}","ocppUrl":"{{ $wsProto }}://{{ $ocppHost }}"};';
         }
 
@@ -49,7 +49,7 @@ data:
         location /assets/ {
             expires 1y;
             add_header Cache-Control "public, immutable" always;
-            {{- include "evtivity-csms.nginxSecurityHeaders" "csms" | nindent 12 }}
+            {{- include "evtivity-csms.nginxSecurityHeaders" (dict "app" "csms" "context" $) | nindent 12 }}
             try_files $uri =404;
         }
 
@@ -57,7 +57,7 @@ data:
         # bundle files that no longer exist.
         location / {
             add_header Cache-Control "no-store, must-revalidate" always;
-            {{- include "evtivity-csms.nginxSecurityHeaders" "csms" | nindent 12 }}
+            {{- include "evtivity-csms.nginxSecurityHeaders" (dict "app" "csms" "context" $) | nindent 12 }}
             try_files $uri $uri/ /index.html;
         }
     }
