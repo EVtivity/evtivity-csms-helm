@@ -898,5 +898,17 @@ for v in "https://s3.example.com/path" "https://s3.example.com;" "'unsafe-inline
   fi
 done
 
+# Route-aware charging switch: false by default, true or false set, "" keeps the dashboard value.
+if render "$TMP/fc.json"; then
+  if r=$(expect_json "$TMP/fc.json" '{"fleetCharging.enabled":false}'); then ok; else bad "fleetCharging default: $r"; fi
+else bad "fleetCharging default: $(head -1 "$TMP/render.err")"; fi
+if render "$TMP/fc.json" --set appSettings.fleetCharging.enabled=true; then
+  if r=$(expect_json "$TMP/fc.json" '{"fleetCharging.enabled":true}'); then ok; else bad "fleetCharging true: $r"; fi
+else bad "fleetCharging true: $(head -1 "$TMP/render.err")"; fi
+if render "$TMP/fc.json" --set-string appSettings.fleetCharging.enabled=""; then
+  if r=$(expect_json "$TMP/fc.json" '{"fleetCharging.enabled":""}'); then ok; else bad "fleetCharging empty: $r"; fi
+else bad "fleetCharging empty: $(head -1 "$TMP/render.err")"; fi
+expect_fail "fleetCharging.enabled" 'appSettings.fleetCharging.enabled "yes" is not supported' --set-string appSettings.fleetCharging.enabled=yes
+
 echo "app settings render tests: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

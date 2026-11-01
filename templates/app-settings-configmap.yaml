@@ -382,6 +382,10 @@
 {{- if not (or (kindIs "bool" $autocharge) (kindIs "invalid" $autocharge) (eq (toString $autocharge) "")) }}
 {{- fail (printf "appSettings.features.autochargeEnabled %q is not supported. Use true, false, or \"\" to keep the value set in the dashboard." (toString $autocharge)) }}
 {{- end }}
+{{- $fleetCharging := (.Values.appSettings.fleetCharging | default dict).enabled }}
+{{- if not (or (kindIs "bool" $fleetCharging) (kindIs "invalid" $fleetCharging) (eq (toString $fleetCharging) "")) }}
+{{- fail (printf "appSettings.fleetCharging.enabled %q is not supported. Use true, false, or \"\" to keep the value set in the dashboard." (toString $fleetCharging)) }}
+{{- end }}
 {{- $creditReservationCents := "" }}
 {{- if kindIs "float64" $fleet.creditReservationCents }}{{ $creditReservationCents = ternary (toString (int64 $fleet.creditReservationCents)) (toString $fleet.creditReservationCents) (eq $fleet.creditReservationCents (floor $fleet.creditReservationCents)) }}{{ else if not (kindIs "invalid" $fleet.creditReservationCents) }}{{ $creditReservationCents = toString $fleet.creditReservationCents }}{{ end }}
 {{- if and (ne $creditReservationCents "") (not (and (regexMatch "^[0-9]+$" $creditReservationCents) (ge (atoi $creditReservationCents) 1) (le (atoi $creditReservationCents) 100000000))) }}
@@ -736,6 +740,7 @@ data:
       "fleet.enabled": {{ .Values.appSettings.features.fleetEnabled | toJson }},
       "fleet.creditReservationCents": {{ if eq $creditReservationCents "" }}""{{ else }}{{ atoi $creditReservationCents }}{{ end }},
       "fleet.invoiceRunDay": {{ if eq $invoiceRunDay "" }}""{{ else }}{{ atoi $invoiceRunDay }}{{ end }},
+      "fleetCharging.enabled": {{ if kindIs "bool" $fleetCharging }}{{ $fleetCharging | toJson }}{{ else }}""{{ end }},
       "support.enabled": {{ .Values.appSettings.features.supportEnabled | toJson }},
       "guest.enabled": {{ .Values.appSettings.features.guestEnabled | toJson }},
       "guest.startsPerIpPerHour": {{ if eq $guestStartsPerIpPerHour "" }}""{{ else }}{{ atoi $guestStartsPerIpPerHour }}{{ end }},
