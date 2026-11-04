@@ -61,6 +61,13 @@ spec:
               value: "false"
             - name: SEED_DEMO
               value: "true"
+            # The demo batteries and solar get simulated readings only where the
+            # API and worker compute them (loadManagement.allowSimulatedEnergyAssets).
+            - name: ENERGY_ASSETS_ALLOW_SIMULATED
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "evtivity-csms.configMapName" . }}
+                  key: ENERGY_ASSETS_ALLOW_SIMULATED
             # target_url for css_stations rows, as seen from the CSS pod.
             - name: SEED_CSS_TARGET_URL
               value: "ws://{{ include "evtivity-csms.fullname" . }}-ocpp:{{ .Values.ocpp.port }}"

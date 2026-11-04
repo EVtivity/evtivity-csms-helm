@@ -427,7 +427,7 @@ The ID TECH payment terminal settings are app settings, also set in Settings > I
 
 | Parameter | Setting |
 |-----------|---------|
-| `loadManagement.allowSimulatedEnergyAssets` | Allows simulated battery and solar readings in load management in the API and worker, `ENERGY_ASSETS_ALLOW_SIMULATED`: `false` (default) or `true`. Simulated readings are not real site data, so keep it `false` in production |
+| `loadManagement.allowSimulatedEnergyAssets` | Allows simulated battery and solar readings in load management in the API and worker, and in the demo seed job (`seedDemo`), `ENERGY_ASSETS_ALLOW_SIMULATED`: `false` (default) or `true`. Simulated readings are not real site data, so keep it `false` in production |
 
 ### OCPP Data Plan Settings
 

@@ -734,6 +734,17 @@ if sim_cm_render --set-string loadManagement.allowSimulatedEnergyAssets=yes; the
 elif grep -qF 'loadManagement.allowSimulatedEnergyAssets "yes" is not supported' "$TMP/simcm.err"; then ok; else
   bad "energy assets simulated string: wrong error: $(head -1 "$TMP/simcm.err")"
 fi
+# The demo seed job reads the same value, so it stores simulated telemetry only
+# where the API and worker compute it.
+if helm template t "$CHART" "${S[@]}" --show-only templates/seed-demo-job.yaml \
+  --set seedDemo.enabled=true --set seedDemo.confirmed=true \
+  --set payments.allowSimulatedProvider=true > "$TMP/seeddemo.yaml" 2> "$TMP/seeddemo.err"; then
+  if grep -A4 'name: ENERGY_ASSETS_ALLOW_SIMULATED' "$TMP/seeddemo.yaml" | grep -q 'key: ENERGY_ASSETS_ALLOW_SIMULATED'; then ok; else
+    bad "seed demo job: ENERGY_ASSETS_ALLOW_SIMULATED not taken from the ConfigMap"
+  fi
+else
+  bad "seed demo job: render failed: $(head -1 "$TMP/seeddemo.err")"
+fi
 for spec in 'paymentTerminals.testBaseUrl|paymentTerminals.testBaseUrl is not supported' 'api.env.paymentTerminalTestBaseUrl|api.env.paymentTerminalTestBaseUrl is not supported' 'ocpp.env.paymentTerminalTestBaseUrl|ocpp.env.paymentTerminalTestBaseUrl is not supported' 'worker.env.paymentTerminalTestBaseUrl|worker.env.paymentTerminalTestBaseUrl is not supported' 'ocpi.env.paymentTerminalTestBaseUrl|ocpi.env.paymentTerminalTestBaseUrl is not supported'; do
   key="${spec%%|*}"
   want="${spec#*|}"
