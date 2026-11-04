@@ -273,7 +273,7 @@
   (MinIO, Wasabi and the like at a custom endpoint) or r2 (Cloudflare R2). Empty keeps the
   dashboard value and the key is not rendered. For r2 the endpoint follows validateR2Endpoint:
   the S3 API URL of an account, https://<32 hex account id>.r2.cloudflarestorage.com or its
-  .eu or .fedramp jurisdiction, no port, a bucket name after it only when it is the bucket,
+  .eu, .fedramp or .us jurisdiction, no port, a bucket name after it only when it is the bucket,
   rendered as https://<host>; path-style is always on and no private hosts apply. The rules follow validateStorageEndpoint and
   parseStorageAllowedPrivateHosts in @evtivity/services/storage (change both together): the
   endpoint is the origin of an http(s) URL without credentials, path, query or fragment; a
@@ -336,10 +336,10 @@
 {{- if eq $s3Endpoint "" }}
 {{- fail "appSettings.s3.provider r2 needs appSettings.s3.endpoint, the S3 API URL of the account: https://<account id>.r2.cloudflarestorage.com." }}
 {{- end }}
-{{- $r2Pattern := "^(?i:https://([0-9a-f]{32}\\.((eu|fedramp)\\.)?r2\\.cloudflarestorage\\.com))\\.?(/([a-z0-9][a-z0-9-]{1,61}[a-z0-9])/?|/)?$" }}
+{{- $r2Pattern := "^(?i:https://([0-9a-f]{32}\\.((eu|fedramp|us)\\.)?r2\\.cloudflarestorage\\.com))\\.?(/([a-z0-9][a-z0-9-]{1,61}[a-z0-9])/?|/)?$" }}
 {{- $r2Endpoint := $s3Endpoint }}
 {{- if not (regexMatch $r2Pattern $r2Endpoint) }}
-{{- fail (printf "appSettings.s3.endpoint %q is not supported for r2. Use the S3 API URL of the account: https://<account id>.r2.cloudflarestorage.com (or its .eu or .fedramp jurisdiction), without a port, query or fragment." $s3Endpoint) }}
+{{- fail (printf "appSettings.s3.endpoint %q is not supported for r2. Use the S3 API URL of the account: https://<account id>.r2.cloudflarestorage.com (or its .eu, .fedramp or .us jurisdiction), without a port, query or fragment." $s3Endpoint) }}
 {{- end }}
 {{- $r2Bucket := regexReplaceAll $r2Pattern $r2Endpoint "${5}" }}
 {{- $s3BucketValue := trim (toString ($s3Values.bucket | default "")) }}

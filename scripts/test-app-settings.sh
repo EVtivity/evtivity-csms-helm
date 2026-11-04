@@ -913,6 +913,11 @@ if render "$TMP/storage-r2-eu.json" --set appSettings.s3.provider=r2 --set "appS
 else
   bad "storage r2 eu: render failed: $(head -1 "$TMP/render.err")"
 fi
+if render "$TMP/storage-r2-us.json" --set appSettings.s3.provider=r2 --set "appSettings.s3.endpoint=https://${R2_ID}.us.r2.cloudflarestorage.com"; then
+  if r=$(expect_json "$TMP/storage-r2-us.json" "{\"s3.endpoint\":\"https://${R2_ID}.us.r2.cloudflarestorage.com\"}"); then ok; else bad "storage r2 us: $r"; fi
+else
+  bad "storage r2 us: render failed: $(head -1 "$TMP/render.err")"
+fi
 expect_fail "r2 without endpoint" 'provider r2 needs appSettings.s3.endpoint' --set appSettings.s3.provider=r2
 for ep in "http://${R2_ID}.r2.cloudflarestorage.com" "https://${R2_ID}.r2.cloudflarestorage.com:8443" "https://user:pw@${R2_ID}.r2.cloudflarestorage.com" "https://${R2_ID}.r2.cloudflarestorage.com/?x=1" "https://${R2_ID}.r2.cloudflarestorage.com/b/key" "https://${R2_ID}.asia.r2.cloudflarestorage.com" "https://x.${R2_ID}.r2.cloudflarestorage.com" "https://${R2_ID}.r2.cloudflarestorage.com.evil.example" 'https://pub-0123456789abcdef0123456789abcdef.r2.dev' 'https://s3.example.com' 'https://169.254.169.254'; do
   expect_fail "r2 endpoint $ep" 'is not supported for r2' --set appSettings.s3.provider=r2 --set "appSettings.s3.endpoint=$ep"

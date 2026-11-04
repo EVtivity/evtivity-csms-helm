@@ -1191,7 +1191,7 @@ appSettings:
     # listed in allowedPrivateHosts and may then use http, but browsers block it
     # when the CSMS or portal is served over https: use https there too.
     # r2: the S3 API URL of the account, https://<account id>.r2.cloudflarestorage.com
-    # (or its .eu or .fedramp jurisdiction). The region is always auto.
+    # (or its .eu, .fedramp or .us jurisdiction). The region is always auto.
     endpoint: ""
     # s3-compatible only: true puts the bucket in the URL path (most MinIO setups).
     # r2 always uses the path. Empty keeps the dashboard value.
