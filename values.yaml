@@ -771,9 +771,10 @@ appSettings:
   # Route-aware charging: the departure planner, its charging profiles and
   # the Departure Aware load management strategy. Departure entry and the
   # readiness views work while it is off. true or false sets it on every
-  # install and upgrade; "" keeps the value set in the dashboard.
+  # install and upgrade. Empty (the default) renders no value, so the switch
+  # in the dashboard stays (off on a fresh install).
   fleetCharging:
-    enabled: false
+    enabled: ""
   fleet:
     # Day of the month (1 to 28, system timezone) from which the monthly run
     # invoices the previous month for every fleet with automatic monthly invoice.

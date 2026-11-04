@@ -962,15 +962,22 @@ for v in "https://s3.example.com/path" "https://s3.example.com;" "'unsafe-inline
   fi
 done
 
-# Route-aware charging switch: false by default, true or false set, "" keeps the dashboard value.
+# Route-aware charging switch: empty by default renders no key (the dashboard value
+# stays on every upgrade), true or false render the boolean, anything else fails.
+fc_absent() {
+  node -e 'const g = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")); process.exit("fleetCharging.enabled" in g ? 1 : 0)' "$1"
+}
 if render "$TMP/fc.json"; then
-  if r=$(expect_json "$TMP/fc.json" '{"fleetCharging.enabled":false}'); then ok; else bad "fleetCharging default: $r"; fi
+  if fc_absent "$TMP/fc.json"; then ok; else bad "fleetCharging default: an empty value rendered a key"; fi
 else bad "fleetCharging default: $(head -1 "$TMP/render.err")"; fi
 if render "$TMP/fc.json" --set appSettings.fleetCharging.enabled=true; then
   if r=$(expect_json "$TMP/fc.json" '{"fleetCharging.enabled":true}'); then ok; else bad "fleetCharging true: $r"; fi
 else bad "fleetCharging true: $(head -1 "$TMP/render.err")"; fi
+if render "$TMP/fc.json" --set appSettings.fleetCharging.enabled=false; then
+  if r=$(expect_json "$TMP/fc.json" '{"fleetCharging.enabled":false}'); then ok; else bad "fleetCharging false: $r"; fi
+else bad "fleetCharging false: $(head -1 "$TMP/render.err")"; fi
 if render "$TMP/fc.json" --set-string appSettings.fleetCharging.enabled=""; then
-  if r=$(expect_json "$TMP/fc.json" '{"fleetCharging.enabled":""}'); then ok; else bad "fleetCharging empty: $r"; fi
+  if fc_absent "$TMP/fc.json"; then ok; else bad "fleetCharging empty: an empty value rendered a key"; fi
 else bad "fleetCharging empty: $(head -1 "$TMP/render.err")"; fi
 expect_fail "fleetCharging.enabled" 'appSettings.fleetCharging.enabled "yes" is not supported' --set-string appSettings.fleetCharging.enabled=yes
 

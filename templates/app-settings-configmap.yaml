@@ -783,7 +783,9 @@ data:
       "fleet.enabled": {{ .Values.appSettings.features.fleetEnabled | toJson }},
       "fleet.creditReservationCents": {{ if eq $creditReservationCents "" }}""{{ else }}{{ atoi $creditReservationCents }}{{ end }},
       "fleet.invoiceRunDay": {{ if eq $invoiceRunDay "" }}""{{ else }}{{ atoi $invoiceRunDay }}{{ end }},
-      "fleetCharging.enabled": {{ if kindIs "bool" $fleetCharging }}{{ $fleetCharging | toJson }}{{ else }}""{{ end }},
+      {{- if kindIs "bool" $fleetCharging }}
+      "fleetCharging.enabled": {{ $fleetCharging | toJson }},
+      {{- end }}
       "support.enabled": {{ .Values.appSettings.features.supportEnabled | toJson }},
       "guest.enabled": {{ .Values.appSettings.features.guestEnabled | toJson }},
       "guest.startsPerIpPerHour": {{ if eq $guestStartsPerIpPerHour "" }}""{{ else }}{{ atoi $guestStartsPerIpPerHour }}{{ end }},

@@ -428,6 +428,7 @@ The ID TECH payment terminal settings are app settings, also set in Settings > I
 | Parameter | Setting |
 |-----------|---------|
 | `loadManagement.allowSimulatedEnergyAssets` | Allows simulated battery and solar readings in load management in the API and worker, and in the demo seed job (`seedDemo`), `ENERGY_ASSETS_ALLOW_SIMULATED`: `false` (default) or `true`. Simulated readings are not real site data, so keep it `false` in production |
+| `appSettings.fleetCharging.enabled` | Route-aware charging (the departure planner, its charging profiles and the Departure Aware strategy), also set in Settings > Integrations & Features: `true` or `false` applies that value on every install and upgrade. Empty (the default) renders nothing and keeps the dashboard value (off on a fresh install). Anything else fails the render |
 
 ### OCPP Data Plan Settings
 
