@@ -382,6 +382,10 @@
 {{- if not (or (kindIs "bool" $autocharge) (kindIs "invalid" $autocharge) (eq (toString $autocharge) "")) }}
 {{- fail (printf "appSettings.features.autochargeEnabled %q is not supported. Use true, false, or \"\" to keep the value set in the dashboard." (toString $autocharge)) }}
 {{- end }}
+{{- $vdv463 := .Values.appSettings.features.vdv463Enabled }}
+{{- if not (or (kindIs "bool" $vdv463) (kindIs "invalid" $vdv463) (eq (toString $vdv463) "")) }}
+{{- fail (printf "appSettings.features.vdv463Enabled %q is not supported. Use true, false, or \"\" to keep the value set in the dashboard." (toString $vdv463)) }}
+{{- end }}
 {{- $fleetCharging := (.Values.appSettings.fleetCharging | default dict).enabled }}
 {{- if not (or (kindIs "bool" $fleetCharging) (kindIs "invalid" $fleetCharging) (eq (toString $fleetCharging) "")) }}
 {{- fail (printf "appSettings.fleetCharging.enabled %q is not supported. Use true, false, or \"\" to keep the value set in the dashboard." (toString $fleetCharging)) }}
@@ -746,6 +750,7 @@ data:
       "guest.startsPerIpPerHour": {{ if eq $guestStartsPerIpPerHour "" }}""{{ else }}{{ atoi $guestStartsPerIpPerHour }}{{ end }},
       "guest.declinesPerIpPerHour": {{ if eq $guestDeclinesPerIpPerHour "" }}""{{ else }}{{ atoi $guestDeclinesPerIpPerHour }}{{ end }},
       "autocharge.enabled": {{ if kindIs "bool" $autocharge }}{{ $autocharge | toJson }}{{ else }}""{{ end }},
+      "vdv463.enabled": {{ if kindIs "bool" $vdv463 }}{{ $vdv463 | toJson }}{{ else }}""{{ end }},
       "security.autoDisableOnCritical": {{ .Values.appSettings.security.autoDisableOnCritical | toJson }},
       "security.recaptcha.enabled": {{ .Values.appSettings.security.recaptchaEnabled | toJson }},
       "security.recaptcha.threshold": {{ .Values.appSettings.security.recaptchaThreshold | toJson }},

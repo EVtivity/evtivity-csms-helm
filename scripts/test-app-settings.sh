@@ -910,5 +910,17 @@ if render "$TMP/fc.json" --set-string appSettings.fleetCharging.enabled=""; then
 else bad "fleetCharging empty: $(head -1 "$TMP/render.err")"; fi
 expect_fail "fleetCharging.enabled" 'appSettings.fleetCharging.enabled "yes" is not supported' --set-string appSettings.fleetCharging.enabled=yes
 
+# Bus depot interface (VDV 463) switch: false by default, true or false set, "" keeps the dashboard value.
+if render "$TMP/vdv.json"; then
+  if r=$(expect_json "$TMP/vdv.json" '{"vdv463.enabled":false}'); then ok; else bad "vdv463 default: $r"; fi
+else bad "vdv463 default: $(head -1 "$TMP/render.err")"; fi
+if render "$TMP/vdv.json" --set appSettings.features.vdv463Enabled=true; then
+  if r=$(expect_json "$TMP/vdv.json" '{"vdv463.enabled":true}'); then ok; else bad "vdv463 true: $r"; fi
+else bad "vdv463 true: $(head -1 "$TMP/render.err")"; fi
+if render "$TMP/vdv.json" --set-string appSettings.features.vdv463Enabled=""; then
+  if r=$(expect_json "$TMP/vdv.json" '{"vdv463.enabled":""}'); then ok; else bad "vdv463 empty: $r"; fi
+else bad "vdv463 empty: $(head -1 "$TMP/render.err")"; fi
+expect_fail "vdv463Enabled" 'appSettings.features.vdv463Enabled "yes" is not supported' --set-string appSettings.features.vdv463Enabled=yes
+
 echo "app settings render tests: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

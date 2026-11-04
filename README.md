@@ -205,7 +205,7 @@ Each service connects to Redis as its own ACL user. `redis/acl-rules.conf` lists
 
 | User | Keys | Channels |
 |------|------|----------|
-| `api` | response cache (`rc:*`), shared API rate limit counters (`rl:*`), attestation nonces, SIM provider locks and limits (`sim:*`), the payment process watch key (read only) | core channels, simulator channels |
+| `api` | response cache (`rc:*`), shared API rate limit counters (`rl:*`), attestation nonces, SIM provider locks and limits (`sim:*`), the payment process watch key (read only) | core channels, `depot_system_changed` (bus depot interface), simulator channels |
 | `ocpp` | station connection registry (`ocpp:conn:*`), known-good station credential digests (`ocpp:auth:*`) | core channels |
 | `worker` | BullMQ queues (`bull:*`), maintenance (`mfl:*`), station message (`sml:*`) and job (`wkl:*`) locks, the payment process watch key, the station connection registry (read only) | core channels |
 | `ocpi` | OCPI pull locks (`opl:*`) | `ocpp_commands`, `ocpp_command_results`, `csms_events`, `ocpi_*` |
@@ -538,6 +538,8 @@ Each service gets its own hostname via HTTPRoute.
 | `api.evtivity.dev` | REST API |
 | `ocpp.evtivity.dev` | OCPP WebSocket |
 | `ocpi.evtivity.dev` | OCPI server |
+
+The API host also serves the bus depot interface (VDV 463): depot management systems open a WebSocket to `wss://<api host>/vdv463` (trailing slash optional). The API route (path `/`) carries it, WebSocket upgrades included, so it needs no route of its own. The API refuses plain `ws://` connections outside development: terminate TLS at the gateway and set `api.env.trustProxy` (see "Behind a Proxy") so the API trusts its `X-Forwarded-Proto`. The interface is off until `appSettings.features.vdv463Enabled` is `true` (default `false`; `""` keeps the dashboard value).
 
 The install script prompts for gateway implementation:
 
