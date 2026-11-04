@@ -728,6 +728,12 @@ appSettings:
     ogImage: ""
     portalUrl: ""
     themeColor: "#2563eb"
+    # Front plate colors of the AC and DC chargers in the 3D site layout, as #
+    # and 6 hex digits (for example "#1f2937"). Empty uses the brand color.
+    # Rendered only when set, so an empty value keeps the color set in
+    # Settings > Company.
+    chargerColorAc: ""
+    chargerColorDc: ""
   pricing:
     splitBillingEnabled: true
   stationMessage:
