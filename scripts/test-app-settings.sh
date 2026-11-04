@@ -910,16 +910,17 @@ if render "$TMP/fc.json" --set-string appSettings.fleetCharging.enabled=""; then
 else bad "fleetCharging empty: $(head -1 "$TMP/render.err")"; fi
 expect_fail "fleetCharging.enabled" 'appSettings.fleetCharging.enabled "yes" is not supported' --set-string appSettings.fleetCharging.enabled=yes
 
-# Bus depot interface (VDV 463) switch: false by default, true or false set, "" keeps the dashboard value.
+# Bus depot interface (VDV 463) switch: empty renders no key (the dashboard value stays),
+# true or false render the boolean, anything else fails.
 if render "$TMP/vdv.json"; then
-  if r=$(expect_json "$TMP/vdv.json" '{"vdv463.enabled":false}'); then ok; else bad "vdv463 default: $r"; fi
+  if node -e 'const g = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")); process.exit("vdv463.enabled" in g ? 1 : 0)' "$TMP/vdv.json"; then ok; else bad "vdv463 default: an empty value rendered a key"; fi
 else bad "vdv463 default: $(head -1 "$TMP/render.err")"; fi
 if render "$TMP/vdv.json" --set appSettings.features.vdv463Enabled=true; then
   if r=$(expect_json "$TMP/vdv.json" '{"vdv463.enabled":true}'); then ok; else bad "vdv463 true: $r"; fi
 else bad "vdv463 true: $(head -1 "$TMP/render.err")"; fi
-if render "$TMP/vdv.json" --set-string appSettings.features.vdv463Enabled=""; then
-  if r=$(expect_json "$TMP/vdv.json" '{"vdv463.enabled":""}'); then ok; else bad "vdv463 empty: $r"; fi
-else bad "vdv463 empty: $(head -1 "$TMP/render.err")"; fi
+if render "$TMP/vdv.json" --set appSettings.features.vdv463Enabled=false; then
+  if r=$(expect_json "$TMP/vdv.json" '{"vdv463.enabled":false}'); then ok; else bad "vdv463 false: $r"; fi
+else bad "vdv463 false: $(head -1 "$TMP/render.err")"; fi
 expect_fail "vdv463Enabled" 'appSettings.features.vdv463Enabled "yes" is not supported' --set-string appSettings.features.vdv463Enabled=yes
 
 echo "app settings render tests: $pass passed, $fail failed"

@@ -839,9 +839,9 @@ appSettings:
     autochargeEnabled: ""
     # Bus depot interface (VDV 463): depot management systems connect to
     # wss://<api host>/vdv463 and send charging requests for their buses.
-    # true or false sets it on every install and upgrade; "" keeps the value
-    # set in the dashboard. Off by default.
-    vdv463Enabled: false
+    # true or false sets it on every install and upgrade. Empty renders no
+    # value, so the switch in the dashboard stays (off on a fresh install).
+    vdv463Enabled: ""
   security:
     autoDisableOnCritical: true
     recaptchaEnabled: false

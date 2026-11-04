@@ -750,7 +750,9 @@ data:
       "guest.startsPerIpPerHour": {{ if eq $guestStartsPerIpPerHour "" }}""{{ else }}{{ atoi $guestStartsPerIpPerHour }}{{ end }},
       "guest.declinesPerIpPerHour": {{ if eq $guestDeclinesPerIpPerHour "" }}""{{ else }}{{ atoi $guestDeclinesPerIpPerHour }}{{ end }},
       "autocharge.enabled": {{ if kindIs "bool" $autocharge }}{{ $autocharge | toJson }}{{ else }}""{{ end }},
-      "vdv463.enabled": {{ if kindIs "bool" $vdv463 }}{{ $vdv463 | toJson }}{{ else }}""{{ end }},
+      {{- if kindIs "bool" $vdv463 }}
+      "vdv463.enabled": {{ $vdv463 | toJson }},
+      {{- end }}
       "security.autoDisableOnCritical": {{ .Values.appSettings.security.autoDisableOnCritical | toJson }},
       "security.recaptcha.enabled": {{ .Values.appSettings.security.recaptchaEnabled | toJson }},
       "security.recaptcha.threshold": {{ .Values.appSettings.security.recaptchaThreshold | toJson }},

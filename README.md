@@ -539,7 +539,7 @@ Each service gets its own hostname via HTTPRoute.
 | `ocpp.evtivity.dev` | OCPP WebSocket |
 | `ocpi.evtivity.dev` | OCPI server |
 
-The API host also serves the bus depot interface (VDV 463): depot management systems open a WebSocket to `wss://<api host>/vdv463` (trailing slash optional). The API route (path `/`) carries it, WebSocket upgrades included, so it needs no route of its own. The API refuses plain `ws://` connections outside development: terminate TLS at the gateway and set `api.env.trustProxy` (see "Behind a Proxy") so the API trusts its `X-Forwarded-Proto`. The interface is off until `appSettings.features.vdv463Enabled` is `true` (default `false`; `""` keeps the dashboard value).
+The API host also serves the bus depot interface (VDV 463): depot management systems open a WebSocket to `wss://<api host>/vdv463` (trailing slash optional). The API route (path `/`) carries it, WebSocket upgrades included, so it needs no route of its own. The API refuses plain `ws://` connections outside development: terminate TLS at the gateway and set `api.env.trustProxy` (see "Behind a Proxy") so the API trusts its `X-Forwarded-Proto`. The interface is off on a fresh install. Turn it on in the dashboard, or set `appSettings.features.vdv463Enabled` to `true` or `false` to apply that value on every install and upgrade (default `""` renders nothing and keeps the dashboard value).
 
 The install script prompts for gateway implementation:
 
