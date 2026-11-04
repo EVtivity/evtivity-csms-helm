@@ -25,6 +25,12 @@ data:
   {{- fail (printf "paymentTerminals.allowSimulatedProvider %q is not supported. Use true or false." (toString $allowSimulatedTerminals)) }}
   {{- end }}
   PAYMENT_TERMINALS_ALLOW_SIMULATED: {{ if $allowSimulatedTerminals }}"true"{{ else }}"false"{{ end }}
+  {{- /* Simulated battery and solar readings of load management (api and worker). */}}
+  {{- $allowSimulatedEnergyAssets := (.Values.loadManagement | default dict).allowSimulatedEnergyAssets | default false }}
+  {{- if not (kindIs "bool" $allowSimulatedEnergyAssets) }}
+  {{- fail (printf "loadManagement.allowSimulatedEnergyAssets %q is not supported. Use true or false." (toString $allowSimulatedEnergyAssets)) }}
+  {{- end }}
+  ENERGY_ASSETS_ALLOW_SIMULATED: {{ if $allowSimulatedEnergyAssets }}"true"{{ else }}"false"{{ end }}
   {{- /* The payment terminal mock (PAYMENT_TERMINAL_TEST_BASE_URL points the ID TECH
          adapter at a local mock server) is for the local Compose stack only. */}}
   {{- if hasKey $paymentTerminals "testBaseUrl" }}

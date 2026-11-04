@@ -386,6 +386,13 @@ payments:
 paymentTerminals:
   allowSimulatedProvider: false
 
+# --- Load management energy assets ---
+# Allows simulated battery and solar readings in load management in the API and
+# worker (ENERGY_ASSETS_ALLOW_SIMULATED). Simulated readings are not real site
+# data, so keep it false in production.
+loadManagement:
+  allowSimulatedEnergyAssets: false
+
 # --- Notification test sink ---
 # The CSMS can send driver SMS and push to a local test service instead of
 # Twilio and Expo (NOTIFICATIONS_ALLOW_TEST_SINK, NOTIFICATIONS_TEST_SINK_URL).

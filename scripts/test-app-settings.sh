@@ -717,6 +717,23 @@ if sim_cm_render --set-string paymentTerminals.allowSimulatedProvider=yes; then
 elif grep -qF 'paymentTerminals.allowSimulatedProvider "yes" is not supported' "$TMP/simcm.err"; then ok; else
   bad "terminal simulated string: wrong error: $(head -1 "$TMP/simcm.err")"
 fi
+# ENERGY_ASSETS_ALLOW_SIMULATED follows loadManagement.allowSimulatedEnergyAssets
+# (false by default) and takes a boolean only.
+if sim_cm_render; then
+  if grep -q 'ENERGY_ASSETS_ALLOW_SIMULATED: "false"' "$TMP/simcm.yaml"; then ok; else bad "energy assets simulated default: not false"; fi
+else
+  bad "energy assets default: render failed: $(head -1 "$TMP/simcm.err")"
+fi
+if sim_cm_render --set loadManagement.allowSimulatedEnergyAssets=true; then
+  if grep -q 'ENERGY_ASSETS_ALLOW_SIMULATED: "true"' "$TMP/simcm.yaml"; then ok; else bad "energy assets simulated on: not true"; fi
+else
+  bad "energy assets simulated on: render failed: $(head -1 "$TMP/simcm.err")"
+fi
+if sim_cm_render --set-string loadManagement.allowSimulatedEnergyAssets=yes; then
+  bad "energy assets simulated string: render passed"
+elif grep -qF 'loadManagement.allowSimulatedEnergyAssets "yes" is not supported' "$TMP/simcm.err"; then ok; else
+  bad "energy assets simulated string: wrong error: $(head -1 "$TMP/simcm.err")"
+fi
 for spec in 'paymentTerminals.testBaseUrl|paymentTerminals.testBaseUrl is not supported' 'api.env.paymentTerminalTestBaseUrl|api.env.paymentTerminalTestBaseUrl is not supported' 'ocpp.env.paymentTerminalTestBaseUrl|ocpp.env.paymentTerminalTestBaseUrl is not supported' 'worker.env.paymentTerminalTestBaseUrl|worker.env.paymentTerminalTestBaseUrl is not supported' 'ocpi.env.paymentTerminalTestBaseUrl|ocpi.env.paymentTerminalTestBaseUrl is not supported'; do
   key="${spec%%|*}"
   want="${spec#*|}"
