@@ -640,12 +640,12 @@ The CSMS and portal nginx ConfigMaps send `Content-Security-Policy` (with `frame
 | Value | Setting | Notes |
 |---|---|---|
 | `appSettings.s3.bucket`, `region` | `s3.bucket`, `s3.region` | Bucket and region |
-| `appSettings.s3.provider` | `s3.provider` | `s3` (AWS S3) or `s3-compatible` (MinIO, Wasabi and the like) |
-| `appSettings.s3.endpoint` | `s3.endpoint` | `s3-compatible` only, required there. The origin of an http(s) URL without a path. A public host must use https |
-| `appSettings.s3.forcePathStyle` | `s3.forcePathStyle` | `s3-compatible` only, `true` or `false` |
+| `appSettings.s3.provider` | `s3.provider` | `s3` (AWS S3), `s3-compatible` (MinIO, Wasabi and the like) or `r2` (Cloudflare R2) |
+| `appSettings.s3.endpoint` | `s3.endpoint` | Required for `s3-compatible` and `r2`. `s3-compatible`: the origin of an http(s) URL without a path; a public host must use https. `r2`: the S3 API URL of the account, `https://<account id>.r2.cloudflarestorage.com` (or its `.eu` or `.fedramp` host); a bucket name after it must equal `appSettings.s3.bucket` |
+| `appSettings.s3.forcePathStyle` | `s3.forcePathStyle` | `s3-compatible`: `true` or `false`. `r2` always renders `true` |
 | `appSettings.s3.allowedPrivateHosts` | `s3.allowedPrivateHosts` | `s3-compatible` only, at most 20 private hosts the endpoint may name, without scheme or port |
 
-Empty values (`""`, `[]`) keep the value set in Settings > Integrations > S3. A private endpoint host must be listed in `allowedPrivateHosts` and may then use http, but browsers block http images when the CSMS or portal is served over https, so use https there too. Unroutable and cloud metadata addresses (such as `169.254.169.254` and `fd00:ec2::254`) are refused even when listed. The access keys are entered in the dashboard or through `appSettings.sensitive.s3AccessKeyId` and `s3SecretAccessKey`. An S3-compatible provider also needs `storage.imgSrc`.
+Empty values (`""`, `[]`) keep the value set in Settings > Integrations > S3. A private endpoint host must be listed in `allowedPrivateHosts` and may then use http, but browsers block http images when the CSMS or portal is served over https, so use https there too. Unroutable and cloud metadata addresses (such as `169.254.169.254` and `fd00:ec2::254`) are refused even when listed. The access keys are entered in the dashboard or through `appSettings.sensitive.s3AccessKeyId` and `s3SecretAccessKey`. An S3-compatible provider and Cloudflare R2 also need `storage.imgSrc` (for R2 the endpoint origin, without the bucket). R2 always uses the region `auto`.
 
 ### Refused Values
 

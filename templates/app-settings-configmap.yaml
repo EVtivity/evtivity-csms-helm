@@ -269,9 +269,12 @@
 {{- if ne $idtechMerchantId "" }}
 {{- $_ := set $terminalSettings "paymentTerminals.idtech.merchantId" $idtechMerchantId }}
 {{- end }}
-{{- /* Object storage provider (Settings > Integrations > S3): s3 (AWS S3) or s3-compatible
-  (MinIO, Wasabi and the like at a custom endpoint). Empty keeps the dashboard value and the
-  key is not rendered. The rules follow validateStorageEndpoint and
+{{- /* Object storage provider (Settings > Integrations > S3): s3 (AWS S3), s3-compatible
+  (MinIO, Wasabi and the like at a custom endpoint) or r2 (Cloudflare R2). Empty keeps the
+  dashboard value and the key is not rendered. For r2 the endpoint follows validateR2Endpoint:
+  the S3 API URL of an account, https://<32 hex account id>.r2.cloudflarestorage.com or its
+  .eu or .fedramp jurisdiction, no port, a bucket name after it only when it is the bucket,
+  rendered as https://<host>; path-style is always on and no private hosts apply. The rules follow validateStorageEndpoint and
   parseStorageAllowedPrivateHosts in @evtivity/services/storage (change both together): the
   endpoint is the origin of an http(s) URL without credentials, path, query or fragment; a
   public host must use https; a private host must be listed in allowedPrivateHosts (it may
@@ -282,8 +285,8 @@
 {{- $storageSettings := dict }}
 {{- $s3Provider := "" }}
 {{- if not (kindIs "invalid" $s3Values.provider) }}{{ $s3Provider = trim (toString $s3Values.provider) }}{{ end }}
-{{- if and (ne $s3Provider "") (not (has $s3Provider (list "s3" "s3-compatible"))) }}
-{{- fail (printf "appSettings.s3.provider %q is not supported. Use s3, s3-compatible, or \"\" to keep the value set in the dashboard." $s3Provider) }}
+{{- if and (ne $s3Provider "") (not (has $s3Provider (list "s3" "s3-compatible" "r2"))) }}
+{{- fail (printf "appSettings.s3.provider %q is not supported. Use s3, s3-compatible, r2, or \"\" to keep the value set in the dashboard." $s3Provider) }}
 {{- end }}
 {{- $s3Endpoint := "" }}
 {{- if not (kindIs "invalid" $s3Values.endpoint) }}{{ $s3Endpoint = trim (toString $s3Values.endpoint) }}{{ end }}
@@ -323,9 +326,32 @@
 {{- if or (ne $s3Endpoint "") (eq (toString $s3PathStyle) "true") (gt (len $s3Hosts) 0) }}
 {{- fail "appSettings.s3.endpoint, forcePathStyle and allowedPrivateHosts are used by s3-compatible only. Clear them, or set appSettings.s3.provider to s3-compatible." }}
 {{- end }}
+{{- else if eq $s3Provider "r2" }}
+{{- if gt (len $s3Hosts) 0 }}
+{{- fail "appSettings.s3.allowedPrivateHosts is not used by r2: Cloudflare R2 has one public host per account. Clear it." }}
+{{- end }}
+{{- if eq (toString $s3PathStyle) "false" }}
+{{- fail "appSettings.s3.forcePathStyle false is not supported for r2: Cloudflare R2 always uses path-style requests. Clear it or set true." }}
+{{- end }}
+{{- if eq $s3Endpoint "" }}
+{{- fail "appSettings.s3.provider r2 needs appSettings.s3.endpoint, the S3 API URL of the account: https://<account id>.r2.cloudflarestorage.com." }}
+{{- end }}
+{{- $r2Pattern := "^(?i:https://([0-9a-f]{32}\\.((eu|fedramp)\\.)?r2\\.cloudflarestorage\\.com))\\.?(/([a-z0-9][a-z0-9-]{1,61}[a-z0-9])/?|/)?$" }}
+{{- $r2Endpoint := $s3Endpoint }}
+{{- if not (regexMatch $r2Pattern $r2Endpoint) }}
+{{- fail (printf "appSettings.s3.endpoint %q is not supported for r2. Use the S3 API URL of the account: https://<account id>.r2.cloudflarestorage.com (or its .eu or .fedramp jurisdiction), without a port, query or fragment." $s3Endpoint) }}
+{{- end }}
+{{- $r2Bucket := regexReplaceAll $r2Pattern $r2Endpoint "${5}" }}
+{{- $s3BucketValue := trim (toString ($s3Values.bucket | default "")) }}
+{{- if and (ne $r2Bucket "") (ne $s3BucketValue "") (ne $r2Bucket $s3BucketValue) }}
+{{- fail (printf "appSettings.s3.endpoint names the bucket %q, but appSettings.s3.bucket is %q. Use the same bucket, or remove the bucket name from the endpoint." $r2Bucket $s3BucketValue) }}
+{{- end }}
+{{- $_ := set $storageSettings "s3.endpoint" (printf "https://%s" (lower (regexReplaceAll $r2Pattern $r2Endpoint "${1}"))) }}
+{{- $_ := set $storageSettings "s3.forcePathStyle" true }}
+{{- $_ := set $storageSettings "s3.allowedPrivateHosts" (list) }}
 {{- else if ne $s3Provider "s3-compatible" }}
 {{- if or (ne $s3Endpoint "") (kindIs "bool" $s3PathStyle) (gt (len $s3Hosts) 0) }}
-{{- fail "appSettings.s3.endpoint, forcePathStyle and allowedPrivateHosts need appSettings.s3.provider s3-compatible." }}
+{{- fail "appSettings.s3.endpoint, forcePathStyle and allowedPrivateHosts need appSettings.s3.provider s3-compatible or r2." }}
 {{- end }}
 {{- end }}
 {{- if eq $s3Provider "s3-compatible" }}
@@ -360,7 +386,7 @@
 {{- if ne $s3Provider "" }}
 {{- $_ := set $storageSettings "s3.provider" $s3Provider }}
 {{- end }}
-{{- if kindIs "bool" $s3PathStyle }}
+{{- if and (kindIs "bool" $s3PathStyle) (ne $s3Provider "r2") }}
 {{- $_ := set $storageSettings "s3.forcePathStyle" $s3PathStyle }}
 {{- end }}
 {{- if gt (len $s3Hosts) 0 }}

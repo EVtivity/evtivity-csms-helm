@@ -1176,16 +1176,18 @@ appSettings:
   s3:
     bucket: ""
     region: ""
-    # Storage provider: s3 (AWS S3) or s3-compatible (MinIO, Wasabi and the like).
-    # Empty keeps the value set in Settings > Integrations > S3.
+    # Storage provider: s3 (AWS S3), s3-compatible (MinIO, Wasabi and the like) or
+    # r2 (Cloudflare R2). Empty keeps the value set in Settings > Integrations > S3.
     provider: ""
-    # s3-compatible only: the endpoint origin without a path, for example
+    # s3-compatible: the endpoint origin without a path, for example
     # https://s3.example.com. A public host must use https. A private host must be
     # listed in allowedPrivateHosts and may then use http, but browsers block it
     # when the CSMS or portal is served over https: use https there too.
+    # r2: the S3 API URL of the account, https://<account id>.r2.cloudflarestorage.com
+    # (or its .eu or .fedramp jurisdiction). The region is always auto.
     endpoint: ""
     # s3-compatible only: true puts the bucket in the URL path (most MinIO setups).
-    # Empty keeps the dashboard value.
+    # r2 always uses the path. Empty keeps the dashboard value.
     forcePathStyle: ""
     # s3-compatible only: at most 20 private host names or IP addresses the endpoint
     # may name, without scheme or port. Unroutable and cloud metadata addresses are

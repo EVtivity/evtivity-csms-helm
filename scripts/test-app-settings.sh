@@ -883,11 +883,31 @@ if render "$TMP/storage-private.json" -f "$TMP/storage-values.yaml"; then
 else
   bad "storage private: render failed: $(head -1 "$TMP/render.err")"
 fi
-expect_fail "s3.provider" 'appSettings.s3.provider "r2" is not supported' --set appSettings.s3.provider=r2
+expect_fail "s3.provider" 'appSettings.s3.provider "gcs" is not supported' --set appSettings.s3.provider=gcs
+# Cloudflare R2: only the S3 API URL of an account, rendered as https://<host> without a
+# trailing dot or bucket, path-style on and no private hosts (validateR2Endpoint in the API).
+R2_ID=0123456789abcdef0123456789abcdef
+if render "$TMP/storage-r2.json" --set appSettings.s3.provider=r2 --set "appSettings.s3.endpoint=https://${R2_ID}.R2.CloudflareStorage.com./my-bucket/" --set appSettings.s3.bucket=my-bucket; then
+  if r=$(expect_json "$TMP/storage-r2.json" "{\"s3.provider\":\"r2\",\"s3.endpoint\":\"https://${R2_ID}.r2.cloudflarestorage.com\",\"s3.forcePathStyle\":true,\"s3.allowedPrivateHosts\":[]}"); then ok; else bad "storage r2: $r"; fi
+else
+  bad "storage r2: render failed: $(head -1 "$TMP/render.err")"
+fi
+if render "$TMP/storage-r2-eu.json" --set appSettings.s3.provider=r2 --set "appSettings.s3.endpoint=https://${R2_ID}.eu.r2.cloudflarestorage.com"; then
+  if r=$(expect_json "$TMP/storage-r2-eu.json" "{\"s3.endpoint\":\"https://${R2_ID}.eu.r2.cloudflarestorage.com\"}"); then ok; else bad "storage r2 eu: $r"; fi
+else
+  bad "storage r2 eu: render failed: $(head -1 "$TMP/render.err")"
+fi
+expect_fail "r2 without endpoint" 'provider r2 needs appSettings.s3.endpoint' --set appSettings.s3.provider=r2
+for ep in "http://${R2_ID}.r2.cloudflarestorage.com" "https://${R2_ID}.r2.cloudflarestorage.com:8443" "https://user:pw@${R2_ID}.r2.cloudflarestorage.com" "https://${R2_ID}.r2.cloudflarestorage.com/?x=1" "https://${R2_ID}.r2.cloudflarestorage.com/b/key" "https://${R2_ID}.asia.r2.cloudflarestorage.com" "https://x.${R2_ID}.r2.cloudflarestorage.com" "https://${R2_ID}.r2.cloudflarestorage.com.evil.example" 'https://pub-0123456789abcdef0123456789abcdef.r2.dev' 'https://s3.example.com' 'https://169.254.169.254'; do
+  expect_fail "r2 endpoint $ep" 'is not supported for r2' --set appSettings.s3.provider=r2 --set "appSettings.s3.endpoint=$ep"
+done
+expect_fail "r2 endpoint of another bucket" 'names the bucket "other-bucket"' --set appSettings.s3.provider=r2 --set "appSettings.s3.endpoint=https://${R2_ID}.r2.cloudflarestorage.com/other-bucket" --set appSettings.s3.bucket=my-bucket
+expect_fail "r2 with private hosts" 'is not used by r2' --set appSettings.s3.provider=r2 --set "appSettings.s3.endpoint=https://${R2_ID}.r2.cloudflarestorage.com" --set 'appSettings.s3.allowedPrivateHosts={minio.internal}'
+expect_fail "r2 path-style false" 'always uses path-style' --set appSettings.s3.provider=r2 --set "appSettings.s3.endpoint=https://${R2_ID}.r2.cloudflarestorage.com" --set appSettings.s3.forcePathStyle=false
 expect_fail "s3.forcePathStyle string" 'appSettings.s3.forcePathStyle "yes" is not supported' --set-string appSettings.s3.forcePathStyle=yes
 expect_fail "s3-compatible without endpoint" 'needs appSettings.s3.endpoint' --set appSettings.s3.provider=s3-compatible
 expect_fail "s3 with endpoint" 'used by s3-compatible only' --set appSettings.s3.provider=s3 --set appSettings.s3.endpoint=https://s3.example.com
-expect_fail "endpoint without provider" 'need appSettings.s3.provider s3-compatible' --set appSettings.s3.endpoint=https://s3.example.com
+expect_fail "endpoint without provider" 'need appSettings.s3.provider s3-compatible or r2' --set appSettings.s3.endpoint=https://s3.example.com
 for ep in 'https://user:pw@s3.example.com' 'https://s3.example.com/bucket' 'https://s3.example.com?x=1' 'ftp://s3.example.com'; do
   expect_fail "s3.endpoint $ep" 'is not supported. Use the origin' --set appSettings.s3.provider=s3-compatible --set "appSettings.s3.endpoint=$ep"
 done
