@@ -965,6 +965,11 @@ appSettings:
     idtechMerchantId: ""
   portal:
     registrationEnabled: true
+    # Whether drivers add, rename, deactivate, reactivate and remove their own
+    # RFID cards in the portal and the mobile app. false: the operator manages
+    # the cards and drivers only see them. true, false, or "" to keep the
+    # dashboard value (on for a fresh install).
+    rfidSelfServiceEnabled: ""
   mobile:
     attestation:
       enabled: false

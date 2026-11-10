@@ -412,6 +412,10 @@
 {{- if not (or (kindIs "bool" $vdv463) (kindIs "invalid" $vdv463) (eq (toString $vdv463) "")) }}
 {{- fail (printf "appSettings.features.vdv463Enabled %q is not supported. Use true, false, or \"\" to keep the value set in the dashboard." (toString $vdv463)) }}
 {{- end }}
+{{- $rfidSelfService := (.Values.appSettings.portal | default dict).rfidSelfServiceEnabled }}
+{{- if not (or (kindIs "bool" $rfidSelfService) (kindIs "invalid" $rfidSelfService) (eq (toString $rfidSelfService) "")) }}
+{{- fail (printf "appSettings.portal.rfidSelfServiceEnabled %q is not supported. Use true, false, or \"\" to keep the value set in the dashboard." (toString $rfidSelfService)) }}
+{{- end }}
 {{- $fleetCharging := (.Values.appSettings.fleetCharging | default dict).enabled }}
 {{- if not (or (kindIs "bool" $fleetCharging) (kindIs "invalid" $fleetCharging) (eq (toString $fleetCharging) "")) }}
 {{- fail (printf "appSettings.fleetCharging.enabled %q is not supported. Use true, false, or \"\" to keep the value set in the dashboard." (toString $fleetCharging)) }}
@@ -828,6 +832,9 @@ data:
       {{ $key | toJson }}: {{ $value | toJson }},
       {{- end }}
       "portal.registrationEnabled": {{ .Values.appSettings.portal.registrationEnabled | toJson }},
+      {{- if kindIs "bool" $rfidSelfService }}
+      "portal.rfidSelfServiceEnabled": {{ $rfidSelfService | toJson }},
+      {{- end }}
       "mobile.attestation.enabled": {{ .Values.appSettings.mobile.attestation.enabled | toJson }},
       "mobile.attestation.ios.teamId": {{ .Values.appSettings.mobile.attestation.iosTeamId | toJson }},
       "mobile.attestation.ios.bundleId": {{ .Values.appSettings.mobile.attestation.iosBundleId | toJson }},

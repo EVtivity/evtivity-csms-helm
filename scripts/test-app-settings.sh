@@ -1014,5 +1014,18 @@ if render "$TMP/vdv.json" --set appSettings.features.vdv463Enabled=false; then
 else bad "vdv463 false: $(head -1 "$TMP/render.err")"; fi
 expect_fail "vdv463Enabled" 'appSettings.features.vdv463Enabled "yes" is not supported' --set-string appSettings.features.vdv463Enabled=yes
 
+# Driver RFID self-service switch: empty renders no key (the dashboard value stays),
+# true or false render the boolean, anything else fails.
+if render "$TMP/rfid.json"; then
+  if node -e 'const g = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")); process.exit("portal.rfidSelfServiceEnabled" in g ? 1 : 0)' "$TMP/rfid.json"; then ok; else bad "rfidSelfService default: an empty value rendered a key"; fi
+else bad "rfidSelfService default: $(head -1 "$TMP/render.err")"; fi
+if render "$TMP/rfid.json" --set appSettings.portal.rfidSelfServiceEnabled=true; then
+  if r=$(expect_json "$TMP/rfid.json" '{"portal.rfidSelfServiceEnabled":true}'); then ok; else bad "rfidSelfService true: $r"; fi
+else bad "rfidSelfService true: $(head -1 "$TMP/render.err")"; fi
+if render "$TMP/rfid.json" --set appSettings.portal.rfidSelfServiceEnabled=false; then
+  if r=$(expect_json "$TMP/rfid.json" '{"portal.rfidSelfServiceEnabled":false}'); then ok; else bad "rfidSelfService false: $r"; fi
+else bad "rfidSelfService false: $(head -1 "$TMP/render.err")"; fi
+expect_fail "rfidSelfServiceEnabled" 'appSettings.portal.rfidSelfServiceEnabled "yes" is not supported' --set-string appSettings.portal.rfidSelfServiceEnabled=yes
+
 echo "app settings render tests: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
