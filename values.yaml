@@ -637,6 +637,12 @@ appSettings:
     # fresh install starts at miles and en.
     distanceUnit: ""
     driverLanguage: ""
+    # The daily CSMS update check: the worker reads the latest release number
+    # from evtivity.com once a day (only the server's IP address reaches it) and
+    # admins see a notice on the dashboard. false turns it off. Rendered only
+    # when true or false, so an empty value keeps the value set in Settings >
+    # Company; a fresh install starts on.
+    updateCheckEnabled: ""
   # Station data plans. These keys are the Wi-Fi or wired plan (the default;
   # meterValueInterval and sampledMeasurands are its AC charging readings),
   # dc its DC charging readings, cellular the Cellular plan. Stations get their

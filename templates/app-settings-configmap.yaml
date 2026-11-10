@@ -489,6 +489,13 @@
 {{- end }}
 {{- $_ := set $driverDefaults "system.driverLanguage" $driverLanguage }}
 {{- end }}
+{{- $updateCheck := (.Values.appSettings.system | default dict).updateCheckEnabled }}
+{{- if not (or (kindIs "bool" $updateCheck) (kindIs "invalid" $updateCheck) (eq (toString $updateCheck) "")) }}
+{{- fail (printf "appSettings.system.updateCheckEnabled %q is not supported. Use true, false, or \"\" to keep the value set in the dashboard." (toString $updateCheck)) }}
+{{- end }}
+{{- if kindIs "bool" $updateCheck }}
+{{- $_ := set $driverDefaults "system.updateCheckEnabled" $updateCheck }}
+{{- end }}
 {{- $chargerColors := dict }}
 {{- range $field := list "chargerColorAc" "chargerColorDc" }}
 {{- $color := index $company $field | default "" | toString | trim }}

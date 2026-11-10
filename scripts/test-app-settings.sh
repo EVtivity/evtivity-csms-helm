@@ -1027,5 +1027,18 @@ if render "$TMP/rfid.json" --set appSettings.portal.rfidSelfServiceEnabled=false
 else bad "rfidSelfService false: $(head -1 "$TMP/render.err")"; fi
 expect_fail "rfidSelfServiceEnabled" 'appSettings.portal.rfidSelfServiceEnabled "yes" is not supported' --set-string appSettings.portal.rfidSelfServiceEnabled=yes
 
+# CSMS update check switch: empty renders no key (the dashboard value stays),
+# true or false render the boolean, anything else fails.
+if render "$TMP/update.json"; then
+  if node -e 'const g = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")); process.exit("system.updateCheckEnabled" in g ? 1 : 0)' "$TMP/update.json"; then ok; else bad "updateCheck default: an empty value rendered a key"; fi
+else bad "updateCheck default: $(head -1 "$TMP/render.err")"; fi
+if render "$TMP/update.json" --set appSettings.system.updateCheckEnabled=true; then
+  if r=$(expect_json "$TMP/update.json" '{"system.updateCheckEnabled":true}'); then ok; else bad "updateCheck true: $r"; fi
+else bad "updateCheck true: $(head -1 "$TMP/render.err")"; fi
+if render "$TMP/update.json" --set appSettings.system.updateCheckEnabled=false; then
+  if r=$(expect_json "$TMP/update.json" '{"system.updateCheckEnabled":false}'); then ok; else bad "updateCheck false: $r"; fi
+else bad "updateCheck false: $(head -1 "$TMP/render.err")"; fi
+expect_fail "updateCheckEnabled" 'appSettings.system.updateCheckEnabled "yes" is not supported' --set-string appSettings.system.updateCheckEnabled=yes
+
 echo "app settings render tests: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
