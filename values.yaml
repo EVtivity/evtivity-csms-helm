@@ -629,7 +629,14 @@ credentialRotation:
 appSettings:
   system:
     name: "EVtivity CSMS"
+    # Also the timezone new drivers start with when none is set at creation.
     timezone: "America/New_York"
+    # The distance unit ("miles" or "km") and language (en, de, es, ko, zh,
+    # zh-TW) new drivers start with when none is set at creation. Rendered only
+    # when set, so an empty value keeps the value set in Settings > Company; a
+    # fresh install starts at miles and en.
+    distanceUnit: ""
+    driverLanguage: ""
   # Station data plans. These keys are the Wi-Fi or wired plan (the default;
   # meterValueInterval and sampledMeasurands are its AC charging readings),
   # dc its DC charging readings, cellular the Cellular plan. Stations get their

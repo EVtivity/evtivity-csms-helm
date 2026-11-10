@@ -326,6 +326,21 @@ expect_fail "company.chargerColorAc short" 'appSettings.company.chargerColorAc "
 expect_fail "company.chargerColorDc no hash" 'appSettings.company.chargerColorDc "1f2937" is not supported' --set-string appSettings.company.chargerColorDc=1f2937
 expect_fail "company.chargerColorAc not hex" 'appSettings.company.chargerColorAc "#12345g" is not supported' --set-string 'appSettings.company.chargerColorAc=#12345g'
 
+# Driver defaults: empty renders no key (the dashboard value stays), a value
+# renders as given, anything else fails.
+if render "$TMP/driver-defaults-default.json"; then
+  if node -e 'const g = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")); process.exit("system.distanceUnit" in g || "system.driverLanguage" in g ? 1 : 0)' "$TMP/driver-defaults-default.json"; then ok; else bad "driver defaults default: an empty value rendered a key"; fi
+else
+  bad "driver defaults default: render failed: $(head -1 "$TMP/render.err")"
+fi
+if render "$TMP/driver-defaults-set.json" --set appSettings.system.distanceUnit=km --set appSettings.system.driverLanguage=zh-TW; then
+  if r=$(expect_json "$TMP/driver-defaults-set.json" '{"system.distanceUnit":"km","system.driverLanguage":"zh-TW"}'); then ok; else bad "driver defaults set: $r"; fi
+else
+  bad "driver defaults set: render failed: $(head -1 "$TMP/render.err")"
+fi
+expect_fail "system.distanceUnit" 'appSettings.system.distanceUnit "mi" is not supported' --set appSettings.system.distanceUnit=mi
+expect_fail "system.driverLanguage" 'appSettings.system.driverLanguage "fr" is not supported' --set appSettings.system.driverLanguage=fr
+
 # Password policy and session lifetimes: empty keeps the dashboard value and
 # the key is not rendered, a set value renders as a JSON number or boolean,
 # a value out of range or of the wrong type fails.
