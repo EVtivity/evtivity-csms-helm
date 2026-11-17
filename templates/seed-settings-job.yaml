@@ -81,6 +81,32 @@ spec:
                   dbValue = encryptString(value, encKey);
                 }
 
+                // Enable Station Units stays on while a station uses units, as
+                // the API refuses it: decided under the lock its writer takes.
+                if (key === 'stationUnits.enabled' && dbValue === false) {
+                  const inUse = await sql.begin(async (tx) => {
+                    await tx`SELECT pg_advisory_xact_lock(hashtext('evtivity:station-units-feature'))`;
+                    const [row] = await tx`SELECT count(*)::int AS n FROM charging_stations WHERE uses_units = true`;
+                    const n = Number(row?.n ?? 0);
+                    if (n === 0) {
+                      await tx`
+                        INSERT INTO settings (key, value)
+                        VALUES (${key}, ${JSON.stringify(dbValue)}::jsonb)
+                        ON CONFLICT (key) DO UPDATE SET
+                          value = ${JSON.stringify(dbValue)}::jsonb,
+                          updated_at = now()
+                      `;
+                    }
+                    return n;
+                  });
+                  if (inUse > 0) {
+                    console.log('Kept stationUnits.enabled on: ' + inUse + ' stations use units.');
+                    continue;
+                  }
+                  count++;
+                  continue;
+                }
+
                 await sql`
                   INSERT INTO settings (key, value)
                   VALUES (${key}, ${JSON.stringify(dbValue)}::jsonb)

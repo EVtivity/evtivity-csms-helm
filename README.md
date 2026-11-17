@@ -440,7 +440,7 @@ The ID TECH payment terminal settings are app settings, also set in Settings > I
 
 | Parameter | Setting |
 |-----------|---------|
-| `appSettings.features.stationUnitsEnabled` | Station units (one OCPP station split into named physical charger boxes), also set in Settings > Integrations & Features > Station: `true` or `false` applies that value on every install and upgrade. Empty (the default) renders nothing and keeps the dashboard value (off on a fresh install). Anything else fails the render |
+| `appSettings.features.stationUnitsEnabled` | Station units (one OCPP station split into named physical charger boxes), also set in Settings > Integrations & Features > Station: `true` or `false` applies that value on every install and upgrade. Empty (the default) renders nothing and keeps the dashboard value (off on a fresh install). `false` is skipped, with a log line, while a station uses units, as the dashboard refuses it. Anything else fails the render |
 
 ### OCPP Data Plan Settings
 
