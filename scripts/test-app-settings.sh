@@ -1014,6 +1014,19 @@ if render "$TMP/vdv.json" --set appSettings.features.vdv463Enabled=false; then
 else bad "vdv463 false: $(head -1 "$TMP/render.err")"; fi
 expect_fail "vdv463Enabled" 'appSettings.features.vdv463Enabled "yes" is not supported' --set-string appSettings.features.vdv463Enabled=yes
 
+# Station units switch: empty renders no key (the dashboard value stays),
+# true or false render the boolean, anything else fails.
+if render "$TMP/units.json"; then
+  if node -e 'const g = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")); process.exit("stationUnits.enabled" in g ? 1 : 0)' "$TMP/units.json"; then ok; else bad "stationUnits default: an empty value rendered a key"; fi
+else bad "stationUnits default: $(head -1 "$TMP/render.err")"; fi
+if render "$TMP/units.json" --set appSettings.features.stationUnitsEnabled=true; then
+  if r=$(expect_json "$TMP/units.json" '{"stationUnits.enabled":true}'); then ok; else bad "stationUnits true: $r"; fi
+else bad "stationUnits true: $(head -1 "$TMP/render.err")"; fi
+if render "$TMP/units.json" --set appSettings.features.stationUnitsEnabled=false; then
+  if r=$(expect_json "$TMP/units.json" '{"stationUnits.enabled":false}'); then ok; else bad "stationUnits false: $r"; fi
+else bad "stationUnits false: $(head -1 "$TMP/render.err")"; fi
+expect_fail "stationUnitsEnabled" 'appSettings.features.stationUnitsEnabled "yes" is not supported' --set-string appSettings.features.stationUnitsEnabled=yes
+
 # Driver RFID self-service switch: empty renders no key (the dashboard value stays),
 # true or false render the boolean, anything else fails.
 if render "$TMP/rfid.json"; then

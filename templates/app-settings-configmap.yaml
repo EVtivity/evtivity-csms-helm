@@ -412,6 +412,10 @@
 {{- if not (or (kindIs "bool" $vdv463) (kindIs "invalid" $vdv463) (eq (toString $vdv463) "")) }}
 {{- fail (printf "appSettings.features.vdv463Enabled %q is not supported. Use true, false, or \"\" to keep the value set in the dashboard." (toString $vdv463)) }}
 {{- end }}
+{{- $stationUnits := .Values.appSettings.features.stationUnitsEnabled }}
+{{- if not (or (kindIs "bool" $stationUnits) (kindIs "invalid" $stationUnits) (eq (toString $stationUnits) "")) }}
+{{- fail (printf "appSettings.features.stationUnitsEnabled %q is not supported. Use true, false, or \"\" to keep the value set in the dashboard." (toString $stationUnits)) }}
+{{- end }}
 {{- $rfidSelfService := (.Values.appSettings.portal | default dict).rfidSelfServiceEnabled }}
 {{- if not (or (kindIs "bool" $rfidSelfService) (kindIs "invalid" $rfidSelfService) (eq (toString $rfidSelfService) "")) }}
 {{- fail (printf "appSettings.portal.rfidSelfServiceEnabled %q is not supported. Use true, false, or \"\" to keep the value set in the dashboard." (toString $rfidSelfService)) }}
@@ -822,6 +826,9 @@ data:
       "autocharge.enabled": {{ if kindIs "bool" $autocharge }}{{ $autocharge | toJson }}{{ else }}""{{ end }},
       {{- if kindIs "bool" $vdv463 }}
       "vdv463.enabled": {{ $vdv463 | toJson }},
+      {{- end }}
+      {{- if kindIs "bool" $stationUnits }}
+      "stationUnits.enabled": {{ $stationUnits | toJson }},
       {{- end }}
       "security.autoDisableOnCritical": {{ .Values.appSettings.security.autoDisableOnCritical | toJson }},
       "security.recaptcha.enabled": {{ .Values.appSettings.security.recaptchaEnabled | toJson }},

@@ -436,6 +436,12 @@ The ID TECH payment terminal settings are app settings, also set in Settings > I
 |-----------|---------|
 | `appSettings.portal.rfidSelfServiceEnabled` | Whether drivers add, rename, deactivate, reactivate and remove their own RFID cards in the portal and the mobile app, also set in Settings > Integrations & Features > RFID Cards. `false`: drivers only see their cards and the operator manages them. `true` or `false` applies that value on every install and upgrade. Empty (the default) renders nothing and keeps the dashboard value (on on a fresh install). Anything else fails the render |
 
+### Station Unit Settings
+
+| Parameter | Setting |
+|-----------|---------|
+| `appSettings.features.stationUnitsEnabled` | Station units (one OCPP station split into named physical charger boxes), also set in Settings > Integrations & Features > Station: `true` or `false` applies that value on every install and upgrade. Empty (the default) renders nothing and keeps the dashboard value (off on a fresh install). Anything else fails the render |
+
 ### OCPP Data Plan Settings
 
 The OCPP values sent to stations at every boot are app settings, one set per station data plan, also set in Settings > Integrations & Features > OCPP. `appSettings.ocpp` is the Wi-Fi or wired plan (the default; `meterValueInterval` and `sampledMeasurands` are its AC readings while charging), `appSettings.ocpp.dc` its DC readings while charging, and `appSettings.ocpp.cellular` (with `cellular.dc`) the Cellular plan. An empty value keeps the dashboard value and the key is not written; the database migration seeds the shipped values. A value out of range, or a measurand list that is not comma-separated names, fails the render.

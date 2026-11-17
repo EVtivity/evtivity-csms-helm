@@ -869,6 +869,11 @@ appSettings:
     # true or false sets it on every install and upgrade. Empty renders no
     # value, so the switch in the dashboard stays (off on a fresh install).
     vdv463Enabled: ""
+    # Station units (one OCPP station split into named physical charger boxes),
+    # also set in Settings > Integrations & Features > Station. true or false
+    # sets it on every install and upgrade. Empty renders no value, so the
+    # switch in the dashboard stays (off on a fresh install).
+    stationUnitsEnabled: ""
   security:
     autoDisableOnCritical: true
     recaptchaEnabled: false
