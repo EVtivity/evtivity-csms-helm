@@ -26,6 +26,10 @@
 {{- if and (ne $taxBasis "") (not (has $taxBasis (list "gross" "net"))) }}
 {{- fail (printf "appSettings.company.taxBasis %q is not supported. Use net or gross." $taxBasis) }}
 {{- end }}
+{{- $weekStart := .Values.appSettings.company.weekStart | default "" }}
+{{- if and (ne $weekStart "") (not (has $weekStart (list "monday" "sunday"))) }}
+{{- fail (printf "appSettings.company.weekStart %q is not supported. Use monday or sunday." $weekStart) }}
+{{- end }}
 {{- $stripeSettings := .Values.appSettings.stripe | default dict }}
 {{- range $key := list "preAuthAmountCents" "platformFeePercent" }}
 {{- if and (hasKey $stripeSettings $key) (not (kindIs "invalid" (get $stripeSettings $key))) (ne (toString (get $stripeSettings $key)) "") }}
@@ -758,6 +762,7 @@ data:
       "company.currency": {{ .Values.appSettings.company.currency | toJson }},
       "company.priceDisplay": {{ .Values.appSettings.company.priceDisplay | default "" | toJson }},
       "company.taxBasis": {{ .Values.appSettings.company.taxBasis | default "" | toJson }},
+      "company.weekStart": {{ .Values.appSettings.company.weekStart | default "" | toJson }},
       "company.contactEmail": {{ .Values.appSettings.company.contactEmail | toJson }},
       "company.supportEmail": {{ .Values.appSettings.company.supportEmail | toJson }},
       "company.supportPhone": {{ .Values.appSettings.company.supportPhone | toJson }},

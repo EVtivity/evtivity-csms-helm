@@ -286,6 +286,16 @@ fi
 expect_fail "guest.startsPerIpPerHour" 'appSettings.guest.startsPerIpPerHour "10001" is not supported' --set appSettings.guest.startsPerIpPerHour=10001
 expect_fail "guest.declinesPerIpPerHour" 'appSettings.guest.declinesPerIpPerHour "-1" is not supported' --set appSettings.guest.declinesPerIpPerHour=-1
 
+# Report week start: empty keeps the dashboard value, monday or sunday render,
+# another day fails.
+if render "$TMP/week-default.json"; then
+  if r=$(expect_json "$TMP/week-default.json" '{"company.weekStart":""}'); then ok; else bad "week start default: $r"; fi
+else bad "week start default: $(head -1 "$TMP/render.err")"; fi
+if render "$TMP/week-set.json" --set appSettings.company.weekStart=sunday; then
+  if r=$(expect_json "$TMP/week-set.json" '{"company.weekStart":"sunday"}'); then ok; else bad "week start set: $r"; fi
+else bad "week start set: $(head -1 "$TMP/render.err")"; fi
+expect_fail "company.weekStart" 'appSettings.company.weekStart "friday" is not supported' --set appSettings.company.weekStart=friday
+
 # Invoice payment information: empty keeps the dashboard value, the IBAN and
 # BIC render normalized, an IBAN with a bad checksum, a BIC of another length,
 # a holder over 70 characters and a non-boolean QR switch fail.
